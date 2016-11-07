@@ -1,0 +1,14 @@
+Package: fagin
+Title: trace orphan origins
+Version: 0.8.0.9000
+Author: Zebulun Arendsee
+Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
+URL: https://github.com/arendsee/fagin
+BugReports: https://github.com/arendsee/fagin/issues
+Description:
+    A pipeline for the classification of orphans into origin classes using a
+    syntenic filter.
+Depends: R (>= 3.3.1)
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true

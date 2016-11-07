@@ -1,0 +1,34 @@
+---
+title: "Introduction to Fagin"
+author: "Zebulun Arendsee"
+date: "`r Sys.Date()`"
+output:
+    rmarkdown::html_vignette:
+        fig_caption: yes
+vignette: >
+  %\VignetteIndexEntry{Introduction to Fagin}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Vignette Info
+
+Fagin find orphans
+
+## Figures
+
+```{r, fig.show='hold', fig.cap='Hey, this is a caption'}
+plot(1:10)
+plot(10:1)
+```
+
+## Mathy math
+
+$Y = X\beta + \epsilon$
+
+look! A footnote! footnote^[see, here it is!]
+
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```

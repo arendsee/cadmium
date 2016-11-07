@@ -2,16 +2,18 @@
 #' 
 #' @param name species name 
 #' @param gff gene feature format file
+#' @export
 load_gff <- function(name, gff) {
-
+  NULL
 }
 
 #' Load a species GFF into the database
 #' 
 #' @param name species name
 #' @param genome file name
+#' @export
 load_genome <- function(name, genome) {
-
+  NULL
 }
 
 #' Load a synteny map into the database
@@ -21,5 +23,5 @@ load_genome <- function(name, genome) {
 #' @param synmap synteny map file name
 #' @export
 load_synmap <- function(qname, tname, synmap) {
-
+  NULL
 }

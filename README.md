@@ -1,3 +1,5 @@
+[![Travis-CI Build Status](https://travis-ci.org/arendsee/fagin.svg?branch=master)](https://travis-ci.org/arendsee/fagin)
+
 **This program is under heavy development, stability coming soon**
 
 # Fagin
@@ -40,35 +42,6 @@ A pipeline for the classification of orphans into origin classes using a synteni
  - Overall statistics for classifications
  - Visualizations of overall statistics
  - Origin page for each orphan gene
-
-# Running Fagin
-
- 1. `./configure.sh` 
- 2. Fill in generated config scripts
- 3. `make load && make test && make run`
-
-## 1. Run configure script
-
-```
-./configure.sh
-```
-
-This script will
-  - check all dependencies, installing locally necessary
-  - check all required R libraries, and install if possible
-  - build basic config files
-
-## 2. Setup config files
-
-Fill in missing fields in `preconfig.sh` and `runconfig.R`. Details for each
-required field are in the config files.
-
-## 3. Run the analysis
-
-```
-make load && make test && make run
-```
-
 
 # TODO
 

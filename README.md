@@ -1,8 +1,5 @@
-[![Travis-CI Build Status](https://travis-ci.org/arendsee/fagin.svg?branch=master)](https://travis-ci.org/arendsee/fagin)
-[![Coverage Status](https://img.shields.io/codecov/c/github/arendsee/fagin/master.svg)](https://codecov.io/github/arendsee/fagin?branch=master)
-
-
-**This program is under heavy development, stability coming soon**
+[![Travis-CI Build Status](https://travis-ci.org/arendsee/fagin.svg?branch=dev)](https://travis-ci.org/arendsee/fagin)
+[![Coverage Status](https://img.shields.io/codecov/c/github/arendsee/fagin/dev.svg)](https://codecov.io/github/arendsee/fagin?branch=dev)
 
 # Fagin
 
@@ -71,3 +68,13 @@ Implementation
  - [ ] integrate phylostratigraphy
  - [ ] toss knitr, modularize for interactive exploration
  - [ ] integrate with Trelliscope and datadr
+
+Final Destination
+ - [ ] Fagin will include everything needed for orphan analysis
+ - [ ] Identification of initial orphans using BLAST
+ - [ ] Manage blast results (not a trivial manner, very big)
+ - [ ] Phylostratigraphic contextualization using NCBI common tree
+ - [ ] Syntenic map creation, with Satsuma wrapper
+ - [ ] Synder interface
+ - [ ] Search within syntenic context
+ - [ ] Visualize the results genewise with Trelliscope

@@ -1,5 +1,5 @@
 language: R
-sudo: false
+sudo: required
 cache: packages
 
 after_success:
@@ -11,7 +11,7 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - g++-4.9
-      - gfortran-4.6
 
 before_install:
-  mkdir ~/.R && echo "CXX=g++-4.9" > ~/.R/Makevars
+  - mkdir ~/.R && echo "CXX=g++-4.9" > ~/.R/Makevars
+  - sudo apt-get install gfortran

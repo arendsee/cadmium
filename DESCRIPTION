@@ -10,8 +10,13 @@ Description: A pipeline for the classification of orphans into origin classes
 Depends:
     R (>= 3.3.1)
 Imports:
-    synder (>= 0.19.0)
-Remotes: arendsee/synder
+    synder (>= 0.19.0),
+    hasard (>= 0.1.0),
+    data.tree,
+    ape
+Remotes:
+    arendsee/synder,
+    arendsee/hasard
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

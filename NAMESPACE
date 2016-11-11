@@ -2,4 +2,6 @@
 
 export(load_genome)
 export(load_gff)
+export(load_proteome)
+export(load_species_tree)
 export(load_synmap)

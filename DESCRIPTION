@@ -12,6 +12,7 @@ Depends:
 Imports:
     synder (>= 0.19.0),
     hasard (>= 0.1.0),
+    readr,
     data.tree,
     ape
 Remotes:

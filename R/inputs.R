@@ -2,6 +2,7 @@
 #'
 #' @param name species name 
 #' @param gff gene feature format file
+#' @return GI bioconductor object
 #' @export
 load_gff <- function(name, gff) {
   NULL

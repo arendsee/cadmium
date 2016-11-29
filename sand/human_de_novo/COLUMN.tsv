@@ -1,3 +1,4 @@
+variable	description
 chromosome	reference chromosome
 transcript_start	transcript start position
 transcript_end	transcript end position

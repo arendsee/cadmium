@@ -7,8 +7,7 @@ library(dplyr)
 library(magrittr)
 library(readr)
 
-gff <- sandr::read_sand('.', data_has_header=FALSE, meta_has_header=FALSE
-) %>%
+gff <- sandr::read_sand('.', data_has_header=FALSE) %>%
   { .$orf_id <- paste0('orf_', 1:nrow(.)); . } %>%
   dplyr::mutate(
     exon_lengths = strsplit(exon_lengths, ','),

@@ -1,8 +1,9 @@
 h_load_genome   <- hwell('Genome')
-h_load_synmap   <- hwell('Synmap')
-h_species_tree  <- hwell('Tree')
+h_load_proteome <- hwell('Proteome')
 h_load_gff      <- hwell('GFF')
+h_species_tree  <- hwell('Tree')
 
+h_load_synmap   <- hpipe('SeqLengths -> SeqLengths -> Synmap')
 h_get_seq_lengths <- hpipe('Genome -> SeqLengths')
 h_annotate_gff    <- hpipe('SeqLengths -> GFF')
 

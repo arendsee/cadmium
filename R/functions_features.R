@@ -170,6 +170,6 @@ find_scr <- function(x){
 
 #' @rdname feature_builders
 #' @export
-find_unknown_unknowns <- function(x){
+find_unk <- function(x){
   NULL
 }

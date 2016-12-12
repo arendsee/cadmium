@@ -1,0 +1,102 @@
+# By default the variables in path are assumed to be function names
+
+
+@export
+
+main as run
+
+@path
+
+main :: origin . label tree
+
+-----------------------------------------
+label ::
+  gen ? O1,
+  trn ? O2,
+  orf ? O3,
+  nuc ?
+    cds ? N1,
+    rna ? N2, N3,
+  tec ? U1,
+  una ? U2,
+  ind ? U3,
+  nst ? U4,
+  res ? U5,
+  scr ? U6, U7
+
+-----------------------------------------
+gen :: is_gen . aa_aln . queryAA targetAA                    ;
+trn :: is_trn . aa_aln . queryAA target_morf                 ;
+orf :: is_orf . aa_aln . queryAA target_orf                  ;
+nuc :: is_nuc . dna_aln . query_trans_AA . target_genomic_si ;
+cds :: is_cds . GFF GFF                                      ;
+rna :: is_rna . GFF GFF                                      ;
+tec :: is_tec . Sequence SearchInterval                      ;
+una :: is_una . unassembled . SearchInterval                 ;
+ind :: is_ind . ind                                          ;
+nst :: is_nst . GFF nstrings                                 ;
+res :: is_res . ind                                          ;
+scr :: is_scr . summarize_flags . SearchInterval             ;
+
+
+-----------------------------------------
+ind      :: indel.stats . findIndels . SearchInterval            ;
+GFF      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq)) ;
+seq_feat :: extract_feature . GFF bioseq                         ;
+bioseq   :: (is_aa ? unstar , id) . reduce_header . load_fasta   ;
+
+aa_morf  :: unstar . rm_x . translate . getorf . concat . getfasta . (getexon GFF) bioseq;
+aa_ngorf :: unstar . rm_x . translate . getorf . bioseq;
+aa       :: unstar . rm_x . translate . concat . getfasta . (getcds GFF) bioseq;
+
+fit_gumbel
+sample_aa2aa
+sample_orf2dna
+sample_dna2dna
+
+aln_aa2aa :: aln . (aln_xy:1 . bioseq:1 bioseq:2) (fit_gumbel . (aln_xy:2 . (sample_aa bioseq:1 bioseq:2)))
+
+SearchInterval :: synder . (align_genome . bioseq:1 bioseq:2) (length:1 bioseq:1) (length:2 bioseq:2);
+
+@arg
+synder :: k=100, b='011111'
+
+@alias
+gi        = annotated_gi
+gff       = get_raw_gff
+seqinfo   = get_seqinfo
+length    = get_sequence_length
+fasta     = load_fasta_aa
+tree      = load_tree
+parse_9th = undefined
+
+O1 = ['ORFic',     'O1', 'ORFic - known protein'            ]
+O2 = ['ORFic',     'O2', 'ORFic - transcribed ORF'          ]
+O3 = ['ORFic',     'O3', 'ORFic - unknown ORF'              ]
+N1 = ['Non-ORFic', 'N1', 'SI overlaps CDS'                  ]
+N2 = ['Non-ORFic', 'N2', 'SI overlaps exon'                 ]
+N3 = ['Non-ORFic', 'N3', 'SI overlaps no known gene'        ]
+U1 = ['Unknown',   'U1', 'skipped'                          ]
+U2 = ['Unknown',   'U2', 'unassembled'                      ]
+U3 = ['Unknown',   'U3', 'possible indel'                   ]
+U4 = ['Unknown',   'U4', 'possibly in unknown region'       ]
+U5 = ['Unknown',   'U5', 'possibly resized'                 ]
+U6 = ['Unknown',   'U6', 'scrambled synteny'                ]
+U7 = ['Unknown',   'U7', 'good syntenic match, no homology' ]
+
+
+@doc
+gen :: 'Is AA similar to a known gene?'
+trn :: 'Is AA similar to any ORF on known mRNA?'
+orf :: 'Is AA similar to any ORF anywhere?'
+nuc :: 'Is DNA similar to anything?'
+cds :: 'Does search interval overlap a CDS?'
+rna :: 'Does search interval overlap an exon?'
+tec :: 'Was the nucleotide not searched for technical reasons?'
+una :: 'Query maps off target scaffold'
+ind :: 'Query maps to zero-length target interval'
+nst :: 'Query maps to N-string'
+res :: 'Query maps to target interval smaller than self'
+scr :: 'Query maps inbetween contiguous block'
+
+parse_9th :: 'Parse the parent-child relations from the 9th GFF column'

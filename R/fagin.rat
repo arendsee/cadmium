@@ -12,6 +12,101 @@
 
 main as run
 
+@ontology
+
+Seqid :: String
+Sciname :: String
+Filename :: String
+Sequence :: Header Protein | Header Nucleotide
+Header :: Seqid | Seqid String # Am I overfitting the problem?
+Bool :: True | False
+SearchInterval :: Interval Interval Flag
+Flag :: Int Int Int
+Interval :: GFF | GI
+Seqinfo :: Sciname [(Seqid, Int)]
+
+@type
+
+O1,O2,O3,N1,N2,N3,U1,U2,U3,U4,U5,U6,U7 :: Seqid -> Sciname -> Sciname -> (Seqid, Sciname, Sciname)
+
+gen,trn,orf,nuc,cds,rna,tec,una,ind,nst,res,scr :: [Seqid] -> Sciname -> [Sciname]
+
+is_gen :: [Seqid] -> [Bool]
+is_trn :: [Seqid] -> [Bool]
+is_orf :: [Seqid] -> [Bool]
+is_nuc :: [Seqid] -> [Bool]
+is_cds :: [Seqid] -> [Bool]
+is_rna :: [Seqid] -> [Bool]
+is_tec :: [Seqid] -> [Bool]
+is_una :: [Seqid] -> [Bool]
+is_ind :: [Seqid] -> [Bool]
+is_nst :: [Seqid] -> [Bool]
+is_res :: [Seqid] -> [Bool]
+is_scr :: [Seqid] -> [Bool]
+
+merge_leafs :: auto
+
+qids :: Filename -> [Seqids]
+qspecies :: Filename -> Sciname
+tspecies :: Filename -> [Sciname]
+
+filter_aln :: [Alignment] -> [Alignment]
+
+too_big :: [Sequence] -> [SearchInterval] -> [Seqid]
+
+resized_ids :: [(Seqid, String)] -> [Seqid]
+indeled_ids :: [(Seqid, String)] -> [Seqid]
+
+scrambled_ids :: [SearchInterval] -> [Seqid]
+
+load_fasta :: Filename -> [Sequence]
+load_tree  :: Filename -> Tree
+load_gff   :: Filename -> GFF
+
+is_aa :: [Sequence] -> Bool
+
+gff :: Sciname -> GFF
+bioseq :: Sciname -> [Sequence]
+
+reduce_header :: [Sequence] -> [Sequence]
+
+synder :: Sciname -> Sciname -> [SearchInterval]
+
+tspecies :: Tree -> [Sciname]
+
+translate :: [Nucleotide] -> [Protein]
+unstar :: [Protein] -> [Protein]
+
+si_size_class :: [SearchInterval] -> [(Seqid, String)]
+
+ind :: [(Seqid, String)] -> [Seqid]
+res :: [(Seqid, String)] -> [Seqid]
+
+length :: [Sequence] -> [(Seqid, Int)]
+seqinfo :: [(Seqid, Int)] -> Sciname -> Seqinfo
+
+# Get parent child relations
+parse_9th :: GFF -> [(String, String)]
+
+getfasta :: GI -> [Sequence] -> [Sequence]
+
+concat_same :: [Sequence] -> [Sequence]
+
+getexon :: GI -> GI
+getcds :: GI -> GI
+
+getorf :: [Sequence] -> [Sequence]
+
+rm_x :: [Sequence] -> [Sequence]
+
+aln_xy :: Sequence -> [Sequence] -> [Alignment]
+
+seq_sample :: [Sequence] -> Int -> [Sequence]
+
+fpdist :: [Alignment] -> [Distribution]
+
+align_genome :: Sciname -> Sciname -> Synmap
+
 @path
 
 main :: classes . labels tree
@@ -34,30 +129,31 @@ labels ::
   qids qspecies tspecies
 
 -----------------------------------------
-gen :: is_gen . aa_aln . aa:1 aa:2
-trn :: is_trn . aa_aln . aa   aa_morf
-orf :: is_orf . aa_aln . aa   aa_ngorf
-nuc :: is_nuc . dna_aln . gene genomic_si
-cds :: is_cds . intersection . (getcds . GFF:1) (getcds . GFF:2)
-rna :: is_rna . intersection . (getrna . GFF:1) (getrna . GFF:2)
-tec :: is_tec . Sequence SearchInterval
+gen :: is_gen . filter_aln . aa_aln . aa:1 aa:2
+trn :: is_trn . filter_aln . aa_aln . aa   aa_morf
+orf :: is_orf . filter_aln . aa_aln . aa   aa_ngorf
+nuc :: is_nuc . filter_aln . dna_aln . gene genomic_si
+cds :: is_cds . intersection . (getcds . gff:1) (getcds . gff:2)
+rna :: is_rna . intersection . (getrna . gff:1) (getrna . gff:2)
+tec :: is_tec . too_big . Sequence SearchInterval
 una :: is_una . unassembled . SearchInterval
-ind :: is_ind . ind
-nst :: is_nst . GFF nstrings
-res :: is_res . ind
-scr :: is_scr . summarize_flags . SearchInterval
+ind :: is_ind . indeled_ids . si_size_class
+nst :: is_nst . gff nstrings
+res :: is_res . resized_ids . si_size_class
+scr :: is_scr . scrambled_ids . SearchInterval
+
 
 -----------------------------------------
 ind      :: indel.stats . findIndels . SearchInterval            ;
-GFF      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq)) ;
-seq_feat :: extract_feature . GFF bioseq                         ;
+gff      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq)) ;
+seq_feat :: extract_feature . gff bioseq                         ;
 bioseq   :: (is_aa ? unstar , id) . reduce_header . load_fasta   ;
 
-aa_morf  :: unstar . translate . getorf . concat . getfasta . (getexon GFF) bioseq;
+aa_morf  :: unstar . translate . getorf . concat . getfasta . (getexon gff) bioseq;
 aa_ngorf :: unstar . rm_x . translate . getorf . bioseq;
-aa       :: unstar . translate . concat . getfasta . (getcds GFF) bioseq;
+aa       :: unstar . translate . concat . getfasta . (getcds gff) bioseq;
 
-gene :: concat . getfasta . (getcds GFF) bioseq;
+gene :: concat . getfasta . (getcds gff) bioseq;
 genomic_si :: getfasta . SearchInterval bioseq;
 
 aln_aa2aa ::
@@ -70,7 +166,7 @@ SearchInterval ::
         (align_genome . bioseq:1 bioseq:2)
         (length:1 bioseq:1) (length:2 bioseq:2);
 
-O1 = [$1, 'ORFic',     'O1', 'ORFic - known protein'            ]
+O1 = ['ORFic',     'O1', 'ORFic - known protein'            ]
 O2 = ['ORFic',     'O2', 'ORFic - transcribed ORF'          ]
 O3 = ['ORFic',     'O3', 'ORFic - unknown ORF'              ]
 N1 = ['Non-ORFic', 'N1', 'SI overlaps CDS'                  ]

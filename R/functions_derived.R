@@ -60,3 +60,4 @@ parse_feature_graph <- function(x){
 get_search_intervals <- function(x){
   NULL
 }
+

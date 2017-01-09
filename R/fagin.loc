@@ -27,6 +27,7 @@ Seqinfo :: Sciname [(Seqid, Int)]
 
 @type
 
+# Lists in declarations not currently supported
 O1,O2,O3,N1,N2,N3,U1,U2,U3,U4,U5,U6,U7 :: Seqid -> Sciname -> Sciname -> (Seqid, Sciname, Sciname)
 
 gen,trn,orf,nuc,cds,rna,tec,una,ind,nst,res,scr :: [Seqid] -> Sciname -> [Sciname]
@@ -112,6 +113,7 @@ align_genome :: Sciname -> Sciname -> Synmap
 main :: classes . labels tree
 
 -----------------------------------------
+# Not currently supported
 labels ::
   merge_leafs .
   gen ? O1,
@@ -144,27 +146,27 @@ scr :: is_scr . scrambled_ids . SearchInterval
 
 
 -----------------------------------------
-ind      :: indel.stats . findIndels . SearchInterval            ;
-gff      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq)) ;
-seq_feat :: extract_feature . gff bioseq                         ;
-bioseq   :: (is_aa ? unstar , id) . reduce_header . load_fasta   ;
+ind      :: indel.stats . findIndels . SearchInterval
+gff      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq))
+seq_feat :: extract_feature . gff bioseq
+bioseq   :: (is_aa ? unstar , id) . reduce_header . load_fasta
 
-aa_morf  :: unstar . translate . getorf . concat . getfasta . (getexon gff) bioseq;
-aa_ngorf :: unstar . rm_x . translate . getorf . bioseq;
-aa       :: unstar . translate . concat . getfasta . (getcds gff) bioseq;
+aa_morf  :: unstar . translate . getorf . concat . getfasta . (getexon gff) bioseq
+aa_ngorf :: unstar . rm_x . translate . getorf . bioseq
+aa       :: unstar . translate . concat . getfasta . (getcds gff) bioseq
 
-gene :: concat . getfasta . (getcds gff) bioseq;
-genomic_si :: getfasta . SearchInterval bioseq;
+gene :: concat . getfasta . (getcds gff) bioseq
+genomic_si :: getfasta . SearchInterval bioseq
 
 aln_aa2aa ::
     fit_gumbel .
         (aln_xy . bioseq:1 bioseq:2)
-        (fpdist . aln_xy . (seq_sample bioseq:1) (seq_sample bioseq:2));
+        (fpdist . aln_xy . (seq_sample bioseq:1) (seq_sample bioseq:2))
 
 SearchInterval ::
     synder .
         (align_genome . bioseq:1 bioseq:2)
-        (length:1 bioseq:1) (length:2 bioseq:2);
+        (length:1 bioseq:1) (length:2 bioseq:2)
 
 O1 = ['ORFic',     'O1', 'ORFic - known protein'            ]
 O2 = ['ORFic',     'O2', 'ORFic - transcribed ORF'          ]
@@ -184,28 +186,9 @@ U7 = ['Unknown',   'U7', 'good syntenic match, no homology' ]
 @arg
 synder :: k=100, b='011111'
 
-gen->get_AA:1,
-trn->get_AA:1,
-orf->get_orf:1,
-nuc->genomic_si:1,
-cds->GFF:1,
-rna->GFF:1,
-tec->SearchInterval,
-una->SearchInterval,
-nst->GFF :: species=$2
+nst/GFF :: species=$2
 
-gen->get_AA:2,
-trn->get_morf,
-orf->get_orf,
-nuc->genomic_si,
-cds->GFF:2,
-rna->GFF:2,
-tec->SearchInterval,
-una->SearchInterval,
-nst->nstrings,
-ind->ind->SearchInterval,
-res->ind->SearchInterval,
-scr->SearchInterval :: <species=$3>
+scr/SearchInterval :: <species=$3>
 
 @alias
 gi        = annotated_gi

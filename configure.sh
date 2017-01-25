@@ -113,7 +113,8 @@ cat << EOF
  Configuration successful, you may now:
    1. Set required fields in preconfig.sh
    2. Set required fields in runconfig.R
-   3. Run make (this may require a few hours)
+   3. make load  # takes several minures
+   4. make run   # this may take a few hours
 EOF
 else
     echo "!!! Configuration FAIL: do NOT proceed, do NOT run make !!!"

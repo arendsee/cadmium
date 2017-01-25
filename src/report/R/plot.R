@@ -90,8 +90,17 @@ plotOne <- function(qname, target, k=10000L){
             ty=subset(td, side=='target' & group=='syn') %$% y
         )
 
+        tgenome=attr(target$si$target, "seqinfo")@genome[1]
+        qgenome=attr(target$si$query, "seqinfo")@genome[1]
 
         ggplot() +
+            ggtitle(qname) +
+            xlab(
+              sprintf(
+                "top  %s (%s : %d)\nbottom  %s (%s : %d)",
+                tgenome, chrname, tmin, qgenome, qchr, qmin
+              )
+            ) +
             geom_segment(
                 data=subset(td, group=='query'),
                 aes(

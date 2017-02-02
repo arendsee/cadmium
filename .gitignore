@@ -4,4 +4,7 @@
 ..Rcheck
 inst/doc
 
+locout
+manifold-nexus.py
+
 *.db

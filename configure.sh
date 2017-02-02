@@ -71,21 +71,31 @@ install-exe(){
 }
 
 install-smof(){
-    d=src/smof
-    git clone $smof_src $d || return 1
-    cp $d/smof.py bin/smof
-    rm -rf $d
+    if [[ -f bin/smof ]]
+    then
+        return 0
+    else
+        d=src/smof
+        git clone $smof_src $d || return 1
+        cp $d/smof.py bin/smof
+        rm -rf $d
+    fi
     return 0
 }
 
 install-synder(){
     d=src/synder
-    git clone $synder_src $d || return 1
-    cd $d
-    make      || return 1
-    cd -
-    cp $d/synder bin
-    [[ -d $d ]] && rm -rf $d
+    if [[ -f bin/synder ]]
+    then
+        return 0
+    else
+        git clone $synder_src $d || return 1
+        cd $d
+        make || return 1
+        cd -
+        cp $d/synder bin
+        [[ -d $d ]] && rm -rf $d
+    fi
     return 0
 }
 

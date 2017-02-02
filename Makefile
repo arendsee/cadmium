@@ -44,3 +44,5 @@ clean:
 	rm -f runconfig.R
 	rm -f ${PROLOGUE}/config
 	rm -f ${REPORT}/config
+	rm -rf bin
+	rm -rf src/smof src/synder

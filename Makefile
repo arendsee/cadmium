@@ -9,5 +9,4 @@ run:
 
 .PHONY: clean
 clean:
-	rm manifold-nexus.py
-	rm -rf locout archive
+	rm -rf locout archive input manifold-nexus.py

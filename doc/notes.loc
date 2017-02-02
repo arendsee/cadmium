@@ -1,0 +1,100 @@
+# Leftovers from prior attempts
+
+# @path
+# Main :: null . classes . labels tree
+#
+# C :: merge_leafs . *D . qids qspecies tspecies
+#
+# E ::
+#     as_feature_table .
+#         (scr . res . nst . ind . una . tec . not) (cds . rna) .
+#             nuc . ord . trn . gen .
+#     tablate . gen trn orf nuc cds rna tec una ind nst res scr
+#
+# -----------------------------------------
+#
+# # Not currently supported
+# labels ::
+#   merge_leafs .
+#   gen ? O1,
+#   trn ? O2,
+#   orf ? O3,
+#   nuc ?
+#     cds ? N1,
+#     rna ? N2, N3,
+#   tec ? U1,
+#   una ? U2,
+#   ind ? U3,
+#   nst ? U4,
+#   res ? U5,
+#   scr ? U6, U7 .
+#   qids qspecies tspecies
+#
+# -----------------------------------------
+# gen :: is_gen . filter_aln . aa_aln . aa:1 aa:2
+# trn :: is_trn . filter_aln . aa_aln . aa   aa_morf
+# orf :: is_orf . filter_aln . aa_aln . aa   aa_ngorf
+# nuc :: is_nuc . filter_aln . dna_aln . gene genomic_si
+# cds :: is_cds . intersection . (getcds . gff:1) (getcds . gff:2)
+# rna :: is_rna . intersection . (getrna . gff:1) (getrna . gff:2)
+# tec :: is_tec . too_big . Sequence SearchInterval
+# una :: is_una . unassembled . SearchInterval
+# ind :: is_ind . indeled_ids . si_size_class
+# nst :: is_nst . gff nstrings
+# res :: is_res . resized_ids . si_size_class
+# scr :: is_scr . scrambled_ids . SearchInterval
+#
+#
+# -----------------------------------------
+# ind      :: indel.stats . findIndels . SearchInterval
+# gff      :: gi . (parse_9th . gff) (seqinfo . (length . bioseq))
+# seq_feat :: extract_feature . gff bioseq
+# bioseq   :: (is_aa ? unstar , id) . reduce_header . load_fasta
+#
+# aa_morf  :: unstar . translate . getorf . concat . getfasta . (getexon gff) bioseq
+# aa_ngorf :: unstar . rm_x . translate . getorf . bioseq
+# aa       :: unstar . translate . concat . getfasta . (getcds gff) bioseq
+#
+# gene :: concat . getfasta . (getcds gff) bioseq
+# genomic_si :: getfasta . SearchInterval bioseq
+#
+# aln_aa2aa ::
+#     fit_gumbel .
+#         (aln_xy . bioseq:1 bioseq:2)
+#         (fpdist . aln_xy . (seq_sample bioseq:1) (seq_sample bioseq:2))
+#
+# SearchInterval ::
+#     synder .
+#         (align_genome . bioseq:1 bioseq:2)
+#         (length:1 bioseq:1) (length:2 bioseq:2)
+#
+# O1 = ['ORFic',     'O1', 'ORFic - known protein'            ]
+# O2 = ['ORFic',     'O2', 'ORFic - transcribed ORF'          ]
+# O3 = ['ORFic',     'O3', 'ORFic - unknown ORF'              ]
+# N1 = ['Non-ORFic', 'N1', 'SI overlaps CDS'                  ]
+# N2 = ['Non-ORFic', 'N2', 'SI overlaps exon'                 ]
+# N3 = ['Non-ORFic', 'N3', 'SI overlaps no known gene'        ]
+# U1 = ['Unknown',   'U1', 'skipped'                          ]
+# U2 = ['Unknown',   'U2', 'unassembled'                      ]
+# U3 = ['Unknown',   'U3', 'possible indel'                   ]
+# U4 = ['Unknown',   'U4', 'possibly in unknown region'       ]
+# U5 = ['Unknown',   'U5', 'possibly resized'                 ]
+# U6 = ['Unknown',   'U6', 'scrambled synteny'                ]
+# U7 = ['Unknown',   'U7', 'good syntenic match, no homology' ]
+# -----------------------------------------
+#
+# @arg
+# synder :: k=100, b='011111'
+#
+# nst/GFF :: species=$2
+#
+# scr/SearchInterval :: <species=$3>
+#
+# @alias
+# gi        = annotated_gi
+# gff       = get_raw_gff
+# seqinfo   = get_seqinfo
+# length    = get_sequence_length
+# fasta     = load_fasta_aa
+# tree      = load_tree
+# parse_9th = undefined

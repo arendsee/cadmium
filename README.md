@@ -12,20 +12,6 @@ appear in her favorite species, Arabidopsis. She quickly discovers that they
 are devilishly difficult to deal with, so she decides to use the dedicated
 orphan program Fagin.
 
-She installs the program as she would install any github-based R package:
-
-```
-library(devtools)
-install_github('arendsee/fagin')
-```
-
-"Now what?", she asks herself. She skims the docs, determines they are
-dreadfully dull, and goes back to the R shell.
-
-```
-p <- fagin::init("arabidopsis_project")
-```
-
 # Input
 
  The following is required
@@ -80,9 +66,9 @@ Content
  - [ ] implement non-quadratic alignment
 
 Implementation
- - [ ] ab initio refactor as pure R package
- - [ ] replace all shellscripts with R code
- - [ ] full testit coverage
+ - [ ] * ab initio refactor as pure R package
+ - [ ] * replace all shellscripts with R code
+ - [ ] * full testit coverage
  - [ ] all data in RSQLite databases (constant memory)
  - [ ] parallelize everything (divide-analyze-recombine)
  - [ ] integrate BLAST orphan identification

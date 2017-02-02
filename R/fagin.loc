@@ -113,6 +113,17 @@ align_genome :: Sciname -> Sciname -> Synmap
 main :: classes . labels tree
 
 -----------------------------------------
+
+C :: merge_leafs . *D . qids qspecies tspecies
+
+E ::
+    as_feature_table .
+        (scr . res . nst . ind . una . tec . not) (cds . rna) .
+            nuc . ord . trn . gen .
+    tablate . gen trn orf nuc cds rna tec una ind nst res scr
+
+-----------------------------------------
+
 # Not currently supported
 labels ::
   merge_leafs .

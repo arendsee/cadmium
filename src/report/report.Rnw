@@ -215,6 +215,32 @@ model2locus <- get_model2locus_map(query)
 labels <- determineLabels(query, results, config)
 origin <- determineOrigins(labels, config)
 
+
+# # ===================================================================
+# merge_labels <- function(x, y){
+#   x$primary = NULL
+#   y$primary = NULL
+#   merge(x, y, by="seqid")
+# }
+# 
+# d <- base::Reduce(merge_labels, labels$labels)
+# names(d) <- c("seqid", names(labels$labels))
+# 
+# 
+# label_summary <- function(x){
+#   fields=c("O1", "O2", "O3", "N1", "N2", "N3", "U1", "U2", "U3", "U4", "U5", "U6", "U7")
+#   summary(factor(x, levels=fields))
+# }
+# 
+# dd <- d
+# dd$seqid <- NULL
+# do.call(cbind, lapply(dd, label_summary)) %>% t
+# 
+# a <- summary(factor(d$Capsella_rubella, levels=fields))
+# b <- summary(factor(d$Brassica_rapa, levels=fields))
+# cbind(a, b)
+# # -------------------------------------------------------------------
+
 @
 
 <<query-loci-counts>>=

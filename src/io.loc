@@ -1,0 +1,52 @@
+@4
+write_spc:len    :: mkdir . "input/gen/"
+write_spc:torf   :: mkdir . "input/trans-orf/"
+write_spc:gene   :: mkdir . "input/gene/"
+write_spc:pro    :: mkdir . "input/faa/"
+write_spc:orfpro :: mkdir . "input/orf-faa/"
+write_spc:orfgff :: mkdir . "input/orf-gff/"
+
+@arg
+gf:len    :: "input/gen/"       ".txt"
+gf:torf   :: "input/trans-orf/" ".faa"
+gf:gene   :: "input/gene/"      ".fna"
+gf:pro    :: "input/faa/"       ".faa"
+gf:orfpro :: "input/orf-faa/"   ".faa"
+gf:orfgff :: "input/orf-gff/"   ".gff"
+
+gf:gen :: "$HOME/db/fagin-input/fna/" ".fna"
+gf:gff :: "$HOME/db/fagin-input/gff/" ".gff"
+gf:syn :: "$HOME/db/fagin-input/syn/" ".syn"
+
+# required parameters
+list_species :: "$HOME/db/fagin-input/brassicaceae.tree"
+
+@lang
+* :: sh
+
+@source sh
+
+gf(){
+    prefix=$1
+    suffix=$2
+    species=$3
+    echo ${prefix}${species}${suffix}
+}
+
+record(){
+    data=$1 # dat from file substitution
+    file=$( cat $2 ) # casting file as string
+    cp $data $file
+}
+
+file_readable(){
+    test -f $1
+}
+
+read_spc(){
+    cat $1
+}
+
+list_species(){
+    perl -pe 's/\W*(\w+)\W*/$1\n/g' $1
+}

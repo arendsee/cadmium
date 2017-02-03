@@ -18,8 +18,12 @@ null:main :+ mkdir . `input`
 null:main :+ null:prep . map  .
     & ( null
         .
-        ( write:gen . $1 wc:gen . get_genome )
-        ( write:gff . $1 wc:gff . get_gff )
+        ( record . ( smof:stat  .           gf:gen ) ( gf:len    ) )
+        ( record . ( get_torf   . gf:gff    gf:gen ) ( gf:torf   ) )
+        ( record . ( get_gene   . gf:gff    gf:gen ) ( gf:gene   ) )
+        ( record . ( get_pro    . gf:gff    gf:gen ) ( gf:pro    ) )
+        ( record . ( get_orfpro .           gf:gen ) ( gf:orfpro ) )
+        ( record . ( get_orfgff . gf:orfpro        ) ( gf:orfgff ) )
         .
         $1
     )
@@ -27,7 +31,7 @@ null:main :+ null:prep . map  .
 
 @3
 # Clean up all temporary files, archive data
-null:main :+ null . mkdir . `archive`
+null:main :+ null . mkdir . `archive` `input`
 
 
 @cache
@@ -37,25 +41,15 @@ null:main :: datcache
 @check
 null:main :+ file_readable . "data/species.txt"
 
-
 @arg
 # stub
 echo:labels :: "labels"
 # stub
 echo:tree :: "tree"
 
-write:gen :: "input/gen" ".txt"
-write:gff :: "input/gff" ".txt"
+smof:stat :: stat -q
 
-# required parameters
-list_species :: "/db/fagin-input/brassicaceae.tree"
-get_genome :: "/db/fagin-input/fna"
-get_gff :: "/db/fagin-input/gff"
-get_synmap :: "/db/fagin-input/syn"
-
-
-@lang
-* :: sh
+mkdir :: -p
 
 
 @alias
@@ -63,52 +57,10 @@ get_synmap :: "/db/fagin-input/syn"
 classes :: cat
 
 
-@source sh
-
-write(){
-    prefix=$1
-    suffix=$2
-    species=$3
-    data=$4
-
-    cat ${data} > ${prefix}_${species}_${suffix}
-}
-
-file_readable(){
-    test -f $1
-}
-
-list_species(){
-    perl -pe 's/\W*(\w+)\W*/$1\n/g' $1
-}
-
-get_genome(){
-    cat $1/$2.fna
-}
-
-get_gff(){
-    cat $1/$2.gff
-}
-
-get_synmap(){
-    cat $1/$2.syn
-}
-
-log(){
-    cat $1 >> log
-}
-
-
 @include
+"src/prologue.loc"
+"src/io.loc"
+
 "core/sh/control.loc"
 "core/sh/atomic.loc"
 "core/sh/datcache.loc"
-
-
-@type
-loadGenome :: Species -> Bioseq
-loadGFF :: Species -> Table
-file_readable :: Filename -> Bool
-# currently I cannot express function types, so I use * in place of
-# (Species->NULL)
-map :: * -> Species -> NULL

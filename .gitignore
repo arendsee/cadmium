@@ -4,6 +4,9 @@
 ..Rcheck
 inst/doc
 
+input/
+log
+
 locout
 manifold-nexus.py
 

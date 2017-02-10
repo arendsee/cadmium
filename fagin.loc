@@ -1,66 +1,67 @@
 @path
+
 # pure data pipeline
 null:main . classes . *Labels *Tree
 
 # stub for feature table construction
 Labels :: echo:labels
+
 # stub for loading species tree
 Tree :: echo:tree
 
 
-@export
-null:main as run
+@4
 
-
-@2
 null:main :+ mkdir . `input`
+
 # Make all derived data, prepare environment
-null:main :+ null:prep . map  .
-    & ( null
+null:main :+ null . map .
+    & ( null:prologue
         .
-        ( record . ( smof:stat  .           gf:gen ) ( gf:len    ) )
         ( record . ( get_torf   . gf:gff    gf:gen ) ( gf:torf   ) )
         ( record . ( get_gene   . gf:gff    gf:gen ) ( gf:gene   ) )
         ( record . ( get_pro    . gf:gff    gf:gen ) ( gf:pro    ) )
         ( record . ( get_orfpro .           gf:gen ) ( gf:orfpro ) )
-        ( record . ( get_orfgff . gf:orfpro        ) ( gf:orfgff ) )
+        ( record . ( get_glen   .           gf:gen ) ( gf:len    ) )
+        .
+        $1
+    )
+    list_species
+# Make data based on this derived data
+null:main :+ null . map .
+    & (
+        null
+        .
+        (record . ( get_orfgff . gf:orfpro ) ( gf:orfgff ))
         .
         $1
     )
     list_species
 
-@3
-# Clean up all temporary files, archive data
-null:main :+ null . mkdir . `archive` `input`
-
+@check
+null:prologue :+ file_readable . <gf:gen>
+null:prologue :+ file_readable . <gf:gff>
+get_orfgff :+ file_readable . <gf:orfpro>
 
 @cache
 null:main :: datcache
 
 
-@check
-null:main :+ file_readable . "data/species.txt"
-
 @arg
-# stub
 echo:labels :: "labels"
-# stub
 echo:tree :: "tree"
-
-smof:stat :: stat -q
-
 mkdir :: -p
 
 
 @alias
-# stub
 classes :: cat
 
 
 @include
-"src/prologue.loc"
-"src/io.loc"
+src/prologue
+src/io
 
-"core/sh/control.loc"
-"core/sh/atomic.loc"
-"core/sh/datcache.loc"
+core/control
+core/atomic
+core/datcache
+core/type

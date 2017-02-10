@@ -1,3 +1,12 @@
+@type
+get_torf   :: File -> File -> Text
+get_gene   :: File -> File -> Text
+get_pro    :: File -> File -> Text
+get_orfpro :: File -> Text
+get_orfgff :: File -> Text
+get_glen   :: File -> Text # ([Str], [Int])
+
+
 @lang
 * :: sh
 
@@ -7,43 +16,48 @@ log(){
     cat $1 >> log
 }
 
+get_glen (){
+    fna=$1 # a genome file (or any fasta file really)
+    smof stat -q $fna
+}
+
 # Get transcript ORFs
 get_torf (){
-    gff=$( cat $1 )
-    fna=$( cat $2 )
-    # cat $gff |
-    # awk '
-    #     BEGIN{FS="\t"; OFS="\t"}
-    #     $3 == "exon" {
-    #         $9 = gensub(/.*ID=([^;]+).*Parent=([^;]+).*/, "\\1\t\\2", 1, $9)
-    #         print
-    #     }
-    # ' |
-    # sort -k10 -k4n |
-    # awk '
-    #     BEGIN{FS="\t"; OFS="\t"}
-    #     {$3 = $10}
-    #     {print}
-    # ' |
-    # cut -f1-9 |
-    # bedtools getfasta   \
-    #     -fi $fna        \
-    #     -bed /dev/stdin \
-    #     -fo /dev/stdout \
-    #     -name |
-    # awk '
-    #     $1 ~ /^>/ && $1 in a { next }
-    #     {a[$1]++; print}
-    # ' |
-    # getorf -filter -find 1 -minsize 30 |
-    # smof clean -s
+    gff=$1
+    fna=$2
+    cat $gff |
+    awk '
+        BEGIN{FS="\t"; OFS="\t"}
+        $3 == "exon" {
+            $9 = gensub(/.*ID=([^;]+).*Parent=([^;]+).*/, "\\1\t\\2", 1, $9)
+            print
+        }
+    ' |
+    sort -k10 -k4n |
+    awk '
+        BEGIN{FS="\t"; OFS="\t"}
+        {$3 = $10}
+        {print}
+    ' |
+    cut -f1-9 |
+    bedtools getfasta   \
+        -fi $fna        \
+        -bed /dev/stdin \
+        -fo /dev/stdout \
+        -name |
+    awk '
+        $1 ~ /^>/ && $1 in a { next }
+        {a[$1]++; print}
+    ' |
+    getorf -filter -find 1 -minsize 30 |
+    smof clean -s
 }
 
 
 # Prepare FASTA file of genes, regions potentially include UTRs and introns
 get_gene (){
-    gff=$( cat $1 )
-    fna=$( cat $2 )
+    gff=$1
+    fna=$2
     awk '
         BEGIN{OFS="\t"; FS=OFS}
         $3 == "mRNA" {
@@ -62,73 +76,72 @@ get_gene (){
 
 # Prepare protein fasta files including all predicted coding genes
 get_pro (){
-    gff=$( cat $1 )
-    # x=/tmp/get_proteins_$RANDOM$RANDOM
-    # cat $gff |
-    #     awk '
-    #         BEGIN{FS="\t"; OFS="\t"}
-    #         $3 == "CDS" {
-    #             $9 = gensub(/.*Parent=([^;]+).*/, "\\1", 1, $9)
-    #             print
-    #         }
-    #     ' |
-    #     sort -k3n -k9 |
-    #     awk '
-    #         BEGIN{FS="\t";OFS="\t"}
-    #         {$3 = $9" "$7; print}
-    #     ' |
-    #     bedtools getfasta        \
-    #         -fi $INPUT/fna/$1.fna \
-    #         -bed /dev/stdin      \
-    #         -fo /dev/stdout      \
-    #         -name |
-    #     awk '$1 ~ /^>/ && $1 in seqids { next }; {seqids[$1]++; print}' > $x
-    # cat <(smof grep ' +' $x) <(smof grep ' -' $x | revseq -filter) |
-    #     transeq -filter |
-    #     sed '/>/s/_[0-9]\+//' |
-    #     smof clean -sux
-    # rm $x
+    gff=$1
+    fna=$2
+    x=/tmp/get_proteins_$RANDOM$RANDOM
+    cat $gff |
+        awk '
+            BEGIN{FS="\t"; OFS="\t"}
+            $3 == "CDS" {
+                $9 = gensub(/.*Parent=([^;]+).*/, "\\1", 1, $9)
+                print
+            }
+        ' |
+        sort -k3n -k9 |
+        awk '
+            BEGIN{FS="\t";OFS="\t"}
+            {$3 = $9" "$7; print}
+        ' |
+        bedtools getfasta   \
+            -fi $fna        \
+            -bed /dev/stdin \
+            -fo /dev/stdout \
+            -name |
+        awk '$1 ~ /^>/ && $1 in seqids { next }; {seqids[$1]++; print}' > $x
+    cat <(smof grep ' +' $x) <(smof grep ' -' $x | revseq -filter) |
+        transeq -filter |
+        sed '/>/s/_[0-9]\+//' |
+        smof clean -sux
+    rm $x
 }
 
 
 # Get open reading frames from each input genome
 get_orfpro (){
-    fna=$( cat $1 )
-    echo get_orf_faa >> log
-    # smof clean --reduce-header $fna |
-    #    # Find all START STOP bound ORFs with 10+ AA
-    #     getorf -filter -find 1 -minsize 30 |
-    #     # Filter out all ORFs with unknown residues
-    #     smof grep -v -q X
+    fna=$1
+    smof clean --reduce-header $fna |
+       # Find all START STOP bound ORFs with 10+ AA
+        getorf -filter -find 1 -minsize 30 |
+        # Filter out all ORFs with unknown residues
+        smof grep -v -q X
 }
 
 
 get_orfgff (){
-    faa=$( cat $1 )
-    echo get_orf_gff >> log
-    # cat $faa |
-    # # Parse a header such as:
-    # # >scaffold_1_432765 [258 - 70] (REVERSE SENSE)
-    # sed -nr '/^>/ s/>([^ ]+)_([0-9])+ \[([0-9]+) - ([0-9]+)\]/\1 \3 \4 \1_\2/p' |
-    # # Prepare GFF
-    # awk '
-    #     BEGIN{OFS="\t"}
-    #     {
-    #         seq_name = $1
-    #         uid = $4
-    #         if($5 ~ /REVERSE/){
-    #             strand = "-"
-    #         } else {
-    #             strand = "+"
-    #         }
-    #         if($2 < $3){
-    #             start = $2
-    #             stop  = $3
-    #         } else {
-    #             start = $3
-    #             stop  = $2
-    #         }
-    #     }
-    #     { print seq_name, ".", "ORF", start, stop, ".", strand, ".", uid }
-    # '
+    faa=$1
+    cat $faa |
+    # Parse a header such as:
+    # >scaffold_1_432765 [258 - 70] (REVERSE SENSE)
+    sed -nr '/^>/ s/>([^ ]+)_([0-9])+ \[([0-9]+) - ([0-9]+)\]/\1 \3 \4 \1_\2/p' |
+    # Prepare GFF
+    awk '
+        BEGIN{OFS="\t"}
+        {
+            seq_name = $1
+            uid = $4
+            if($5 ~ /REVERSE/){
+                strand = "-"
+            } else {
+                strand = "+"
+            }
+            if($2 < $3){
+                start = $2
+                stop  = $3
+            } else {
+                start = $3
+                stop  = $2
+            }
+        }
+        { print seq_name, ".", "ORF", start, stop, ".", strand, ".", uid }
+    '
 }

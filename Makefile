@@ -5,8 +5,9 @@ all:
 
 .PHONY: run
 run:
-	./manifold-nexus.py run
+	./manifold-nexus.py main
 
 .PHONY: clean
 clean:
 	rm -rf locout archive input manifold-nexus.py
+	rm -f log

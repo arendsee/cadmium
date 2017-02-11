@@ -6,13 +6,6 @@ gf:pro    :: "input/faa/"       ".faa"
 gf:orfpro :: "input/orf-faa/"   ".faa"
 gf:orfgff :: "input/orf-gff/"   ".gff"
 
-gf:gen :: "$HOME/db/fagin-input/fna/" ".fna"
-gf:gff :: "$HOME/db/fagin-input/gff/" ".gff"
-gf:syn :: "$HOME/db/fagin-input/syn/" ".syn"
-
-# required parameters
-list_species :: "$HOME/db/fagin-input/brassicaceae.tree"
-
 @lang
 gf,record,file_readable,list_species :: sh
 
@@ -24,6 +17,7 @@ list_species :: Text -> [Str]
 
 @source sh
 
+# Just a convenience function
 log(){
     echo $@ >> z
 } 

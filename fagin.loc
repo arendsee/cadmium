@@ -10,39 +10,6 @@ Labels :: echo:labels
 Tree :: echo:tree
 
 
-@4
-
-null:main :+ mkdir . `input`
-
-# Make all derived data, prepare environment
-null:main :+ null . map .
-    & ( null:prologue
-        .
-        ( record . ( get_torf   . gf:gff    gf:gen ) ( gf:torf   ) )
-        ( record . ( get_gene   . gf:gff    gf:gen ) ( gf:gene   ) )
-        ( record . ( get_pro    . gf:gff    gf:gen ) ( gf:pro    ) )
-        ( record . ( get_orfpro .           gf:gen ) ( gf:orfpro ) )
-        ( record . ( get_glen   .           gf:gen ) ( gf:len    ) )
-        .
-        $1
-    )
-    list_species
-# Make data based on this derived data
-null:main :+ null . map .
-    & (
-        null
-        .
-        (record . ( get_orfgff . gf:orfpro ) ( gf:orfgff ))
-        .
-        $1
-    )
-    list_species
-
-@check
-null:prologue :+ file_readable . <gf:gen>
-null:prologue :+ file_readable . <gf:gff>
-get_orfgff :+ file_readable . <gf:orfpro>
-
 @cache
 null:main :: datcache
 
@@ -50,7 +17,12 @@ null:main :: datcache
 @arg
 echo:labels :: "labels"
 echo:tree :: "tree"
-mkdir :: -p
+
+# required parameters
+gf:gen :: "$HOME/db/fagin-input/fna/" ".fna"
+gf:gff :: "$HOME/db/fagin-input/gff/" ".gff"
+gf:syn :: "$HOME/db/fagin-input/syn/" ".syn"
+list_species :: "$HOME/db/fagin-input/brassicaceae.tree"
 
 
 @alias
@@ -58,9 +30,10 @@ classes :: cat
 
 
 @include
+# Fagin source files
 src/prologue
 src/io
-
+# Core source files
 core/control
 core/atomic
 core/datcache

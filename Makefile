@@ -1,7 +1,7 @@
 TARGET=fagin.loc
 
 all:
-	loc -kx locout ${TARGET}
+	loc -tkx locout ${TARGET}
 
 .PHONY: run
 run:

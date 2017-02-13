@@ -13,4 +13,3 @@ res :: 'Query maps to target interval smaller than self'
 scr :: 'Query maps inbetween contiguous block'
 
 parse_9th :: 'Parse the parent-child relations from the 9th GFF column'
-

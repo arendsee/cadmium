@@ -10,10 +10,10 @@ gf:orfgff :: "input/orf-gff/"   ".gff"
 gf,record,file_readable,list_species :: sh
 
 @type
-gf :: Str -> File
+gf :: String -> File
 record :: Text -> File -> NULL
 file_readable :: File -> Bool
-list_species :: Text -> [Str]
+list_species :: Text -> [String]
 
 @source sh
 
@@ -30,8 +30,8 @@ gf(){
 }
 
 record(){
-    data=$1 # dat from file substitution
-    file=$2 # casting file as string
+    data=$1
+    file=$2
     mkdir -p ${file%/*}
     cat $data > $file
 }

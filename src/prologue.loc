@@ -4,7 +4,7 @@ get_gene   :: File -> File -> Text
 get_pro    :: File -> File -> Text
 get_orfpro :: File -> Text
 get_orfgff :: File -> Text
-get_glen   :: File -> Text # ([Str], [Int])
+get_glen   :: File -> Text # ([String], [Int])
 
 @4
 null:main :+ mkdir . `input`
@@ -28,7 +28,7 @@ null:main :+ null . map .
     & (
         null
         .
-        (record . ( get_orfgff . gf:orfpro ) ( gf:orfgff ))
+        (record:orfgff . ( get_orfgff . gf:orfpro ) ( gf:orfgff ))
         .
         $1
     )
@@ -47,7 +47,6 @@ record:pro    :: not . file_readable . <gf:pro>
 record:orfpro :: not . file_readable . <gf:orfpro>
 record:len    :: not . file_readable . <gf:len>
 record:orfgff :: not . file_readable . <gf:orfgff>
-#<
 
 @lang
 * :: sh

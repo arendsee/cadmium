@@ -26,8 +26,10 @@ list_species :: "$HOME/db/fagin-input/brassicaceae.tree"
 
 
 @alias
-classes :: cat
+classes :: echo
 
+@type
+classes :: String -> String -> String
 
 @include
 # Fagin source files
@@ -38,3 +40,4 @@ core/control
 core/atomic
 core/datcache
 core/type
+core/sh/common

@@ -89,7 +89,7 @@ install-synder(){
     then
         return 0
     else
-        git clone $synder_src $d || return 1
+        git clone -b v0.17.4 $synder_src $d || return 1
         cd $d
         make || return 1
         cd -

@@ -26,7 +26,7 @@ check-dir(){
     place=$2  # dir context, e.g. foo.sh::doit (for debugging)
     if [[ ! -r "$dir" ]]
     then
-        croak "Access directory '$dir', used in $place"
+        croak "Cannot access directory '$dir', used in $place"
     fi
 }
 

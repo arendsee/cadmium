@@ -67,6 +67,9 @@ source('R/feature_overlaps.R')
 source('R/plot.R')
 source('R/versions.R')
 
+log_file <- file("log.Rout", open="wt")
+sink(log_file, type=c("output", "message"))
+
 use_cache <- TRUE
 config    <- LoadConfig(configfile='config')
 cache     <- cache_factory(config)
@@ -88,7 +91,7 @@ plot(tree)
 
 \begin{figure}
     \center
-<<plot-scaffold-lengths, message=FALSE, cache=TRUE>>=
+<<plot-scaffold-lengths, message=FALSE, cache=FALSE>>=
 scaflen <- read.table(config$f_scaflen, header=TRUE)
 scaflen <- group_by(scaflen, species) %>%
     arrange(-length) %>%
@@ -107,7 +110,7 @@ ggplot(scaflen) +
 
 \begin{figure}
     \center
-<<plot-scaffold-lengths-2, cache=TRUE, fig.width=7, fig.height=6>>=
+<<plot-scaffold-lengths-2, cache=FALSE, fig.width=7, fig.height=6>>=
 scaflen$chrid <- factor(scaflen$idx)
 scaflen_chr <- subset(scaflen, length > 10^7) %>% droplevels
 ggplot(scaflen_chr) +
@@ -125,7 +128,7 @@ ggplot(scaflen_chr) +
 
 \begin{figure}[!ht]
     \centering
-<<plot-nstring, cache=TRUE>>=
+<<plot-nstring, cache=FALSE>>=
 nstring <- read.table(config$f_nstrings, header=TRUE)
 nstring$length <- with(nstring, stop - start + 1)
 dplyr::rename(scaflen_chr, scaffold_length = length) %>%
@@ -165,7 +168,7 @@ dplyr::rename(scaflen_chr, scaffold_length = length) %>%
 
 \begin{figure}[!ht]
   \centering
-<<plot-gc, cache=TRUE>>=
+<<plot-gc, cache=FALSE>>=
 read.table(config$f_kbcomp, header=TRUE) %>%
   subset(N == 0) %>%
   dplyr::mutate(GC = (C + G) / (A + C + G + T)) %>%
@@ -257,7 +260,7 @@ norphan_loci <- model2locus[query$orphans, 'parent'] %>%
 
 \begin{figure}[!ht]
     \centering
-<<synteny-diagnostic-scatter, cache=TRUE, message=FALSE>>=
+<<synteny-diagnostic-scatter, cache=FALSE, message=FALSE>>=
 lapply(
   results,
   function(x){
@@ -359,7 +362,7 @@ plot_seqaln <- function(d, cutoff){
 \subsection{Mapping to unknown ORFs on known mRNAs}
 \begin{figure}[!ht]
   \centering
-<<fig.width=6, fig.height=4, message=FALSE, cache=TRUE>>=
+<<fig.width=6, fig.height=4, message=FALSE, cache=FALSE>>=
 m <- lapply(results, function(x) x$features) %>%
     melt(id.vars=c('query', 'target'), level=2) %>%
     dplyr::rename(species=L2, type=L3) %>%
@@ -389,7 +392,7 @@ ggplot(m2) +
 @
   \caption{Number of target features overlapping a search interval}
 \end{figure}
-<<results='asis', cache=TRUE>>=
+<<results='asis', cache=FALSE>>=
 merge(
   results %>%
     lapply(function(x) x$features$CDS$query) %>%
@@ -442,7 +445,7 @@ merge(
 \subsection{Mapping to any DNA region in the search interval}
 \begin{figure}[!ht]
   \centering
-<<message=FALSE, warning=FALSE, cache=TRUE>>=
+<<message=FALSE, warning=FALSE, cache=FALSE>>=
 <<>>=
   m <- melt_seqaln('dna2dna')
   dna2dna.cutoff <- config$dna2dna_pval / (m$query %>% unique %>% length)
@@ -459,7 +462,7 @@ merge(
 
 
 \subsection{Find indel events}
-<<results='asis', cache=TRUE>>=
+<<results='asis', cache=FALSE>>=
 results %>%
   lapply(function(x) x$ind.stats[1:2]) %>%
   melt %>%
@@ -489,7 +492,7 @@ results %>%
 
 
 \subsection{Find queries overlapping N-strings}
-<<results='asis', cache=TRUE>>=
+<<results='asis', cache=FALSE>>=
 results %>%
   lapply(function(x) unique(x$query2gap$query)) %>%
   melt %>%
@@ -514,7 +517,7 @@ results %>%
 
 \subsection{Leaf labels}
 
-<<results='asis', cache=TRUE>>=
+<<results='asis', cache=FALSE>>=
 labels$summary %>% xtable
 @
 

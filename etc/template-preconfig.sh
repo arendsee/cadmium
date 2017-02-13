@@ -6,9 +6,8 @@
 # ===================================================================
 
 # -----------------------------------------------------------------------------
-
-# GFF_DIR is a directory containing a GFF file for each species used in the
-# pipeline. This GFF file must contain at minimum mRNA and coding sequence
+# Absolute path to a directory containing a GFF file for each species used in
+# the pipeline. This GFF file must contain at minimum mRNA and coding sequence
 # (CDS) features. All start and stop positions must be relative to the
 # reference genomes in FNA_DIR (see argument -n).
 #
@@ -28,19 +27,18 @@ GFF_DIR=
 
 
 # -----------------------------------------------------------------------------
-# FNA_DIR is a directory containing a single genome sequence file for each
-# species used in the pipeline. The files must be in FASTA format.
+# Absolute path to a directory containing a single genome sequence file for
+# each species used in the pipeline. The files must be in FASTA format.
 #
 # Expected extension *.fna
-#
 # -----------------------------------------------------------------------------
 FNA_DIR=
 
 
 # -----------------------------------------------------------------------------
-# syn_dir should be the name of directory containing one synteny map for each
-# species that will be compared. each synteny map should consist of a single
-# file named according to the pattern "<query>.vs.<target>.syn", for example,
+# Absolute path to a directory containing one synteny map for each species that
+# will be compared. each synteny map should consist of a single file named
+# according to the pattern "<query>.vs.<target>.syn", for example,
 # "arabidopsis_thaliana.vs.arabidopsis_lyrata.tab". these files should contain
 # the following columns:
 #
@@ -68,15 +66,14 @@ FNA_DIR=
 # is provided, see src/satsuma.pbs.
 #
 # Expected filename format: <query_sciname>.vs.<target_sciname>.syn
-#
 # -----------------------------------------------------------------------------
 SYN_DIR=
 
 
 # -----------------------------------------------------------------------------
-# TREE is a newick format file specifying the topology of the species tree. It
-# must contain all species used in the pipeline AND NO OTHERS (I may relax this
-# restriction later).
+# Absolute path to a newick format file specifying the topology of the species
+# tree. It must contain all species used in the pipeline AND NO OTHERS (I may
+# relax this restriction later).
 #
 # NOTE: There must be no spaces in the species names.
 #
@@ -99,8 +96,9 @@ FOCAL_SPECIES=
 
 
 # -----------------------------------------------------------------------------
-# A list of the genes that will be analyzed. All the genes in the list must be
-# represented by gene models of the same name in the focal species GFF file.
+# Abolute path to a file containing a list of the genes that will be analyzed.
+# All the genes in the list must be represented by gene models of the same name
+# in the focal species GFF file.
 # -----------------------------------------------------------------------------
 ORPHAN_LIST=
 

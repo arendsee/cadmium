@@ -11,7 +11,7 @@ gf,record,file_readable,list_species :: sh
 
 @type
 gf :: String -> File
-record :: Text -> File -> NULL
+record :: Text -> File -> void
 file_readable :: File -> Bool
 list_species :: Text -> [String]
 

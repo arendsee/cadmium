@@ -16,4 +16,4 @@ clean:
 .PHONY: deepclean
 deepclean:
 	latexmk -f -c ${TARGET}.tex 2> /dev/null
-	rm -rf cache figure ${TARGET}.tex ${TARGET}.pdf *log
+	rm -rf cache figure ${TARGET}.tex ${TARGET}.pdf *log  log.Rout

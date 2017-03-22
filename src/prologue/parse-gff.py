@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+if sys.version_info[0] != 3 or sys.version_info[1] < 5:
+    sys.exit("This script requires Python 3.5+")
 
 def err(msg):
     sys.exit(msg)

@@ -24,7 +24,7 @@ x=/tmp/get_proteins_$species
 cat $input_gff |
     # select CDS and reduce 9th column to Parent name
     $parse_script -s CDS -r Parent -md - |
-    sort -k3n -k9 |
+    sort -k9 -k4n |
     awk '
         BEGIN{FS="\t";OFS="\t"}
         {$3 = $9" "$7; print}
@@ -37,7 +37,7 @@ cat $input_gff |
     sed 's/::.*//' |
     awk '$1 ~ /^>/ && $1 in seqids { next }; {seqids[$1]++; print}' > $x
 cat <($smof grep ' +' $x) \
-    <($smof grep ' -' $x | revseq -filter) |
+    <($smof grep ' -' $x | $smof reverse -cV | sed 's/|.*//' ) |
     transeq -filter |
     $smof clean -sux |
     perl -pe 's/_\d+$//' > $output_faa

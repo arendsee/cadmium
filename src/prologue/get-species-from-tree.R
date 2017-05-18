@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/usr/bin/Rscript --vanilla
 
 suppressPackageStartupMessages(library("argparse"))
 suppressPackageStartupMessages(library("ape"))

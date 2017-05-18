@@ -50,8 +50,8 @@ species=$(cat $INPUT/species)
 if [[ ! `grep $FOCAL_SPECIES <(echo $species)` ]]
 then
     print-warning "Focal species $FOCAL_SPECIES not in tree"
-    echo "The focal species must be one of the following:"
-    echo $species | tr ' ' '\n'
+    echo "  The focal species must be one of the following:"
+    echo $species | tr ' ' '\n' | sed 's/^/  /'
     exit 1
 fi
 
@@ -79,8 +79,10 @@ do
     input_gff=$GFF_DIR/$s.gff
     output_gff=$INPUT/gff/$s.gff
     check-read $input_gff $0
+
     # Coalesce names and ids into one, keep only ID and Parent tags
-    $parse_script -r Name Parent -dm $input_gff | sed 's/Name=/ID=/' > $output_gff
+    $parse_script --reduce=Name,Parent --mapid --swapid $input_gff |
+        sed 's/Name=/ID=/' > $output_gff
 
     # No focal versus focal map
     if [[ ! $FOCAL_SPECIES == $s ]]
@@ -102,9 +104,9 @@ done
 focal_gff=$INPUT/gff/$FOCAL_SPECIES.gff
 search_gff=$INPUT/search.gff
 
-check-read $focal_gff    $0
+check-read $focal_gff $0
 
 # select mRNA and reduce 9th column to feature name
-$parse_script -s mRNA -r Name -d -- $focal_gff > $search_gff
+$parse_script --select=mRNA --reduce=Name --strict --swapid -- $focal_gff > $search_gff
 
 exit $?

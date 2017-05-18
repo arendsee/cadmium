@@ -1,117 +1,190 @@
 #!/usr/bin/env python3
 
-import argparse
+"""
+merge-gff.py - prepare GFF file Fagin analysis
+
+DESCRIPTION:
+  Fagin requires detailed information about gene models. It requires clear
+  links between the parent and child entries: a "gene" entry is the parent of
+  multiple "mRNA"; an "mRNA" entry is the parent of many "exon", "CDS", and UTR
+  entries. Every entry also needs a unique ID. However, GFF files are not well
+  standardized.
+
+  `merge-gff.py` will attempt to uncover all parent-child relations and set
+  unique ids, if it fails, it will report what went wrong and what you need to
+  do to fix it.
+
+  The `--strict` option will enforce the following conditions:
+    1. All values specied in `--select` must appear in file
+    2. At least one row is output
+
+USAGE:
+  parse-gff.py [--select=SELECT] [--reduce=REDUCE] [--split] [--mapid]
+               [--swapid] [--strict] [--untagged-ignore]
+               [--untagged-name=TAG] GFFFILE
+  parse-gff.py (-h | --help)
+  parse-gff.py (--version)
+
+OPTIONS:
+  -h, --help          show this help message and exit
+  --select=SELECT     filter 3rd column with these comma-delimited patterns 
+  --reduce=REDUCE     reduce the 9th column to these comma-delimited tags
+  --split             split attribute column by tag (in REDUCE order)
+  --mapid             map parent ID to parent Name
+  --swapid            if no "Name" field is present, use ID instead
+  --strict            fail if anything looks fishy (see notes above)
+  --untagged-ignore   ignore attributes with no tag
+  --untagged-name=TAG give attributes with no tag the name TAG [default=None]
+
+EXAMPLES:
+1) Extract elements from a GFF, require all types are represented:
+   parse-gff.py --select=mRNA,exon --strict foo.gff
+"""
+
 import sys
+import signal
+from docopt import docopt
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 5:
     sys.exit("This script requires Python 3.5+")
 
+
+class Error:
+
+    def handle_untagged_attribute_error(attributes):
+        elements = []
+        for s in attributes:
+            if len(s.split('=')) == 2:
+                elements.append(s) 
+            else:
+                elements.append(Colors.error(s))
+        msg = \
+"""inappropriately formatted attribute column
+  expected /<tag>=<value>(;<tag>=<value>)*/
+  offending attribute entry:
+    > """ + ";".join(elements) + Colors.emphasis("\nPossible solutions:") + """
+  1) Remove untagged attributes (--untagged-ignore)
+  2) If there is only one unnamed attribute, give it the name TAG
+     (--untagged-name=TAG) If there are multiple unnamed attributes,
+     this will still die
+"""
+        err(msg)
+
+class Colors:
+    OFF          = chr(27) + '[0;0m'
+    RED          = chr(27) + '[0;31m'
+    GREEN        = chr(27) + '[0;32m'
+    YELLOW       = chr(27) + '[0;33m'
+    MAGENTA      = chr(27) + '[0;35m'
+    CYAN         = chr(27) + '[0;36m'
+    WHITE        = chr(27) + '[0;37m'
+    BLUE         = chr(27) + '[0;34m'
+    BOLD_RED     = chr(27) + '[1;31m'
+    BOLD_GREEN   = chr(27) + '[1;32m'
+    BOLD_YELLOW  = chr(27) + '[1;33m'
+    BOLD_MAGENTA = chr(27) + '[1;35m'
+    BOLD_CYAN    = chr(27) + '[1;36m'
+    BOLD_WHITE   = chr(27) + '[1;37m'
+    BOLD_BLUE    = chr(27) + '[1;34m'
+
+    def _color(s, color):
+        if sys.stdout.isatty():
+            s = color + s + Colors.OFF
+        return s
+
+    def error(s):
+        return Colors._color(s, Colors.BOLD_RED)
+
+    def good(s):
+        return Colors._color(s, Colors.BOLD_GREEN)
+
+    def warn(s):
+        return Colors._color(s, Colors.BOLD_YELLOW)
+
+    def emphasis(s):
+        return Colors._color(s, Colors.BOLD_WHITE)
+
+
 def err(msg):
-    sys.exit(msg)
+    print(Colors.error("ERROR:"), file=sys.stderr, end=" ")
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
 
 class Entry:
-    def __init__(self, row, keepers):
+    def __init__(self, row, keepers, untagged_ignore=False, untagged_name=None):
         self.row = row[0:8]
         self.attr = dict()
-        for s in row[8].split(b';'):
-            t,v = s.split(b'=')
+        for attribute in row[8].split(';'):
+            try:
+                t,v = attribute.split('=')
+            except ValueError:
+                if untagged_name:
+                    t = untagged_name
+                    v = attribute
+                elif untagged_ignore:
+                    continue 
+                else:
+                    Error.handle_untagged_attribute_error(row[8].split(";"))
             if(not keepers or t in keepers):
                 self.attr[t] = v
 
     def print_(self, tags=None, split=False, use_ids=False):
         if(tags):
-            if use_ids and b'Name' in tags and not b'Name' in self.attr:
-                self.attr[b'Name'] = self.get_attr(b'ID')
+            if use_ids and 'Name' in tags and not 'Name' in self.attr:
+                self.attr['Name'] = self.get_attr('ID')
             if split:
-                nine = b'\t'.join([self.get_attr(k) for k in tags])
+                nine = '\t'.join([self.get_attr(k) for k in tags])
             else:
                 if len(tags) == 1:
                     nine = self.get_attr(tags[0])
                 else:
-                    nine = b';'.join([b'%s=%s' % (k, self.get_attr(k)) for k in tags])
+                    nine = ';'.join(['%s=%s' % (k, self.get_attr(k)) for k in tags])
         else:
-            nine = b';'.join([b'%s=%s' % (k,v) for k,v in self.attr.items()])
+            nine = ';'.join(['%s=%s' % (k,v) for k,v in self.attr.items()])
 
-        out = b'\t'.join(self.row[0:8] + [nine])
+        out = '\t'.join(self.row[0:8] + [nine])
 
-        print(out.decode())
+        print(out)
 
     def get_attr(self, tag):
         try:
             return self.attr[tag]
         except KeyError:
-            return b'-'
+            return '-'
 
 
-def parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'gfffile',
-        help="GFF input file",
-        type=argparse.FileType('r')
-    )
-    parser.add_argument(
-        '-s', '--select',
-        help="select where 3rd column matches one of these (1+)",
-        nargs='+'
-    )
-    parser.add_argument(
-        '-r', '--reduce',
-        help="reduce the attribute column (9th) to these tags",
-        nargs='+'
-    )
-    parser.add_argument(
-        '-p', '--split',
-        help="split attribute column by tag (in REDUCE order)",
-        action="store_true",
-        default=False
-    )
-    parser.add_argument(
-        '-m', '--mapids',
-        help="map parent ID to parent Name",
-        action="store_true",
-        default=False
-    )
-    parser.add_argument(
-        '-d', '--use-id-if-unnamed',
-        help="If no Name field is present, use ID instead",
-        action="store_true",
-        default=False
-    )
-    args = parser.parse_args()
-    return(args)
-
-
-def rowgen(gff, keepers):
+def rowgen(gff, keepers, **kwargs):
     entries = []
     for line in gff.readlines():
-        line = line.encode()
-        if(line[0] == ord('#')):
+        if(line[0] == '#'):
             continue
 
-        row = line.rstrip().split(b'\t')
+        row = line.rstrip().split('\t')
 
         if(len(row) != 9):
-            err("Bad GFF, must be TAB-delimited with 9 columns")
+            msg = "Bad GFF, must be TAB-delimited with 9 columns\n" 
+            msg += "  Offending line (TABs substituted for '|'):\n"
+            msg += "  %s" % '|'.join(row)
+            err(msg)
 
-        entries.append(Entry(row, keepers))
+        entries.append(Entry(row, keepers, **kwargs))
 
     return entries
 
 
-def mapids(entries):
+def mapid(entries):
     idmap = dict()
     for entry in entries:
         try:
-            ID = entry.attr[b'ID']
+            ID = entry.attr['ID']
         except KeyError:
             err("Bad GFF, 9th column must have ID tag")
 
         try:
-            Name = entry.attr[b'Name']
+            Name = entry.attr['Name']
         except KeyError:
-            Name = entry.attr[b'ID']
+            Name = entry.attr['ID']
 
         idmap[ID] = Name
     return(idmap)
@@ -120,39 +193,72 @@ def mapids(entries):
 def parent_id2name(entries, idmap):
     for entry in entries:
         try:
-            entry.attr[b'Parent'] = idmap[entry.attr[b'Parent']]
+            entry.attr['Parent'] = idmap[entry.attr['Parent']]
         except KeyError:
             pass
         except TypeError:
             pass
 
 
+def condition_all_selected_in_file(selected, entries, filename):
+    obs_types = set([e.row[2] for e in entries])
+    exp_types = set([s for s in selected])
+    if exp_types and obs_types != exp_types:
+        msg = "expected the types {} in '{}', but {} missing"
+        expstr = "[%s]" % (','.join(exp_types))
+        missing = "[%s]" % (','.join(exp_types - obs_types))
+        msg = msg.format(expstr, filename, missing)
+        err(msg)
+
+
 if __name__ == '__main__':
-    args = parser()
+
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+    args = docopt(__doc__, version='0.2.0')
+
+    if args["--reduce"]:
+        args["--reduce"] = args["--reduce"].split(",")
+
+    if args["--select"]:
+        args["--select"] = args["--select"].split(",")
 
     keepers = set()
-    if(args.reduce):
-        args.reduce = [s.encode() for s in args.reduce]
-        keepers = set(args.reduce)
-        if(args.mapids or args.use_id_if_unnamed):
-            keepers.update([b'ID', b'Name'])
+    if(args["--reduce"]):
+        keepers = set(args["--reduce"])
+        if(args["--mapid"] or args["--swapid"]):
+            keepers.update(['ID', 'Name'])
 
-    entries = rowgen(args.gfffile, keepers)
+    with open(args["GFFFILE"], "r") as gff:
 
-    if(args.mapids):
-        idmap = mapids(entries)
-        parent_id2name(entries, idmap)
+        entries = rowgen(
+            gff,
+            keepers,
+            untagged_ignore=args["--untagged-ignore"],
+            untagged_name=args["--untagged-name"]
+        )
 
-    attr_join = b'\t' if args.split else None
+        if args["--mapid"]:
+            idmap = mapid(entries)
+            parent_id2name(entries, idmap)
 
-    if(args.select):
-        selection = [s.encode() for s in args.select]
-        entries = [e for e in entries if e.row[2] in selection]
+        attr_join = '\t' if args["--split"] else None
 
-    # Exit will succeed if there is something to print
-    exit_status = 0 if bool(entries) else 1
+        if args["--select"]:
+            entries = [e for e in entries if e.row[2] in args["--select"]]
 
-    for entry in entries:
-        entry.print_(args.reduce, attr_join, args.use_id_if_unnamed)
 
-    sys.exit(exit_status)
+        if args["--strict"]:
+            condition_all_selected_in_file(
+                args["--select"],
+                entries,
+                args["GFFFILE"]
+            )
+
+            if not entries:
+                err("No output resulting from parsing '%s'" % args["GFFFILE"])
+
+        for entry in entries:
+            entry.print_(args["--reduce"], attr_join, args["--swapid"])
+
+    sys.exit(0)

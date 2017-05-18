@@ -23,7 +23,7 @@ x=/tmp/get_proteins_$species
 
 cat $input_gff |
     # select CDS and reduce 9th column to Parent name
-    $parse_script -s CDS -r Parent -md - |
+    $parse_script --select=CDS --reduce=Parent --strict --mapid --swapid - |
     sort -k9 -k4n |
     awk '
         BEGIN{FS="\t";OFS="\t"}

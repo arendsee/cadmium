@@ -21,7 +21,7 @@ check-read $input_gff $0
 check-read $input_fna $0
 
 # select mRNA and reduce 9th column to Name
-$parse_script -s mRNA -r Name -d $input_gff |
+$parse_script --select=mRNA --reduce=Name --swapid $input_gff |
     rename_for_bedtools 9 |
     bedtools getfasta   \
         -fi $input_fna  \

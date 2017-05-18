@@ -27,7 +27,6 @@ kill-mkdir $tmpdir
 nexons=$(cut -f3 $input_gff | grep -cx exon)
 nnames=$(cut -f9 $input_gff | grep -cP '(Name=|ID=)')
 nparent=$(cut -f9 $input_gff | grep -cP 'Parent=')
-echo hi >&2
 
 if [[ $nexons -eq 0 ]]
 then
@@ -44,7 +43,7 @@ then
     echo "Error: GFF file for '$species' must contain Parent tags in 9th column" >&2
 fi
 
-$parse_script -s exon -r Name Parent -dmp $input_gff |
+$parse_script --select=exon --reduce=Name,Parent --split --swapid --mapid $input_gff |
     sort -k10 -k4n |
     rename_for_bedtools 10 |
     cut -f1-9 |

@@ -19,22 +19,24 @@ DESCRIPTION:
     2. At least one row is output
 
 USAGE:
-  parse-gff.py [--select=SELECT] [--reduce=REDUCE] [--split] [--mapid]
-               [--swapid] [--strict] [--untagged-ignore]
-               [--untagged-name=TAG] GFFFILE
+  parse-gff.py [--select=SELECT] [--reduce=REDUCE] [--hasParent=KIDS]
+               [--required=TYPES] [--split] [--mapid] [--swapid] [--strict]
+               [--untagged-ignore] [--untagged-name=TAG] GFFFILE
   parse-gff.py (-h | --help)
   parse-gff.py (--version)
 
 OPTIONS:
-  -h, --help          show this help message and exit
-  --select=SELECT     filter 3rd column with these comma-delimited patterns 
-  --reduce=REDUCE     reduce the 9th column to these comma-delimited tags
-  --split             split attribute column by tag (in REDUCE order)
-  --mapid             map parent ID to parent Name
-  --swapid            if no "Name" field is present, use ID instead
-  --strict            fail if anything looks fishy (see notes above)
-  --untagged-ignore   ignore attributes with no tag
-  --untagged-name=TAG give attributes with no tag the name TAG [default=None]
+  -h, --help           show this help message and exit
+  --select=SELECT      filter 3rd column with these comma-delimited patterns 
+  --reduce=REDUCE      reduce the 9th column to these comma-delimited tags
+  --hasParent=KIDS     list of types that are required to have Parent tags
+  --required=TYPES     list of types that MUST be present
+  --split              split attribute column by tag (in REDUCE order)
+  --mapid              map parent ID to parent Name
+  --swapid             if no "Name" field is present, use ID instead
+  --strict             fail if anything looks fishy (see notes above)
+  --untagged-ignore    ignore attributes with no tag
+  --untagged-name=TAG  give attributes with no tag the name TAG [default=None]
 
 EXAMPLES:
 1) Extract elements from a GFF, require all types are represented:
@@ -51,7 +53,10 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 5:
 
 class Error:
 
-    def handle_untagged_attribute_error(attributes):
+    def handle_no_output(filename):
+        err("No output resulting from parsing '%s'" % filename)
+
+    def handle_untagged_attribute(attributes):
         elements = []
         for s in attributes:
             if len(s.split('=')) == 2:
@@ -68,6 +73,36 @@ class Error:
      (--untagged-name=TAG) If there are multiple unnamed attributes,
      this will still die
 """
+        err(msg)
+
+    def handle_invalid_gff(row):
+        msg = "Bad GFF, must be TAB-delimited with 9 columns\n" 
+        msg += "  Offending line (TABs substituted for '|'):\n"
+        msg += "  %s" % '|'.join(row)
+        err(msg)
+
+    def handle_missing_id():
+        err("Bad GFF, 9th column must have ID tag")
+
+
+    def handle_missing_selected_item(expstr, missing, filename):
+        msg = "expected the types {} in '{}', but {} missing".format((expstr,missing,filename));
+        err(msg)
+
+    def handle_duplicate_attribute(key, row):
+        msg = "Tag '{}' is duplicated in attribute column:\n  > {}".format(key,row)
+        err(msg)
+
+    def handle_missing_parent(entry):
+        msg  = "Entries or type '{}' are required to have a Parent=<ID> entry\n"
+        msg += "in the 9th column. Offending line (TAB replace with '|'):\n  > {}"
+        msg = msg.format(entry.row[2], entry.toString(sep="|"))
+        err(msg)
+
+
+    def handle_missing_required_type(missing, all_seen):
+        msg  = "Missing required entry type %s, actual types in file are:\n" % str(missing)
+        msg += '\n'.join(["  * %s" % x for x in all_seen])
         err(msg)
 
 class Colors:
@@ -125,11 +160,14 @@ class Entry:
                 elif untagged_ignore:
                     continue 
                 else:
-                    Error.handle_untagged_attribute_error(row[8].split(";"))
+                    Error.handle_untagged_attribute(row[8].split(";"))
             if(not keepers or t in keepers):
-                self.attr[t] = v
+                if t in self.attr:
+                    Error.handle_duplicate_attribute(t, row[8])
+                else:
+                    self.attr[t] = v
 
-    def print_(self, tags=None, split=False, use_ids=False):
+    def toString(self, tags=None, split=False, use_ids=False, sep="\t"):
         if(tags):
             if use_ids and 'Name' in tags and not 'Name' in self.attr:
                 self.attr['Name'] = self.get_attr('ID')
@@ -143,9 +181,9 @@ class Entry:
         else:
             nine = ';'.join(['%s=%s' % (k,v) for k,v in self.attr.items()])
 
-        out = '\t'.join(self.row[0:8] + [nine])
+        out = sep.join(self.row[0:8] + [nine])
 
-        print(out)
+        return out
 
     def get_attr(self, tag):
         try:
@@ -163,10 +201,7 @@ def rowgen(gff, keepers, **kwargs):
         row = line.rstrip().split('\t')
 
         if(len(row) != 9):
-            msg = "Bad GFF, must be TAB-delimited with 9 columns\n" 
-            msg += "  Offending line (TABs substituted for '|'):\n"
-            msg += "  %s" % '|'.join(row)
-            err(msg)
+            Error.handle_invalid_gff(row)
 
         entries.append(Entry(row, keepers, **kwargs))
 
@@ -179,13 +214,11 @@ def mapid(entries):
         try:
             ID = entry.attr['ID']
         except KeyError:
-            err("Bad GFF, 9th column must have ID tag")
-
+            handle_missing_id()
         try:
             Name = entry.attr['Name']
         except KeyError:
             Name = entry.attr['ID']
-
         idmap[ID] = Name
     return(idmap)
 
@@ -204,12 +237,23 @@ def condition_all_selected_in_file(selected, entries, filename):
     obs_types = set([e.row[2] for e in entries])
     exp_types = set([s for s in selected])
     if exp_types and obs_types != exp_types:
-        msg = "expected the types {} in '{}', but {} missing"
         expstr = "[%s]" % (','.join(exp_types))
         missing = "[%s]" % (','.join(exp_types - obs_types))
-        msg = msg.format(expstr, filename, missing)
-        err(msg)
+        handle_missing_selected_item(expstr, missing, filename)
 
+
+def condition_children_have_parents(kids, entries):
+    kids = set(kids)
+    for e in entries:
+        if (e.row[2] in kids) and not ("Parent" in e.attr):
+            Error.handle_missing_parent(e)
+
+
+def condition_required_types(required, entries):
+    types = set([e.row[2] for e in entries])
+    required = set(required)
+    if (required - types):
+        Error.handle_missing_required_type(required - types, types)
 
 if __name__ == '__main__':
 
@@ -222,6 +266,12 @@ if __name__ == '__main__':
 
     if args["--select"]:
         args["--select"] = args["--select"].split(",")
+
+    if args["--hasParent"]:
+        args["--hasParent"] = args["--hasParent"].split(",")
+
+    if args["--required"]:
+        args["--required"] = args["--required"].split(",")
 
     keepers = set()
     if(args["--reduce"]):
@@ -247,18 +297,24 @@ if __name__ == '__main__':
         if args["--select"]:
             entries = [e for e in entries if e.row[2] in args["--select"]]
 
+        if args["--hasParent"]:
+            condition_children_have_parents(args["--hasParent"], entries)
 
-        if args["--strict"]:
+        if args["--required"]:
+            condition_required_types(args["--required"], entries)
+
+        if args["--strict"] and args["--select"]:
             condition_all_selected_in_file(
                 args["--select"],
                 entries,
                 args["GFFFILE"]
             )
 
-            if not entries:
-                err("No output resulting from parsing '%s'" % args["GFFFILE"])
+        if args["--strict"] and not entries:
+            Error.handle_no_output(args["GFFFILE"])
 
         for entry in entries:
-            entry.print_(args["--reduce"], attr_join, args["--swapid"])
+            s = entry.toString(args["--reduce"], attr_join, args["--swapid"])
+            print(s)
 
     sys.exit(0)

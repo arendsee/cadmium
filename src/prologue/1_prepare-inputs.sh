@@ -80,9 +80,23 @@ do
     output_gff=$INPUT/gff/$s.gff
     check-read $input_gff $0
 
-    # Coalesce names and ids into one, keep only ID and Parent tags
-    $parse_script --reduce=Name,Parent --mapid --swapid $input_gff |
-        sed 's/Name=/ID=/' > $output_gff
+    # Parse and check input GFF files
+    # * reduce attribute column to Name and Parent fields
+    # * replace the first untagged element (if any) in the 9th column with Name
+    # * die if any tags appear multiple times
+    # * require mRNA, exon, and CDS entries be in the file
+    # * require exon and CDS entries have defined Parent values
+    # * require attributes columns be correctly formatted into tag/value pairs
+    $parse_script                \
+        --reduce=Name,Parent     \
+        --untagged-name=Name     \
+        --required=mRNA,exon,CDS \
+        --hasParent=exon,CDS     \
+        --strict                 \
+        --mapid                  \
+        --swapid                 \
+        $input_gff |
+    sed 's/Name=/ID=/' > $output_gff
 
     # No focal versus focal map
     if [[ ! $FOCAL_SPECIES == $s ]]
@@ -107,6 +121,12 @@ search_gff=$INPUT/search.gff
 check-read $focal_gff $0
 
 # select mRNA and reduce 9th column to feature name
-$parse_script --select=mRNA --reduce=Name --strict --swapid -- $focal_gff > $search_gff
+$parse_script            \
+    --select=mRNA        \
+    --untagged-name=NAME \
+    --reduce=Name        \
+    --strict             \
+    --swapid             \
+      $focal_gff > $search_gff
 
 exit $?

@@ -58,7 +58,12 @@ OPTIONS:
 
 EXAMPLES:
 1) Extract elements from a GFF, require all types are represented:
-   parse-gff.py --select=mRNA,exon --strict foo.gff
+     parse-gff.py --select=mRNA,exon --strict foo.gff
+
+2) Extract CDS from a GFF, require they all have a parent listed, that they
+   have a unique ID, then include only the ID and Parent tags
+     parse-gff.py --select=CDS --strict --hasParent=CDS --reduce=ID,Parent \\
+                  --uniqTags=ID foceUnique=ID foo.gff
 """
 
 import sys

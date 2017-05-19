@@ -92,10 +92,15 @@ do
         --untagged-name=Name     \
         --required=mRNA,exon,CDS \
         --hasParent=exon,CDS     \
+        --uniqueTag=Name,ID      \
         --strict                 \
         --mapid                  \
         --swapid                 \
         $input_gff |
+    # NOTE: the tag `--requiredTag=Name` could not be set above.  This is
+    # because the command above results in a a mix of either Name, or ID
+    # entries. Where an entry has no Name tag, the ID is used instead, These
+    # are unified in the sed command below
     sed 's/Name=/ID=/' > $output_gff
 
     # No focal versus focal map

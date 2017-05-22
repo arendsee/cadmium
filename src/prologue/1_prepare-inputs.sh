@@ -92,7 +92,7 @@ do
         --untagged-name=Name     \
         --required=mRNA,exon,CDS \
         --hasParent=exon,CDS     \
-        --uniqueTag=Name,ID      \
+        --generate-id            \
         --strict                 \
         --mapid                  \
         --swapid                 \

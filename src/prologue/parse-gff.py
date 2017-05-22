@@ -31,11 +31,18 @@ DESCRIPTION:
   with "foo123_CDS_1066" (where 1066 is the starting position). If this
   addition does not result in unique ids, an error is still emitted. 
 
+  The --generate-id option creates a unique ID if none is found. This operation
+  is carried out AFTER --untagged-name=TAGS, which means you can tell
+  parse-gff.py to first try to give ID the name of an untagged entry. The
+  generations step may be needed when, for example, leaf elements are not given
+  IDs -- as in AUGUSTUS output, where CDS and exon entries are labeled only
+  with a Parent tag.
+
 USAGE:
   parse-gff.py [--select=SELECT] [--reduce=REDUCE]
-               [--required=TYPES] [--hasParent=KIDS] 
+               [--required=TYPES] [--hasParent=KIDS] [--checkParent=TAG]
                [--requiredTag=TAGS] [--uniqueTag=TAGS] [--forceUnique=TAGS] 
-               [--split] [--mapid] [--swapid] [--strict]
+               [--split] [--mapid] [--swapid] [--strict] [--generate-id]
                [--untagged-ignore] [--untagged-name=TAG] GFFFILE
   parse-gff.py (-h | --help)
   parse-gff.py (--version)
@@ -49,10 +56,12 @@ OPTIONS:
   --uniqueTag=TAGS     list of tags that MUST be unique (but may be missing)
   --forceUnique=TAGS   try to fix non-unique tags in --uniqueTag (see note)
   --requiredTag=TAGS   list of tags that must be present
+  --checkParent=TAG    assert Parent tags link to a TAG values in other entries 
   --split              split attribute column by tag (in REDUCE order)
   --mapid              map parent ID to parent Name
   --swapid             if no "Name" field is present, use ID instead
   --strict             fail if anything looks fishy (see notes above)
+  --generate-id        create a unique id if none is found (see notes)
   --untagged-ignore    ignore attributes with no tag
   --untagged-name=TAG  give attributes with no tag the name TAG [default=None]
 
@@ -130,7 +139,7 @@ class Error:
 
     def handle_missing_parent(entry):
         msg  = "Entries or type '{}' are required to have a Parent=<ID> entry\n"
-        msg += "in the 9th column. Offending line (TAB replace with '|'):\n  > {}"
+        msg += "in the 9th column. Offending line (TAB -> '|'):\n  > {}"
         msg = msg.format(entry.row[2], entry.toString(sep="|"))
         err(msg)
 
@@ -146,8 +155,13 @@ class Error:
 
     def handle_required_tags_violation(tag, e):
         msg  = "The required tag '%s' is missing\n"
-        msg += "first offending line (TABs replaced with '|'):\n%s\n"
+        msg += "first offending line (TABs -> '|'):\n%s\n"
         msg = msg % (tag, e.toString(sep="|"))
+        err(msg)
+
+    def handle_invalid_parent(tag, e):
+        msg = "No parent with %s=%s found for entry (TABS -> '|'):\n  > %s"
+        msg = msg % (tag, e.attr["Parent"], e.toString(sep="|"))
         err(msg)
 
 class Colors:
@@ -247,13 +261,19 @@ def rowgen(gff, keepers, **kwargs):
     return entries
 
 
-def mapid(entries):
+def mapid(entries, generate=False):
     idmap = dict()
+    uuid=1
     for entry in entries:
         try:
             ID = entry.attr['ID']
         except KeyError:
-            Error.handle_missing_id()
+            if generate:
+                ID = uuid
+                entry.attr['ID'] = ID
+                uuid += 1
+            else:
+                Error.handle_missing_id()
         try:
             Name = entry.attr['Name']
         except KeyError:
@@ -331,6 +351,13 @@ def condition_required_tags(tags, entries):
             if not tag in e.attr:
                 Error.handle_required_tags_violation(tag, e)
 
+def condition_check_parent(tag, entries):
+    tags = set([e.attr[tag] for e in entries if tag in e.attr])
+    for e in entries:
+        if ("Parent" in e.attr) and not (e.attr["Parent"] in tags):
+            Error.handle_invalid_parent(tag, e)
+
+
 
 if __name__ == '__main__':
 
@@ -340,7 +367,7 @@ if __name__ == '__main__':
 
     GLOBAL_GFF = args['GFFFILE']
 
-    for tag in ["--reduce", "--select", "--hasParent", "--required", "--uniqueTag", "--requiredTag"]:
+    for tag in ["--reduce", "--select", "--hasParent", "--required", "--uniqueTag", "--requiredTag", "--forceUnique"]:
         if args[tag]:
             args[tag] = args[tag].split(",")
 
@@ -360,7 +387,7 @@ if __name__ == '__main__':
         )
 
         if args["--mapid"]:
-            idmap = mapid(entries)
+            idmap = mapid(entries, generate=args["--generate-id"])
             parent_id2name(entries, idmap)
 
         attr_join = '\t' if args["--split"] else None
@@ -369,7 +396,7 @@ if __name__ == '__main__':
         if args["--select"]:
             entries = [e for e in entries if e.row[2] in args["--select"]]
 
-        if args["--forceUnique"] and args["--uniqueTag"]:
+        if args["--forceUnique"]:
             for tag in args["--forceUnique"]:
                 entries = force_unique(tag, entries)
 
@@ -381,11 +408,14 @@ if __name__ == '__main__':
         if args["--required"]:
             condition_required_types(args["--required"], entries)
 
-        #  if args["--uniqueTag"]:
-        #      condition_unique_tags(args["--uniqueTag"], entries)
+        if args["--uniqueTag"]:
+            condition_unique_tags(args["--uniqueTag"], entries)
 
         if args["--requiredTag"]:
             condition_required_tags(args["--requiredTag"], entries)
+
+        if args["--checkParent"]:
+            condition_check_parent(args["--checkParent"], entries)
 
         if args["--strict"] and args["--select"]:
             condition_all_selected_in_file(

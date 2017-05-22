@@ -22,13 +22,7 @@ check-read $input_fna $0
 x=/tmp/get_proteins_$species
 
 # select CDS and reduce 9th column to Parent name
-$parse_script       \
-    --select=CDS    \
-    --reduce=Parent \
-    --strict        \
-    --mapid         \
-    --swapid        \
-    $input_gff |
+$parse_script --select=CDS --reduce=Parent $input_gff |
     sort -k9 -k4n |
     awk '
         BEGIN{FS="\t";OFS="\t"}

@@ -1,6 +1,10 @@
 get_synder_version <- function(){
   synder_path <- file.path(config$d_home, 'bin', 'synder')
-  system2(synder_path, args=list('-v'), stdout=TRUE)
+  if(file.exists(synder_path)){
+    system2(synder_path, args=list('-v'), stdout=TRUE)
+  } else {
+    system2("synder", args=list('-v'), stdout=TRUE)
+  }
 }
 
 get_fagin_version <- function(config){

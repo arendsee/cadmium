@@ -11,6 +11,8 @@ bin/
 *.fna
 *.fasta
 
+log.Rout
+
 preconfig.sh
 runconfig.R
 config

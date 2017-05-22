@@ -108,63 +108,63 @@ ggplot(scaflen) +
     \caption{\textbf{Scaffold lengths}. Sorted by length on x-axis.}
 \end{figure}
 
-\begin{figure}
-    \center
-<<plot-scaffold-lengths-2, cache=FALSE, fig.width=7, fig.height=6>>=
-scaflen$chrid <- factor(scaflen$idx)
-scaflen_chr <- subset(scaflen, length > 10^7) %>% droplevels
-ggplot(scaflen_chr) +
-    geom_path(aes(x=chrid, y=length, group=species)) +
-    geom_point(aes(x=chrid, y=length, color=species), size=4) +
-    xlab('Scaffold number (by size)') +
-    ylab('Scaffold length (in DNA bases)') +
-    theme(
-        legend.position=c(1, 1),
-        legend.justification=c(1, 1)
-    )
-@
-    \caption{Lengths of scaffolds greater than 10 Mb. Sorted by size.}
-\end{figure}
+% \begin{figure}
+%     \center
+% <<plot-scaffold-lengths-2, cache=FALSE, fig.width=7, fig.height=6>>=
+% scaflen$chrid <- factor(scaflen$idx)
+% scaflen_chr <- subset(scaflen, length > 10^7) %>% droplevels
+% ggplot(scaflen_chr) +
+%     geom_path(aes(x=chrid, y=length, group=species)) +
+%     geom_point(aes(x=chrid, y=length, color=species), size=4) +
+%     xlab('Scaffold number (by size)') +
+%     ylab('Scaffold length (in DNA bases)') +
+%     theme(
+%         legend.position=c(1, 1),
+%         legend.justification=c(1, 1)
+%     )
+% @
+%     \caption{Lengths of scaffolds greater than 10 Mb. Sorted by size.}
+% \end{figure}
 
-\begin{figure}[!ht]
-    \centering
-<<plot-nstring, cache=FALSE>>=
-nstring <- read.table(config$f_nstrings, header=TRUE)
-nstring$length <- with(nstring, stop - start + 1)
-dplyr::rename(scaflen_chr, scaffold_length = length) %>%
-  merge(nstring, by=c('species', 'scaffold')) %>%
-  ggplot +
-    geom_segment(
-        aes(
-            y=idx,
-            yend=idx,
-            x=start,
-            xend=stop),
-        size=5) +
-    geom_segment(
-        aes(
-            y=idx,
-            yend=idx,
-            x=1,
-            xend=scaffold_length),
-        size=0.2) +
-    geom_text(
-        aes(
-            y=idx + 0.2,
-            x=scaffold_length,
-            label=scaffold),
-        hjust='left',
-        family='sans',
-        fontface='plain',
-        size=2) +
-    facet_wrap(~species, scale='free_y')
-@
-    \caption{\textbf{Strings of unknowns}. Most assemblies have certain regions
-        who lengths may be known but no sequence is available, these regions
-        may be replaced with strings of consecutive N's. The vertical bars in
-        this plot correspond to these regions, with width proportional to the
-        number of N's. Only scaffolds with lengths greater than 10 Mb are shown.}
-\end{figure}
+% \begin{figure}[!ht]
+%     \centering
+% <<plot-nstring, cache=FALSE>>=
+% nstring <- read.table(config$f_nstrings, header=TRUE)
+% nstring$length <- with(nstring, stop - start + 1)
+% dplyr::rename(scaflen_chr, scaffold_length = length) %>%
+%   merge(nstring, by=c('species', 'scaffold')) %>%
+%   ggplot +
+%     geom_segment(
+%         aes(
+%             y=idx,
+%             yend=idx,
+%             x=start,
+%             xend=stop),
+%         size=5) +
+%     geom_segment(
+%         aes(
+%             y=idx,
+%             yend=idx,
+%             x=1,
+%             xend=scaffold_length),
+%         size=0.2) +
+%     geom_text(
+%         aes(
+%             y=idx + 0.2,
+%             x=scaffold_length,
+%             label=scaffold),
+%         hjust='left',
+%         family='sans',
+%         fontface='plain',
+%         size=2) +
+%     facet_wrap(~species, scale='free_y')
+% @
+%     \caption{\textbf{Strings of unknowns}. Most assemblies have certain regions
+%         who lengths may be known but no sequence is available, these regions
+%         may be replaced with strings of consecutive N's. The vertical bars in
+%         this plot correspond to these regions, with width proportional to the
+%         number of N's. Only scaffolds with lengths greater than 10 Mb are shown.}
+% \end{figure}
 
 \begin{figure}[!ht]
   \centering

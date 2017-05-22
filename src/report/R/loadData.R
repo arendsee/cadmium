@@ -194,7 +194,13 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
 LoadGFF <- function(gfffile, features=NULL, ...){
   require(dplyr)
 
-  g <- read.table(gfffile, comment="#", sep="\t", quote='', stringsAsFactors=FALSE) %>%
+  g <- read.table(
+    gfffile,
+    comment.char     = "#",
+    sep              = "\t",
+    quote            = '',
+    stringsAsFactors = FALSE
+  ) %>%
     dplyr::rename(
       scaffold  = V1,
       source    = V2,
@@ -536,7 +542,7 @@ check_gene_aa_agreement <- function(genes, aa){
   isgood
 }
 
-force_gff_aa_agreement <- function(gff=gff, aa=aa){
+force_gff_agreement <- function(gff=gff, aa=aa){
   # GFF mRNA ids should correspond to protein names
   gff.unique <- setdiff(subset(gff, type == "mRNA")$seqid, names(aa))
   if(length(gff.unique) > 0){
@@ -547,17 +553,22 @@ force_gff_aa_agreement <- function(gff=gff, aa=aa){
     )
     gff <- subset(gff, ! seqid %in% gff.unique)
   }
+  gff
+}
+
+force_aa_agreement <- function(gff=gff, aa=aa){
   aa.unique <- setdiff(names(aa), subset(gff, type == "mRNA")$seqid)
   if(length(aa.unique) > 0){
     warning(sprintf(
-      '%s proteins are not represented in the GFF file. This is bad. It means
-      you were not following protocol. These entries will be deleted from the
-      protein file: %s',
+      '%s proteins are not represented in the GFF file. If this number is
+      small, maybe there is just somehting odd about your GFF file. If it is
+      big, or equal to the total number of proteins, then something is very
+      wrong. These entries will be deleted from the protein file: %s',
       length(aa.unique), paste0(aa.unique, collapse=', '))
     )
-    aa <- aa[! names %in% aa.unique]
+    aa <- aa[! names(aa) %in% aa.unique]
   }
-  gff
+  aa
 }
 
 #' Load all focal species data needed for classification
@@ -584,14 +595,22 @@ LoadQuery <- function(config, l_seqinfo)
   genes   <- LoadFASTA(genefile, isAA=FALSE)
   gff     <- LoadGFF(gfffile, seqinfo=seqinfo)
 
-  gff <- force_gff_aa_agreement(gff=gff, aa=aa)
+  gff <- force_gff_agreement(gff=gff, aa=aa)
+  aa <- force_aa_agreement(gff=gff, aa=aa)
 
   check_gene_aa_agreement(genes=genes, aa=aa)
 
   orphans <- read.table(orphanfile, stringsAsFactors=FALSE)[[1]]
 
   # all orphans should be associated with a protein sequence
-  stopifnot(orphans %in% names(aa))
+  if(! all(orphans %in% names(aa)) ){
+    warning(sprintf(
+      "All genes listed in the query gene file (probably 'orphan-list.txt')
+      must be among the proteins present in '%s', but they aren't.
+      This is bad. You should not proceed.",
+      aafile
+    ))
+  }
 
   list(aa=aa, gff=gff, genefile=genefile, orphans=orphans)
 }
@@ -634,7 +653,8 @@ LoadTarget <- function(species, config, l_seqinfo){
   # Just to check that LoadGFF correctly renamed the fields
   stopifnot('seqid' %in% names(mcols(gff)))
 
-  gff <- force_gff_aa_agreement(gff=gff, aa=aa)
+  gff <- force_gff_agreement(gff=gff, aa=aa)
+  aa <- force_aa_agreement(gff=gff, aa=aa)
 
   si.seq_name  <- si$target  %>% seqnames %>% levels
   gff.seq_name <- gff        %>% seqnames %>% levels

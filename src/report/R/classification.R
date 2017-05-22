@@ -28,7 +28,12 @@ getTargetResults <- function(species, query, config, l_seqinfo, use_cache){
 
   # Queries whose SI overlap an N-string
   message('--mapping to gaps in target genome')  
-  query2gap <- cache(findQueryGaps, nstring=target$nstring, target=target)
+  if(is.null(target$nstring)){
+    # Some genomes may have no N-strings
+    query2gap <- NULL
+  } else {
+    query2gap <- cache(findQueryGaps, nstring=target$nstring, target=target)
+  }
 
   # (CDS and mRNA overlaps)
   message('--processing feature overlaps')
@@ -104,6 +109,14 @@ buildFeatureTable <- function(result, query, config){
   d2d_cutoff <- config$dna2dna_pval       / length(orphans)
   p2t_cutoff <- config$prot2transorf_pval / length(orphans)
 
+  getGaps <- function(q2g){
+    if(is.null(q2g)){
+      q2g
+    } else {
+      q2g$query 
+    }
+  }
+
   # Synteny is scrambled
   scr <- orphans %in% result$scrambled
   # at least one search interval overlaps a target CDS
@@ -111,7 +124,7 @@ buildFeatureTable <- function(result, query, config){
   # at least one search interval overlaps a target mRNA
   rna <- orphans %in% (result$features$mRNA$query %>% unique)
   # at least search interval overlaps a N-string
-  nst <- orphans %in% result$query2gap$query
+  nst <- orphans %in% getGaps(result$query2gap)
   # number of confirmed indels (based on search interval size)
   ind <- orphans %in% result$ind.stats$indeled.queries
   # number of confirmed resized (based on search interval size)

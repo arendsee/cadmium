@@ -120,6 +120,10 @@ MINLEN=0
 
 
 # -----------------------------------------------------------------------------
+
+# *****************************************************************************
+# *********** WARNING: THE FOLLOWING DOCUMENTATION IS SUBTLY WRONG ************
+# *****************************************************************************
 # --- 0/1 offsets for the synteny map, GFF input, and search interval output
 # This is a 6 character bit string, with the following fields
 #  1. synteny map start offset   (def=0)
@@ -142,7 +146,7 @@ MINLEN=0
 #
 # [1] https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md
 # -----------------------------------------------------------------------------
-synder_search_bases=011111
+synder_search_bases=0111
 
 
 # -----------------------------------------------------------------------------

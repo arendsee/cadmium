@@ -6,9 +6,6 @@ input:
     focal_species: null
     query_gene_list: null
 
-synteny:
-    minlength: 0
-
 synder_settings:
     offsets: "0111"
     k: 10

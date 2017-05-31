@@ -587,8 +587,15 @@ results %>%
 
 \subsection{Find queries overlapping N-strings}
 <<results='asis', cache=FALSE>>=
-results %>%
+nstring_overlappers <- results %>%
   lapply(function(x) unique(x$query2gap$query)) %>%
+  (
+    function(x) {x[lapply(x, is.null) %>% unlist %>% not]}
+  )
+
+# If at least one of the target species has nstring overlappers
+if(length(nstring_overlappers) > 0){
+nstring_overlappers %>%
   melt %>%
   dplyr::mutate(
     orphan = ifelse(value %in% query$orphans, 'orphan', 'non-orphan')
@@ -605,8 +612,10 @@ results %>%
     inside these missing regions. NOTE: it cannot be assumed that the length of
     the N-string is equal to the length of the unknown region; the true unknown
     region length is often unknown, so a stretch of 100 Ns is often inserted to
-    represent the gap of unknown length.'
+    represent the gap of unknown length. NOTE:Target species for each no search
+    intervals overlaps an N-string are not represented in this table.'
   )
+}
 @
 
 \subsection{Leaf labels}

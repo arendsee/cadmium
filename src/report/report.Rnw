@@ -174,7 +174,6 @@ if(nrow(nstring) > 0){
   ggplot(nstring) # an empty box
 }
 @
-
     \caption{\textbf{Strings of unknowns}. Most assemblies have certain regions
     who lengths may be known but no sequence is available, these regions may be
     replaced with strings of consecutive N's. The vertical bars in this plot
@@ -182,7 +181,6 @@ if(nrow(nstring) > 0){
     Only scaffolds with lengths greater than \Sexpr{plotting_threshold} Mb are
     shown. \textbf{NOTE:} if this figure is empty, then there are no strings of
     N's in any of your assemblies (nothing to worry about).}
-
 \end{figure}
 
 \begin{figure}[!ht]
@@ -215,7 +213,6 @@ ggplot(d) +
   geom_violin(aes(x=species, y=GC), alpha=0.3) +
   ylab('G+C Proportion')
 @
-
     \caption{\textbf{GC content comparison}. This is a diagnostic plot for
     comparing the median and variability of GC content between species.
     \Sexpr{sample_size} intervals of length \Sexpr{sample_interval_length} were
@@ -227,7 +224,6 @@ ggplot(d) +
     \textit{Interpretation:} the plot ought to look pretty similar across the
     species. Weird events like massive transposon proliferation in one species
     might lead to shifts.}
-
 \end{figure}
 
 \subsection{Proteomic statistics}
@@ -310,34 +306,47 @@ norphan_loci <- model2locus[query$orphans, 'parent'] %>%
 
 \begin{figure}[!ht]
     \centering
+
 <<synteny-diagnostic-scatter, cache=FALSE, message=FALSE>>=
-lapply(
+d <- lapply(
   results,
   function(x){
     syn <- x$syn
     lograt <- log2(width(syn$query) / width(syn$target)[syn$query$over])
     lograt <- lograt[abs(lograt) > 0.25] 
+  }
+)
+
+if(all(lapply(d, length) > 0)){
+  lapply(
+    d,
     data.frame(
       lograt=lograt,
       index=1:length(lograt)
     )
-  }
-) %>% melt(id.vars=c('lograt', 'index')) %>% dplyr::rename(species=L1) %>%
-ggplot +
-  geom_point(aes(x=index, y=lograt), size=0.2) +
-  xlab('Ordered position on query genome') +
-  ylab('log2 of query to target length ratio') +
-  facet_wrap(~species, scale='free_x')
-
+  ) %>% melt(id.vars=c('lograt', 'index')) %>% dplyr::rename(species=L1) %>%
+  ggplot +
+    geom_point(aes(x=index, y=lograt), size=0.2) +
+    xlab('Ordered position on query genome') +
+    ylab('log2 of query to target length ratio') +
+    facet_wrap(~species, scale='free_x')
+} else {
+  ggplot(iris) # a hack to get a blank plot
+}
 @
-    \caption{\textbf{Diagnostic plot of query to target lengths in synteny
-        map}. The syntenic intervals on the query and target sides should
-        be of similar length.  They will not be exactly the same size if gaps
-        are allowed in the alignment, but wild deviation from 0 (more than,
-        say, 2) indicates errors in the input. To avoid overplotting, values
-        between -0.25 and 0.25 are not plotted.} 
-\end{figure}
 
+  \caption{\textbf{Diagnostic plot of query to target lengths in synteny map}.
+  The syntenic intervals on the query and target sides should be of similar
+  length.  Here we plot ${\log}_2 \left(\frac{L_q}{L_t}\right)$.
+  This will be 0 when the intervals are of equal length. It will be 1 when the
+  query is twice the length of the target. The query and target intervals have
+  different lengths if gaps are allowed in the alignments, but wild deviation
+  from 0 suggests something is wrong To avoid overplotting, values between
+  -0.25 and 0.25 are not plotted. \textbf{NOTE:} If the plot above is blank, it
+  means the absolute log ratio was less then 0.25 for all syntenic pairs. This
+  is fine, and for some synteny map programs, will always happen.}
+
+\end{figure}
 
 
 \subsection{Search interval overview}

@@ -197,9 +197,12 @@ d <- read.table(config$f_kbcomp, header=TRUE) %>%
   ) %>%
   dplyr::mutate(GC = (C + G) / (A + C + G + T))
 
+# Number of species in the analysis (focal species included)
+nspecies <- nlevels(factor(d$species))
+
 # Number of random intervals taken from each species
 # Should be an integer (e.g. 10000)
-sample_size <- nrow(d) / nlevels(factor(d$species))
+sample_size <- nrow(d) / nspecies
 
 # Length of the intervals drawn from the genomes
 sample_interval_length <- d[-c(1,2,3,4)] %>% rowSums %>% median
@@ -211,7 +214,9 @@ sample_interval_length <- d[-c(1,2,3,4)] %>% rowSums %>% median
 ggplot(d) +
   geom_boxplot(aes(x=species, y=GC), width=0.2) +
   geom_violin(aes(x=species, y=GC), alpha=0.3) +
-  ylab('G+C Proportion')
+  ylab('G+C Proportion') +
+  theme(axis.text.x = element_text(angle=270, hjust=0, vjust=1))
+
 @
     \caption{\textbf{GC content comparison}. This is a diagnostic plot for
     comparing the median and variability of GC content between species.
@@ -334,7 +339,6 @@ if(all(lapply(d, length) > 0)){
   ggplot(iris) # a hack to get a blank plot
 }
 @
-
   \caption{\textbf{Diagnostic plot of query to target lengths in synteny map}.
   The syntenic intervals on the query and target sides should be of similar
   length.  Here we plot ${\log}_2 \left(\frac{L_q}{L_t}\right)$.
@@ -345,7 +349,6 @@ if(all(lapply(d, length) > 0)){
   -0.25 and 0.25 are not plotted. \textbf{NOTE:} If the plot above is blank, it
   means the absolute log ratio was less then 0.25 for all syntenic pairs. This
   is fine, and for some synteny map programs, will always happen.}
-
 \end{figure}
 
 
@@ -368,8 +371,8 @@ lapply(results, function(x) x$flagsum) %>%
   set_names(c("group", "orphan", "proportion", "species")) %>%
   ggplot(aes(species, proportion)) +
     geom_bar(aes(fill=orphan), stat='identity', position='dodge') +
+    theme(axis.text.x = element_text(angle=270, hjust=0, vjust=1)) +
     facet_wrap(~group)
-
 @
 
 
@@ -582,15 +585,15 @@ labels$summary %>% xtable
 
 \begin{figure}[!ht]
   \centering
-<<>>=
+<<classification-plot>>=
 labels$summary %>%
   dplyr::group_by(species) %>%
   mutate(proportion = count / sum(count)) %>%
   ggplot(aes(description, proportion)) +
-  geom_bar(aes(fill=species), stat='identity', position='dodge') +
-  coord_flip()
+    geom_bar(aes(fill=species), stat='identity', position='dodge') +
+    coord_flip()
 @
-  \label{fig:}
+  \caption{\textbf{STUB caption}}
 \end{figure}
 
 \begin{description}

@@ -188,15 +188,46 @@ if(nrow(nstring) > 0){
 \begin{figure}[!ht]
   \centering
 <<plot-gc, cache=FALSE>>=
-read.table(config$f_kbcomp, header=TRUE) %>%
-  subset(N == 0) %>%
-  dplyr::mutate(GC = (C + G) / (A + C + G + T)) %>%
-  ggplot +
-    geom_boxplot(aes(x=species, y=GC), width=0.2) +
-    geom_violin(aes(x=species, y=GC), alpha=0.3) +
-    ylab('G+C Proportion')
+d <- read.table(config$f_kbcomp, header=TRUE) %>%
+  (
+    function(d) {
+      if("N" %in% names(d)){
+        d <- subset(d, N == 0)
+      }
+      d
+    }
+  ) %>%
+  dplyr::mutate(GC = (C + G) / (A + C + G + T))
+
+# Number of random intervals taken from each species
+# Should be an integer (e.g. 10000)
+sample_size <- nrow(d) / nlevels(factor(d$species))
+
+# Length of the intervals drawn from the genomes
+sample_interval_length <- d[-c(1,2,3,4)] %>% rowSums %>% median
+
+# NOTE: Formally, I ought to deal with ambiguous bases, e.g. Y for pyrimidine.
+# Not doing so is basically OK, since the visual difference will be negligible.
+# These ambiguous bases are seldom used.
+
+ggplot(d) +
+  geom_boxplot(aes(x=species, y=GC), width=0.2) +
+  geom_violin(aes(x=species, y=GC), alpha=0.3) +
+  ylab('G+C Proportion')
 @
-    \caption{\textbf{GC content of 10000 random 1kb intervals}. Any interval with 1 or more N's was ignored.}
+
+    \caption{\textbf{GC content comparison}. This is a diagnostic plot for
+    comparing the median and variability of GC content between species.
+    \Sexpr{sample_size} intervals of length \Sexpr{sample_interval_length} were
+    drawn randomly from each species. The bases in each interval were counted
+    and GC content was calculated as $g = (n_g + n_c) / (n_g + n_c + n_a +
+    n_t)$ (intervals with characters other than these were ignored). The violin
+    plots show the distribution of $g$ across samples. The boxplot inside the
+    violin plot shows the median and 25th and 75th quantiles.
+    \textit{Interpretation:} the plot ought to look pretty similar across the
+    species. Weird events like massive transposon proliferation in one species
+    might lead to shifts.}
+
 \end{figure}
 
 \subsection{Proteomic statistics}

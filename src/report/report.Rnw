@@ -27,6 +27,11 @@
 }
 \makeatother
 
+<<knit-options, echo=FALSE>>=
+  # Don't echo all the R code
+  opts_chunk$set(echo=FALSE)
+@
+
 \title{Report}
 
 \begin{document}
@@ -39,7 +44,7 @@
 The Fagin pipeline receives input from the Synder, which uses a synteny
 framework to map genes in one genome to search intervals in another.
 
-<<load_libraries>>=
+<<load_libraries, message=FALSE>>=
 
 require(ape)
 require(Biostrings)
@@ -67,8 +72,8 @@ source('R/feature_overlaps.R')
 source('R/plot.R')
 source('R/versions.R')
 
-log_file <- file("log.Rout", open="wt")
-sink(log_file, type=c("output", "message"))
+# log_file <- file("log.Rout", open="wt")
+# sink(log_file, type=c("output", "message"))
 
 use_cache <- TRUE
 config    <- LoadConfig(configfile='config')
@@ -677,7 +682,7 @@ plot_fits('dna2dna')
     \item Synder \Sexpr{get_synder_version()}
 \end{itemize}
 
-<<dump-parameters, echo=TRUE>>=
+<<dump-parameters>>=
 print(config)
 @
 

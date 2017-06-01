@@ -24,9 +24,12 @@ library
     default-language: Haskell2010
     hs-source-dirs: src
     exposed-modules: Fagin,
-                     Fagin.Gff
+                     Fagin.Gff,
+                     Fagin.Interval
 
-    build-depends: base
+    build-depends: base,
+                   attoparsec,
+                   text
 
     ghc-options: -Wall
 
@@ -38,6 +41,7 @@ executable fagin
     main-is: Main.hs
     hs-source-dirs: executable
     build-depends: base,
+                   text,
                    fagin
 
     ghc-options: -Wall

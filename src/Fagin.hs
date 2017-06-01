@@ -1,6 +1,3 @@
-module Fagin (fullData) where
+module Fagin (readGff, GffEntry) where
 
-import Fagin.Gff (openGff)
-
-fullData :: String -> String
-fullData _ = openGff "Might I have some more?"
+import Fagin.Gff

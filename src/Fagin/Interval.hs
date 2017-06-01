@@ -1,11 +1,11 @@
-module Interval (
+module Fagin.Interval (
     Strand(..)
-  , Pos
-  , Interval
+  , Interval(..)
 ) where
 
-data Strand = Plus | Minus
+data Strand
+  = Plus
+  | Minus
+  deriving(Show)
 
-type Pos = (Integer, Integer)
-
-type Interval = (Id, Pos, Maybe Strand)
+data Interval = Interval Integer Integer (Maybe Strand) deriving(Show)

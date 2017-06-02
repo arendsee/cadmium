@@ -135,7 +135,7 @@ type GIFilter = (Integer,[T.Text]) -> Bool
 
 comment :: GIFilter
 comment (_,(x:_)) = T.isPrefixOf (T.singleton '#') x
-comment _ = False
+comment _ = True
 
 empty :: GIFilter
 empty (_,[]) = True
@@ -156,11 +156,6 @@ readGff =
   map (T.splitOn "\t")   . -- Break tests by line and TAB. NOTE:
   T.lines                  -- this allows space in fields
   where
-
-    l :: Either GffError a -> GffError
-    l (Right _) = mempty
-    l (Left  e) = e
-
     toGff :: [(Integer,[T.Text])] -> [Either CGffError GffEntry]
     toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
       = case (readType typ, readInt a, readInt b, readStrand str, readAttribute attr) of
@@ -177,6 +172,9 @@ readGff =
               }
           ] ++ toGff xs
         (typ', a', b', str', attr') -> [ Left (CGffError i err) ] where
+          l :: Either GffError a -> GffError
+          l (Right _) = mempty
+          l (Left  e) = e
           err = l typ' <> l a' <> l b' <> l str' <> l attr'
-    toGff [] = [ Left (CGffError 0 NoFeatures) ]
+    toGff [] = []
     toGff ((i,fs):_) = [ Left $ CGffError i $ InvalidRowNumber fs ]

@@ -5,10 +5,13 @@ module Fagin.Gff (
   , IntervalType(..)
   , Attribute(..)
   , GffEntry(..)
+  , CGffError
 ) where
 
-import qualified Data.Attoparsec.Text as AT
 import qualified Data.Text as T
+import qualified Data.List as L
+import qualified Data.Either as E
+import           Data.Monoid ((<>))
 
 import Fagin.Interval
 
@@ -17,6 +20,7 @@ data IntervalType
   | CDS
   | Exon
   | Gene
+  | Other T.Text
   deriving(Show)
 
 data Attribute
@@ -24,149 +28,155 @@ data Attribute
   | Id       T.Text
   | Name     T.Text
   | Untagged T.Text
-  | Other    T.Text T.Text
+  | Meta     T.Text T.Text
   | Nil
   deriving (Show)
 
 data GffEntry = GffEntry {
       gff_seqid    :: T.Text
-    , gff_type     :: Maybe IntervalType
+    , gff_type     :: IntervalType
     , gff_interval :: Interval
     , gff_parent   :: Maybe T.Text
     , gff_id       :: Maybe T.Text
     , gff_name     :: Maybe T.Text
-    , gff_meta     :: [(T.Text, T.Text)]
+    , gff_meta     :: [Attribute]
   }
   deriving (Show)
 
-parseField :: AT.Parser T.Text
-parseField = AT.takeWhile (\c -> c /= '\t')
+type Row = [T.Text]
+type Message = T.Text
 
-parseComment :: AT.Parser T.Text
-parseComment = do
-  _ <- AT.char '#'
-  s <- AT.takeWhile (\c -> c /= '\n')
-  _ <- AT.char '\n'
-  return s
+data GffError
+  = NoError
+  | NoType
+  | NoFeatures
+  | InvalidRowNumber Row
+  | ExpectInteger T.Text
+  | ExpectAttribute Message
+  | ExpectStrand T.Text
+  | MultiError [GffError]
 
-parseSeqid :: AT.Parser T.Text
-parseSeqid = do
-  s <- parseField
-  return s
+instance Monoid GffError where
+  mempty = NoError
+  mappend NoError NoError = NoError
+  mappend NoError y       = y
+  mappend x       NoError = x
+  mappend (MultiError xs) (MultiError ys) = MultiError (xs  ++ ys)
+  mappend (MultiError xs) x               = MultiError (xs  ++ [x])
+  mappend x               (MultiError ys) = MultiError ([x] ++ ys)
+  mappend x               y               = MultiError [x,y]
 
-parseType :: AT.Parser (Maybe IntervalType)
-parseType = do
-  s <- AT.choice
-    [
-      AT.string "mRNA"
-    , AT.string "CDS"
-    , AT.string "exon"
-    , AT.string "gene"
-    ]
-  return $ case s of
-    "mRNA" -> Just MRna
-    "CDS"  -> Just CDS
-    "exon" -> Just Exon
-    "gene" -> Just Gene
-    _      -> Nothing
+instance Show GffError where
+  show (InvalidRowNumber xs)
+    | (length xs) < 9 = "Too few columns"
+    | (length xs) > 9 = "Too many columns"
+    | otherwise       = "Well shucks, that shouldn't have happened"
+  show (ExpectInteger v)     = "Expected integer, found '" ++ T.unpack v ++ "'"
+  show (ExpectAttribute msg) = "Expected attribute (<tag>=<val>), found '" ++ T.unpack msg ++ "'"
+  show (ExpectStrand v)      = "Expected strand ('+', '-' or '.'), found '" ++ T.unpack v ++ "."
+  show NoFeatures            = "No features found (empty file)"
+  show NoType                = "Exected <type> in column 3, found nothing"
+  show (MultiError [])       = ""
+  show (MultiError es)       = " - " ++ (L.intercalate "\n - " . map show $ es)
+  show NoError               = ""
 
-parseStrand :: AT.Parser (Maybe Strand)
-parseStrand = do
-  s <- AT.anyChar
-  return $ case s of
-    '-' -> Just Minus
-    '+' -> Just Plus
-    _   -> Nothing
 
-parseAttributePair :: AT.Parser Attribute
-parseAttributePair = do
-  a <- AT.takeWhile (\c -> c /= '=')
-  _ <- AT.char '='
-  b <- AT.takeWhile (\c -> c /= ';')
-  return $ case (a,b) of
-    ("Parent" , val) -> Parent val
-    ("Id"     , val) -> Id     val
-    ("Name"   , val) -> Name   val
-    (tag      , val) -> Other  tag val
+data CGffError = CGffError Integer GffError
 
-parseAttributeUntagged :: AT.Parser Attribute
-parseAttributeUntagged = do
-  x <- AT.takeWhile (\c -> c /= ';')
-  return $ case x of
-    "" -> Nil
-    s  -> Untagged s
+instance Show CGffError where
+  show (CGffError i (MultiError es)) =
+    "line " ++ show i ++ ":\n - " ++
+    concatMap (\s -> " - " ++ show s ++ "\n") es
+  show (CGffError _ NoError) = ""
+  show (CGffError i e) = "line " ++ show i ++ ": " ++ show e
 
-parseAttribute :: AT.Parser Attribute
-parseAttribute = AT.choice [parseAttributePair, parseAttributeUntagged]
+reerror :: [Either l r] -> Either l [r]
+reerror es = case E.partitionEithers es of
+  ([],rs)   -> Right rs
+  ((l:_),_) -> Left l
 
-parseMeta :: AT.Parser [Attribute]
-parseMeta = AT.sepBy parseAttribute (AT.char ';')
 
-parseGffEntry :: AT.Parser GffEntry
-parseGffEntry = do
-  chr <- parseSeqid
-  _   <- AT.char '\t' 
+type GParser a = T.Text -> Either GffError a
 
-  _   <- parseField
-  _   <- AT.char '\t' 
+readInt :: GParser Integer
+readInt s = case reads (T.unpack s) :: [(Integer,String)] of
+  [(x,"")] -> Right x
+  _        -> Left $ ExpectInteger s
 
-  typ <- parseType
-  _   <- AT.char '\t' 
+readType :: GParser IntervalType
+readType s = case s of
+  ""     -> Left  NoType
+  "mRNA" -> Right MRna
+  "CDS"  -> Right CDS
+  "exon" -> Right Exon
+  "Gene" -> Right Gene
+  x      -> Right $ Other x
 
-  a   <- AT.decimal
-  _   <- AT.char '\t' 
+readStrand :: GParser (Maybe Strand)
+readStrand s = case s of
+  "+" -> Right $ Just Plus
+  "-" -> Right $ Just Minus
+  "." -> Right Nothing
+  v   -> Left $ ExpectStrand v
 
-  b   <- AT.decimal
-  _   <- AT.char '\t' 
+readAttribute :: GParser [Attribute]
+readAttribute = reerror . map asAttr . map (T.splitOn "=") . T.splitOn ";" where
+  asAttr :: [T.Text] -> Either GffError Attribute
+  asAttr []             = Right Nil
+  asAttr ["Parent",val] = Right $ Parent val
+  asAttr ["ID",val]     = Right $ Id val
+  asAttr ["Name",val]   = Right $ Name val
+  asAttr [tag,val]      = Right $ Meta tag val
+  asAttr [val]          = Right $ Untagged val
+  asAttr fs             = Left $ ExpectAttribute $ T.intercalate "=" fs
 
-  _   <- parseField
-  _   <- AT.char '\t'
 
-  str <- parseStrand
-  _   <- AT.char '\t'
+type GIFilter = (Integer,[T.Text]) -> Bool
 
-  _   <- AT.anyChar
-  _   <- AT.char '\t'
+comment :: GIFilter
+comment (_,(x:_)) = T.isPrefixOf (T.singleton '#') x
+comment _ = False
 
-  att <- parseMeta
+empty :: GIFilter
+empty (_,[]) = True
+empty _      = False
 
-  _   <- AT.many' AT.space
+readGff :: T.Text -> Either CGffError [GffEntry]
+readGff =
+  reerror                . -- Merge errors, die on first failure
 
-  return GffEntry {
-      gff_seqid    = chr
-    , gff_type     = typ
-    , gff_interval = Interval a b str
-    , gff_parent   = findParent att
-    , gff_id       = findId att
-    , gff_name     = findName att
-    , gff_meta     = findMeta att
-  } where
+  toGff                  . -- Parse GFF entry and report errors
 
-    findParent :: [Attribute] -> Maybe T.Text
-    findParent []            = Nothing
-    findParent (Parent s:_)  = Just s
-    findParent (_:xs)        = findParent xs
+  filter (not . empty)   . -- Filter out lines that are either empty
+  filter (not . comment) . -- or start with a comment (#) character
 
-    findId :: [Attribute] -> Maybe T.Text
-    findId []       = Nothing
-    findId (Id s:_) = Just s
-    findId (_:xs)   = findId xs
+  zip [1..]              . -- Add line numbers. This must precede filters
+                           -- so line numbering in error messages is correct
 
-    findName :: [Attribute] -> Maybe T.Text
-    findName []         = Nothing
-    findName (Name s:_) = Just s
-    findName (_:xs)     = findName xs
+  map (T.splitOn "\t")   . -- Break tests by line and TAB. NOTE:
+  T.lines                  -- this allows space in fields
+  where
 
-    findMeta :: [Attribute] -> [(T.Text,T.Text)]
-    findMeta [] = []
-    findMeta (Other t v:xs) = [(t,v)] ++ findMeta xs
-    findMeta _ = []
+    l :: Either GffError a -> GffError
+    l (Right _) = mempty
+    l (Left  e) = e
 
-parseGff :: AT.Parser [GffEntry]
-parseGff = do
-  _   <- AT.many' parseComment
-  gff <- AT.many1 parseGffEntry
-  return gff
-
-readGff :: T.Text -> Either String [GffEntry]
-readGff = AT.parseOnly parseGff
+    toGff :: [(Integer,[T.Text])] -> [Either CGffError GffEntry]
+    toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
+      = case (readType typ, readInt a, readInt b, readStrand str, readAttribute attr) of
+        (Right typ', Right a', Right b', Right str', Right attr') ->
+          [ Right $
+              GffEntry {
+                  gff_seqid    = chr
+                , gff_type     = typ'
+                , gff_interval = Interval a' b' str'
+                , gff_parent   = Nothing
+                , gff_id       = Nothing
+                , gff_name     = Nothing
+                , gff_meta     = attr'
+              }
+          ] ++ toGff xs
+        (typ', a', b', str', attr') -> [ Left (CGffError i err) ] where
+          err = l typ' <> l a' <> l b' <> l str' <> l attr'
+    toGff [] = [ Left (CGffError 0 NoFeatures) ]
+    toGff ((i,fs):_) = [ Left $ CGffError i $ InvalidRowNumber fs ]

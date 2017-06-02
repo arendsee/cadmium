@@ -1,3 +1,3 @@
-module Fagin (readGff, GffEntry) where
+module Fagin (readGff, GffEntry, CGffError) where
 
 import Fagin.Gff

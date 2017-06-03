@@ -3,7 +3,6 @@
 module Fagin.Gff (
     readGff
   , IntervalType(..)
-  , Attribute(..)
   , GffEntry(..)
   , CGffError
 ) where
@@ -21,30 +20,19 @@ data IntervalType
   | Exon
   | Gene
   | Other T.Text
-  deriving(Show)
-
-data Attribute
-  = Parent   T.Text
-  | Id       T.Text
-  | Name     T.Text
-  | Untagged T.Text
-  | Meta     T.Text T.Text
-  | Nil
-  deriving (Show)
+  deriving(Show,Eq,Ord)
 
 data GffEntry = GffEntry {
       gff_seqid    :: T.Text
     , gff_type     :: IntervalType
     , gff_interval :: Interval
-    , gff_parent   :: Maybe T.Text
-    , gff_id       :: Maybe T.Text
-    , gff_name     :: Maybe T.Text
-    , gff_meta     :: [Attribute]
+    , gff_attr     :: [(T.Text, T.Text)]
   }
-  deriving (Show)
+  deriving(Show,Eq,Ord)
 
 type Row = [T.Text]
 type Message = T.Text
+type Attribute = (T.Text, T.Text)
 
 data GffError
   = NoError
@@ -55,6 +43,7 @@ data GffError
   | ExpectAttribute Message
   | ExpectStrand T.Text
   | MultiError [GffError]
+  deriving(Eq,Ord)
 
 instance Monoid GffError where
   mempty = NoError
@@ -122,12 +111,9 @@ readStrand s = case s of
 readAttribute :: GParser [Attribute]
 readAttribute = reerror . map asAttr . map (T.splitOn "=") . T.splitOn ";" where
   asAttr :: [T.Text] -> Either GffError Attribute
-  asAttr []             = Right Nil
-  asAttr ["Parent",val] = Right $ Parent val
-  asAttr ["ID",val]     = Right $ Id val
-  asAttr ["Name",val]   = Right $ Name val
-  asAttr [tag,val]      = Right $ Meta tag val
-  asAttr [val]          = Right $ Untagged val
+  asAttr []             = Left $ ExpectAttribute ""
+  asAttr [tag,val]      = Right (tag , val)
+  asAttr [val]          = Right (""  , val)
   asAttr fs             = Left $ ExpectAttribute $ T.intercalate "=" fs
 
 
@@ -164,11 +150,8 @@ readGff =
               GffEntry {
                   gff_seqid    = chr
                 , gff_type     = typ'
-                , gff_interval = Interval a' b' str'
-                , gff_parent   = Nothing
-                , gff_id       = Nothing
-                , gff_name     = Nothing
-                , gff_meta     = attr'
+                , gff_interval = Interval (a', b') str'
+                , gff_attr     = attr'
               }
           ] ++ toGff xs
         (typ', a', b', str', attr') -> [ Left (CGffError i err) ] where

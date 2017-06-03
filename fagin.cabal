@@ -25,10 +25,12 @@ library
     hs-source-dirs: src
     exposed-modules: Fagin,
                      Fagin.Gff,
+                     Fagin.GeneModel,
                      Fagin.Interval
 
     build-depends: base,
                    attoparsec,
+                   containers,
                    text
 
     ghc-options: -Wall

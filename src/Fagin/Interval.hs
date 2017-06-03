@@ -1,6 +1,7 @@
 module Fagin.Interval (
     Strand(..)
   , Interval(..)
+  , Pos
 ) where
 
 data Strand
@@ -8,4 +9,6 @@ data Strand
   | Minus
   deriving(Show)
 
-data Interval = Interval Integer Integer (Maybe Strand) deriving(Show)
+type Pos = (Integer, Integer)
+
+data Interval = Interval Pos (Maybe Strand) deriving(Show)

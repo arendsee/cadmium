@@ -8,7 +8,6 @@ import qualified Data.Text as T
 import qualified Data.List as L
 
 type ThrowsError = Either FaginError
-
 type LineNumber = Integer
 
 data FaginError
@@ -17,6 +16,8 @@ data FaginError
   -- Errors in gene models
   | ModelInvalidParent
   | ModelExpectParent
+  | ModelStrandMissing
+  | ModelStrandMismatch
   -- Errors in GFF files
   | GffNoType
   | GffNoFeatures
@@ -41,6 +42,8 @@ instance Show FaginError where
   -- GeneModel
   show ModelInvalidParent = "Parent tag matches no entry Id" -- TODO parameterize
   show ModelExpectParent = "Entry of this type ought to have a parent" --TODO parameterize
+  show ModelStrandMissing = "Gene model CDS and exon entries do not specify strand"
+  show ModelStrandMismatch = "Gene model has contradictory strand specifications"
   -- GFF
   show (GffInvalidRowNumber xs)
     | (length xs) < 9 = "Too few columns"

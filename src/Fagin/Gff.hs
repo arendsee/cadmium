@@ -23,6 +23,7 @@ data IntervalType
 data GffEntry = GffEntry {
       gff_seqid    :: T.Text
     , gff_type     :: IntervalType
+    , gff_strand   :: Maybe Strand
     , gff_interval :: Interval
     , gff_attr     :: [(T.Text, T.Text)]
   }
@@ -91,15 +92,18 @@ readGff =
     toGff :: [(Integer,[T.Text])] -> [ThrowsError GffEntry]
     toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
       = case (readType typ, readInt a, readInt b, readStrand str, readAttribute attr) of
+        -- If everything is good, make an entry
         (Right typ', Right a', Right b', Right str', Right attr') ->
           [ Right $
               GffEntry {
                   gff_seqid    = chr
                 , gff_type     = typ'
-                , gff_interval = Interval (a', b') str'
+                , gff_strand   = str'
+                , gff_interval = Interval a' b'
                 , gff_attr     = attr'
               }
           ] ++ toGff xs
+        -- else, join the errors and annotate them with the line number
         (typ', a', b', str', attr') -> [ Left (GffLineError i err) ] where
           l :: ThrowsError a -> FaginError
           l (Right _) = mempty

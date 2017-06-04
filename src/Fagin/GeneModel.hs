@@ -51,7 +51,7 @@ extractParent m g = case lookup "Parent" (gff_attr g) of
 
 mapEntries :: [GffEntry] -> IdMap
 mapEntries = MS.fromList . concatMap plist where
-  plist g = case lookup "Id" (gff_attr g) of
+  plist g = case lookup "ID" (gff_attr g) of
     Just p  -> [(p, g)]
     Nothing -> []
 
@@ -67,6 +67,9 @@ toModels = sequence . map toModel . LE.groupSort where
   isCDS g = case gff_type g of
     CDS -> True
     _   -> False
+
+  -- TODO check that each CDS is subsumed by an exon
+  -- TODO check that no exons overlap
 
   toModel :: (Parent, [GffEntry]) -> ThrowsError GeneModel
   toModel ((Parent pid _), gs)

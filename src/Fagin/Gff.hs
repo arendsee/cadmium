@@ -4,15 +4,13 @@ module Fagin.Gff (
     readGff
   , IntervalType(..)
   , GffEntry(..)
-  , CGffError
 ) where
 
 import qualified Data.Text as T
-import qualified Data.List as L
-import qualified Data.Either as E
 import           Data.Monoid ((<>))
 
 import Fagin.Interval
+import Fagin.Error
 
 data IntervalType
   = MRna
@@ -30,71 +28,19 @@ data GffEntry = GffEntry {
   }
   deriving(Show,Eq,Ord)
 
-type Row = [T.Text]
-type Message = T.Text
 type Attribute = (T.Text, T.Text)
 
-data GffError
-  = NoError
-  | NoType
-  | NoFeatures
-  | InvalidRowNumber Row
-  | ExpectInteger T.Text
-  | ExpectAttribute Message
-  | ExpectStrand T.Text
-  | MultiError [GffError]
-  deriving(Eq,Ord)
 
-instance Monoid GffError where
-  mempty = NoError
-  mappend NoError NoError = NoError
-  mappend NoError y       = y
-  mappend x       NoError = x
-  mappend (MultiError xs) (MultiError ys) = MultiError (xs  ++ ys)
-  mappend (MultiError xs) x               = MultiError (xs  ++ [x])
-  mappend x               (MultiError ys) = MultiError ([x] ++ ys)
-  mappend x               y               = MultiError [x,y]
-
-instance Show GffError where
-  show (InvalidRowNumber xs)
-    | (length xs) < 9 = "Too few columns"
-    | (length xs) > 9 = "Too many columns"
-    | otherwise       = "Well shucks, that shouldn't have happened"
-  show (ExpectInteger v)     = "Expected integer, found '" ++ T.unpack v ++ "'"
-  show (ExpectAttribute msg) = "Expected attribute (<tag>=<val>), found '" ++ T.unpack msg ++ "'"
-  show (ExpectStrand v)      = "Expected strand ('+', '-' or '.'), found '" ++ T.unpack v ++ "."
-  show NoFeatures            = "No features found (empty file)"
-  show NoType                = "Exected <type> in column 3, found nothing"
-  show (MultiError [])       = ""
-  show (MultiError es)       = " - " ++ (L.intercalate "\n - " . map show $ es)
-  show NoError               = ""
-
-
-data CGffError = CGffError Integer GffError
-
-instance Show CGffError where
-  show (CGffError i (MultiError es)) =
-    "line " ++ show i ++ ":\n - " ++
-    concatMap (\s -> " - " ++ show s ++ "\n") es
-  show (CGffError _ NoError) = ""
-  show (CGffError i e) = "line " ++ show i ++ ": " ++ show e
-
-reerror :: [Either l r] -> Either l [r]
-reerror es = case E.partitionEithers es of
-  ([],rs)   -> Right rs
-  ((l:_),_) -> Left l
-
-
-type GParser a = T.Text -> Either GffError a
+type GParser a = T.Text -> ThrowsError a
 
 readInt :: GParser Integer
 readInt s = case reads (T.unpack s) :: [(Integer,String)] of
   [(x,"")] -> Right x
-  _        -> Left $ ExpectInteger s
+  _        -> Left $ GffExpectInteger s
 
 readType :: GParser IntervalType
 readType s = case s of
-  ""     -> Left  NoType
+  ""     -> Left  GffNoType
   "mRNA" -> Right MRna
   "CDS"  -> Right CDS
   "exon" -> Right Exon
@@ -106,15 +52,15 @@ readStrand s = case s of
   "+" -> Right $ Just Plus
   "-" -> Right $ Just Minus
   "." -> Right Nothing
-  v   -> Left $ ExpectStrand v
+  v   -> Left $ GffExpectStrand v
 
 readAttribute :: GParser [Attribute]
-readAttribute = reerror . map asAttr . map (T.splitOn "=") . T.splitOn ";" where
-  asAttr :: [T.Text] -> Either GffError Attribute
-  asAttr []             = Left $ ExpectAttribute ""
+readAttribute = sequence . map asAttr . map (T.splitOn "=") . T.splitOn ";" where
+  asAttr :: [T.Text] -> ThrowsError Attribute
+  asAttr []             = Left $ GffExpectAttribute ""
   asAttr [tag,val]      = Right (tag , val)
   asAttr [val]          = Right (""  , val)
-  asAttr fs             = Left $ ExpectAttribute $ T.intercalate "=" fs
+  asAttr fs             = Left $ GffExpectAttribute $ T.intercalate "=" fs
 
 
 type GIFilter = (Integer,[T.Text]) -> Bool
@@ -127,9 +73,9 @@ empty :: GIFilter
 empty (_,[]) = True
 empty _      = False
 
-readGff :: T.Text -> Either CGffError [GffEntry]
+readGff :: T.Text -> ThrowsError [GffEntry]
 readGff =
-  reerror                . -- Merge errors, die on first failure
+  sequence               . -- Merge errors, die on first failure
 
   toGff                  . -- Parse GFF entry and report errors
 
@@ -142,7 +88,7 @@ readGff =
   map (T.splitOn "\t")   . -- Break tests by line and TAB. NOTE:
   T.lines                  -- this allows space in fields
   where
-    toGff :: [(Integer,[T.Text])] -> [Either CGffError GffEntry]
+    toGff :: [(Integer,[T.Text])] -> [ThrowsError GffEntry]
     toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
       = case (readType typ, readInt a, readInt b, readStrand str, readAttribute attr) of
         (Right typ', Right a', Right b', Right str', Right attr') ->
@@ -154,10 +100,10 @@ readGff =
                 , gff_attr     = attr'
               }
           ] ++ toGff xs
-        (typ', a', b', str', attr') -> [ Left (CGffError i err) ] where
-          l :: Either GffError a -> GffError
+        (typ', a', b', str', attr') -> [ Left (GffLineError i err) ] where
+          l :: ThrowsError a -> FaginError
           l (Right _) = mempty
           l (Left  e) = e
           err = l typ' <> l a' <> l b' <> l str' <> l attr'
     toGff [] = []
-    toGff ((i,fs):_) = [ Left $ CGffError i $ InvalidRowNumber fs ]
+    toGff ((i,fs):_) = [ Left $ GffLineError i (GffInvalidRowNumber fs) ]

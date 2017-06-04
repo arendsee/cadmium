@@ -7,8 +7,10 @@ module Fagin.Interval (
 data Strand
   = Plus
   | Minus
-  deriving(Show)
+  deriving(Show,Ord,Eq)
 
 type Pos = (Integer, Integer)
 
-data Interval = Interval Pos (Maybe Strand) deriving(Show)
+data Interval
+  = Interval Pos (Maybe Strand)
+  deriving(Show,Ord,Eq)

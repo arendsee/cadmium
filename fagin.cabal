@@ -25,6 +25,7 @@ library
     hs-source-dirs: src
     exposed-modules: Fagin,
                      Fagin.Gff,
+                     Fagin.BioSeq
                      Fagin.Error,
                      Fagin.GeneModel,
                      Fagin.Interval
@@ -32,6 +33,7 @@ library
     build-depends: base,
                    attoparsec,
                    containers,
+                   bytestring,
                    extra,
                    text
 

@@ -1,5 +1,56 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+
+{-|
+
+-- * GFF3 parsing
+
+Perhaps the most error prone step of preparing data for Fagin is gathering
+correct GFF files for each species.
+
+Here are the lexical requirements:
+
+ * has 9 TAB-delimited columns
+ * column 1 matches the names of an entry in a genome fasta file
+ * column 3 must include `mRNA`, `exon` and `CDS` labels
+ * column 4 and 5 must be counting numbers where c5 > c4
+ * column 7 must contain strand info
+    [@+@] plus strand
+    [@-@] minus stand
+    [@?@] stranded but unknown
+    [@.@] unstranded
+ * column 9 must be a ';'-delimited string of '<tag>=<value>' entries
+
+I also impose these semantic requirements:
+
+ * Every exon and CDS entry must have at least one Parent, where the value
+   matchs the value of an mRNA's ID
+ * Every mRNA must have at least one exon
+ * Every mRNA must have at least one CDS
+ * Every CDS is subsumed by an exon in the same mRNA
+
+I am systematically more permissive than required by the specification
+
+ * column 1 can be a string of any non-TAB characters
+ * column 8 (phase) can be missing for CDS (I don't use it)
+ * column 6 (score) can be anything (again, I don't use it)
+ * I allow a single untagged value in column 9, which I assign to ID if ID is missing
+
+There are several pathological cases that a GFF parsers needs to be able to
+deal with. These are outlined in the GFF specification:
+
+ * single exon genes
+ * polycistronic transcripts
+ * genes with inteins
+ * trans-spliced trancripts
+ * programmed frameshift
+ * operons
+ * circular genomes (well, I consider this pathological)
+
+All of these need special consideration. Currently they are not handled.
+
+-}
+
 module Fagin.Gff (
     readGff
   , IntervalType(..)

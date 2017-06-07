@@ -92,12 +92,16 @@ readInt s = case reads (T.unpack s) :: [(Integer,String)] of
 
 readType :: GParser IntervalType
 readType s = case s of
-  ""     -> Left  GffNoType
-  "mRNA" -> Right MRna
-  "CDS"  -> Right CDS
-  "exon" -> Right Exon
-  "Gene" -> Right Gene
-  x      -> Right $ Other x
+  ""           -> Left  GffNoType
+  "mRNA"       -> Right MRna
+  "CDS"        -> Right CDS
+  "exon"       -> Right Exon
+  "gene"       -> Right Gene
+  "SO:0000234" -> Right MRna
+  "SO:0000316" -> Right CDS
+  "SO:0000147" -> Right Exon
+  "SO:0000704" -> Right Gene
+  x            -> Right $ Other x
 
 readStrand :: GParser (Maybe Strand)
 readStrand s = case s of

@@ -92,16 +92,33 @@ readInt s = case reads (T.unpack s) :: [(Integer,String)] of
 
 readType :: GParser IntervalType
 readType s = case s of
-  ""           -> Left  GffNoType
-  "mRNA"       -> Right MRna
-  "CDS"        -> Right CDS
-  "exon"       -> Right Exon
-  "gene"       -> Right Gene
-  "SO:0000234" -> Right MRna
-  "SO:0000316" -> Right CDS
-  "SO:0000147" -> Right Exon
-  "SO:0000704" -> Right Gene
-  x            -> Right $ Other x
+  ""                -> Left  GffNoType
+
+  "gene"            -> Right Gene
+  "SO:0000704"      -> Right Gene
+
+  "mRNA"            -> Right MRna
+  "messenger RNA"   -> Right MRna -- synonym
+  "SO:0000234"      -> Right MRna
+  -- * this may or may not be a coding transcript
+  -- * technically, mRNA is_a transcript, and a CDS or exon is only transitively
+  --   a part of ta transcript.
+  "transcript"      -> Right MRna
+  "SO:0000673"      -> Right MRna
+
+  "CDS"             -> Right CDS
+  "coding_sequence" -> Right CDS -- synonym
+  "coding sequence" -> Right CDS -- synonym
+  "SO:0000316"      -> Right CDS
+
+  "exon"            -> Right Exon
+  "SO:0000147"      -> Right Exon
+  -- This is slightly more specific then exon, hence the different SO id,
+  -- however, it is not terribly common.
+  "coding_exon"     -> Right Exon
+  "coding exon"     -> Right Exon -- synonym
+  "SO:0000195"      -> Right Exon
+  x                 -> Right $ Other x
 
 readStrand :: GParser (Maybe Strand)
 readStrand s = case s of

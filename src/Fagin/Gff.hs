@@ -3,8 +3,6 @@
 
 {-|
 
--- * GFF3 parsing
-
 Perhaps the most error prone step of preparing data for Fagin is gathering
 correct GFF files for each species.
 
@@ -84,49 +82,48 @@ data IntervalType
 -- "Derives_from" is converted to "DerivesFrom".
 data Attributes
   = Attributes {
-    attrID              :: Maybe T.Text
-    -- ^ The unique ID for this entry. Presence in more than one GFF entry
+    -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
+    attrID              :: Maybe T.Text
 
+    -- | The display name of the feature. Does not have to be unique.
     , attrName          :: Maybe T.Text
-    -- ^ The display name of the feature. Does not have to be unique.
 
+    -- | List of aliases for the feature (for example locus and model ids)
     , attrAlias         :: [T.Text]
-    -- ^ List of aliases for the feature (for example locus and model ids)
 
+    -- | List of parents of this feature. Indicates a part_of relationship.
     , attrParent        :: [T.Text]
-    -- ^ List of parents of this feature. Indicates a part_of relationship.
 
+    -- | Not currently used by Fagin
     , attrTarget        :: Maybe T.Text
-    -- ^ Not currently used by Fagin
     
+    -- | Not currently used by Fagin
     , attrGap           :: Maybe T.Text
-    -- ^ Not currently used by Fagin
 
+    -- | Not currently used by Fagin
     , attrDerivesFrom   :: Maybe T.Text
-    -- ^ Not currently used by Fagin
 
-    , attrNote          :: [T.Text]
-    -- ^ Free notes about the entry. These notes do not have to be quoted
+    -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
+    , attrNote          :: [T.Text]
     
+    -- | A database cross reference
     , attrDbxref        :: [T.Text]
-    -- ^ A database cross reference
 
+    -- | Ontology cross reference
     , attrOntologyTerm  :: [T.Text]
-    -- ^ Ontology cross reference
 
+    -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
     , attrIsCircular    :: Maybe Bool
-    -- ^ Is the sequence circular (e.g. a mitochondrial or bacterial genome)
 
-    , attrUserDefined   :: [(T.Text, T.Text)]
-
-    -- ^ The tags defined above are all the tags with predefined meanings.
+    -- | The tags defined above are all the tags with predefined meanings.
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
+    , attrUserDefined   :: [(T.Text, T.Text)]
   
   } deriving(Show,Eq,Ord)
 
@@ -134,26 +131,30 @@ data Attributes
 -- columns are skipped. These may be added later, but for now I don't need
 -- them.
 data GffEntry = GffEntry {
+
+    -- | GFF column 1. The name of the genomic scaffold and chromosome to which
+    -- the feature maps
     gff_seqid    :: T.Text
-    -- ^ GFF column 1. The name of the genomic scaffold and chromosome to which the feature maps
 
+    -- | GFF column 3. The type of the feature. This must be a Sequence
+    -- Ontology term or identification id.
     , gff_type     :: IntervalType
-    -- ^ GFF column 3. The type of the feature. This must be a Sequence Ontology term or
-    -- identification id.
 
-    , gff_interval :: Interval
-    -- ^ GFF column 4 and 5. The 1-based start and stop positions of this
+    -- | GFF column 4 and 5. The 1-based start and stop positions of this
     -- feature.
+    , gff_interval :: Interval
 
+    {-| GFF column 7. The strand on which the interval resides. This must be
+       one of the following:
+        * '+' - plus sense
+        * '-' - negative sense
+        * '.' - strand is irrelevant
+        * '?' - strand is relevant but unknown
+    -}
     , gff_strand   :: Maybe Strand
-    -- ^ GFF column 7. The strand on which the interval resides. This must be one of the following:
-    --  * '+' - plus sense
-    --  * '-' - negative sense
-    --  * '.' - strand is irrelevant
-    --  * '?' - strand is relevant but unknown
 
+    -- | GFF column 9. Feature attributes (see 'Attributes')
     , gff_attr     :: Attributes
-    -- ^ GFF column 9. Feature attributes (see 'Attributes')
   }
   deriving(Show,Eq,Ord)
 
@@ -175,8 +176,8 @@ readType s = case s of
   "mRNA"            -> Right MRna
   "messenger RNA"   -> Right MRna -- synonym
   "SO:0000234"      -> Right MRna
-  -- * this may or may not be a coding transcript
-  -- * technically, mRNA is_a transcript, and a CDS or exon is only transitively
+  -- - this may or may not be a coding transcript
+  -- - technically, mRNA is_a transcript, and a CDS or exon is only transitively
   --   a part of ta transcript.
   "transcript"      -> Right MRna
   "SO:0000673"      -> Right MRna
@@ -245,7 +246,7 @@ readAttributes s = (sequence . map toPair . map (T.splitOn "=") . T.splitOn ";" 
     Just x  -> Just x
     -- This interprets untagged value as an ID if no ID is provided
     -- The spec does not require this, but I add it in to handle the shit
-    -- *certain* programs throw at us.
+    -- _certain_ programs throw at us.
     Nothing -> case lookup "" a of
       Just x  -> Just x
       Nothing -> Nothing

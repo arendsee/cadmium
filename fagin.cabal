@@ -36,6 +36,7 @@ library
                    containers,
                    bytestring,
                    extra,
+                   IntervalMap,
                    text
 
     ghc-options: -Wall

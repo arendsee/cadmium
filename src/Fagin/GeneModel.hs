@@ -40,12 +40,16 @@ requireParent x = Right x
 
 extractParent :: IdMap -> GffEntry -> ThrowsError ([Parent], GffEntry)
 extractParent m g =
+
   -- _ -> ThrowsError ([Parent], GffEntry)
   fmap (\x -> (x, g)) .
+
   -- _ -> ThrowsError [Parent]
   sequence .
+
   -- _ -> [ThrowsError Parent]
   map (getParent m) .
+
   -- [Text] -> [Text]
   -- I have to add this filter because some programs don't follow the specs.
   -- They add 'Parent' tags to things that don't have parents, like genes (i.e.
@@ -53,10 +57,13 @@ extractParent m g =
   -- I'm a lowly programer, my tools have to magically handle whatever
   -- malformed trash gets thrown at it.
   filter (/= "-") .
+
   -- _ -> [Text] -- list of Parent ids
   attrParent .
+
   -- GffEntry -> Attributes
   gff_attr $ g
+
   where
     getParent :: IdMap -> T.Text -> ThrowsError (Parent)
     getParent m' p = case MS.lookup p m' of

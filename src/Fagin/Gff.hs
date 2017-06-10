@@ -55,14 +55,21 @@ module Fagin.Gff (
     readGff
   , IntervalType(..)
   , GffEntry(..)
+  , Attributes(..)
 ) where
 
 import qualified Data.Text as T
 import           Data.Monoid ((<>))
+import qualified Data.Char as DC
 
 import Fagin.Interval
 import Fagin.Error
 
+-- | Holds the types that are currently used by Fagin. I may extend this later.
+-- Since these types are required to be Sequence Ontology terms, I really ought
+-- to just import the whole ontology table and allow all terms. Then, since
+-- this is an ontology, I might as well port the relations between the terms.
+-- This would be a time-consuming task, but may be worthwhile eventually.
 data IntervalType
   = MRna
   | CDS
@@ -71,16 +78,84 @@ data IntervalType
   | Other T.Text
   deriving(Show,Eq,Ord)
 
+-- | Attributes of a GFF entry, exactly according to the specification. The
+-- data constructors nearly follow the tag names, except that they have been
+-- converted to camel case, as per Haskell conventions, for example
+-- "Derives_from" is converted to "DerivesFrom".
+data Attributes
+  = Attributes {
+    attrID              :: Maybe T.Text
+    -- ^ The unique ID for this entry. Presence in more than one GFF entry
+    -- implies the entries are members of a single discontinuous feature (their
+    -- types should be the same).
+
+    , attrName          :: Maybe T.Text
+    -- ^ The display name of the feature. Does not have to be unique.
+
+    , attrAlias         :: [T.Text]
+    -- ^ List of aliases for the feature (for example locus and model ids)
+
+    , attrParent        :: [T.Text]
+    -- ^ List of parents of this feature. Indicates a part_of relationship.
+
+    , attrTarget        :: Maybe T.Text
+    -- ^ Not currently used by Fagin
+    
+    , attrGap           :: Maybe T.Text
+    -- ^ Not currently used by Fagin
+
+    , attrDerivesFrom   :: Maybe T.Text
+    -- ^ Not currently used by Fagin
+
+    , attrNote          :: [T.Text]
+    -- ^ Free notes about the entry. These notes do not have to be quoted
+    -- (according to the specification). Thus any special characters, which
+    -- include commas, need to be encoded.
+    
+    , attrDbxref        :: [T.Text]
+    -- ^ A database cross reference
+
+    , attrOntologyTerm  :: [T.Text]
+    -- ^ Ontology cross reference
+
+    , attrIsCircular    :: Maybe Bool
+    -- ^ Is the sequence circular (e.g. a mitochondrial or bacterial genome)
+
+    , attrUserDefined   :: [(T.Text, T.Text)]
+
+    -- ^ The tags defined above are all the tags with predefined meanings.
+    -- Users are free to use any additional flags they desire. These tags must
+    -- be lowercase, since the spec reserves uppercase tags be for future
+    -- official use.
+  
+  } deriving(Show,Eq,Ord)
+
+-- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
+-- columns are skipped. These may be added later, but for now I don't need
+-- them.
 data GffEntry = GffEntry {
-      gff_seqid    :: T.Text
+    gff_seqid    :: T.Text
+    -- ^ GFF column 1. The name of the genomic scaffold and chromosome to which the feature maps
+
     , gff_type     :: IntervalType
-    , gff_strand   :: Maybe Strand
+    -- ^ GFF column 3. The type of the feature. This must be a Sequence Ontology term or
+    -- identification id.
+
     , gff_interval :: Interval
-    , gff_attr     :: [(T.Text, T.Text)]
+    -- ^ GFF column 4 and 5. The 1-based start and stop positions of this
+    -- feature.
+
+    , gff_strand   :: Maybe Strand
+    -- ^ GFF column 7. The strand on which the interval resides. This must be one of the following:
+    --  * '+' - plus sense
+    --  * '-' - negative sense
+    --  * '.' - strand is irrelevant
+    --  * '?' - strand is relevant but unknown
+
+    , gff_attr     :: Attributes
+    -- ^ GFF column 9. Feature attributes (see 'Attributes')
   }
   deriving(Show,Eq,Ord)
-
-type Attribute = (T.Text, T.Text)
 
 
 type GParser a = T.Text -> ThrowsError a
@@ -127,13 +202,57 @@ readStrand s = case s of
   "." -> Right Nothing
   v   -> Left $ GffExpectStrand v
 
-readAttribute :: GParser [Attribute]
-readAttribute = sequence . map asAttr . map (T.splitOn "=") . T.splitOn ";" where
-  asAttr :: [T.Text] -> ThrowsError Attribute
-  asAttr []             = Left $ GffExpectAttribute ""
-  asAttr [tag,val]      = Right (tag , val)
-  asAttr [val]          = Right (""  , val)
-  asAttr fs             = Left $ GffExpectAttribute $ T.intercalate "=" fs
+readAttributes :: GParser Attributes
+readAttributes s = (sequence . map toPair . map (T.splitOn "=") . T.splitOn ";" $ s) >>= toAttr where
+
+  toPair :: [T.Text] -> ThrowsError (T.Text, T.Text)
+  toPair []             = Left $ GffExpectAttribute ""
+  toPair [tag,val]      = Right (tag , val)
+  toPair [val]          = Right (""  , val)
+  toPair fs             = Left $ GffExpectAttribute $ T.intercalate "=" fs
+
+  toAttr :: [(T.Text, T.Text)] -> ThrowsError Attributes
+  toAttr attr = case isCircular attr of
+    Right circular ->
+      Right $ Attributes {
+          attrID           = handleID attr
+        , attrName         = lookup    "NAME"          attr
+        , attrAlias        = maybeMany "Alias"         attr
+        , attrParent       = maybeMany "Parent"        attr
+        , attrTarget       = lookup    "Target"        attr
+        , attrGap          = lookup    "Gap"           attr
+        , attrDerivesFrom  = lookup    "Derives_from"  attr
+        , attrNote         = maybeMany "Note"          attr
+        , attrDbxref       = maybeMany "Dbxref"        attr
+        , attrOntologyTerm = maybeMany "Ontology_term" attr
+        , attrIsCircular   = circular
+        , attrUserDefined  = filter isUserDefined attr
+      }
+    Left msg -> Left msg
+    where
+      isCircular :: [(T.Text, T.Text)] -> ThrowsError (Maybe Bool)
+      isCircular a = case lookup "Is_circular" a of
+        Just "true"  -> Right $ Just True
+        Just "false" -> Right $ Just False
+        Nothing      -> Right $ Nothing
+        _            -> Left $ GFFAttributeError "Is_circular tag must be either 'true' or 'false'"
+
+  isUserDefined :: (T.Text, T.Text) -> Bool
+  isUserDefined (t,_) = T.length t > 0 && DC.isLower (T.head t)
+
+  handleID :: [(T.Text, T.Text)] -> Maybe T.Text
+  handleID a = case lookup "ID" a of
+    Just x  -> Just x
+    -- This interprets untagged value as an ID if no ID is provided
+    -- The spec does not require this, but I add it in to handle the shit
+    -- *certain* programs throw at us.
+    Nothing -> case lookup "" a of
+      Just x  -> Just x
+      Nothing -> Nothing
+
+  maybeMany k attrs = case lookup k attrs of
+    Just x -> T.splitOn "," x
+    Nothing -> []
 
 
 type GIFilter = (Integer,[T.Text]) -> Bool
@@ -163,15 +282,15 @@ readGff =
   where
     toGff :: [(Integer,[T.Text])] -> [ThrowsError GffEntry]
     toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
-      = case (readType typ, readInt a, readInt b, readStrand str, readAttribute attr) of
+      = case (readType typ, readInt a, readInt b, readStrand str, readAttributes attr) of
         -- If everything is good, make an entry
         (Right typ', Right a', Right b', Right str', Right attr') ->
           [ Right $
               GffEntry {
                   gff_seqid    = chr
                 , gff_type     = typ'
-                , gff_strand   = str'
                 , gff_interval = Interval a' b'
+                , gff_strand   = str'
                 , gff_attr     = attr'
               }
           ] ++ toGff xs

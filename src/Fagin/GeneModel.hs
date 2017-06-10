@@ -31,27 +31,41 @@ type IdMap = MS.Map EntryId GffEntry
 
 data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
 
-requireParent :: (Maybe Parent, GffEntry) -> ThrowsError (Maybe Parent, GffEntry)
-requireParent (Nothing, g) = case gff_type g of
-  Exon -> Left ModelExpectParent
-  CDS  -> Left ModelExpectParent
-  _    -> Right (Nothing, g)
+requireParent :: ([Parent], GffEntry) -> ThrowsError ([Parent], GffEntry)
+requireParent ([], g) = case gff_type g of
+  Exon -> Left $ ModelExpectParent (show g)
+  CDS  -> Left $ ModelExpectParent (show g)
+  _    -> Right ([], g)
 requireParent x = Right x
 
-extractParent :: IdMap -> GffEntry -> ThrowsError (Maybe Parent, GffEntry)
-extractParent m g = case lookup "Parent" (gff_attr g) of
-  Nothing -> Right $ (Nothing, g)
-  Just p -> case MS.lookup p m of
-    Nothing -> case p of
-      "-"  -> Right (Nothing, g)
-      "."  -> Right (Nothing, g)
-      "NA" -> Right (Nothing, g)
-      _    -> Left $ ModelInvalidParent
-    Just pg -> Right $ (Just (Parent p (gff_type pg)), g)
+extractParent :: IdMap -> GffEntry -> ThrowsError ([Parent], GffEntry)
+extractParent m g =
+  -- _ -> ThrowsError ([Parent], GffEntry)
+  fmap (\x -> (x, g)) .
+  -- _ -> ThrowsError [Parent]
+  sequence .
+  -- _ -> [ThrowsError Parent]
+  map (getParent m) .
+  -- [Text] -> [Text]
+  -- I have to add this filter because some programs don't follow the specs.
+  -- They add 'Parent' tags to things that don't have parents, like genes (i.e.
+  -- "Parent=-"). They shouldn't do this, they really should know better. But
+  -- I'm a lowly programer, my tools have to magically handle whatever
+  -- malformed trash gets thrown at it.
+  filter (/= "-") .
+  -- _ -> [Text] -- list of Parent ids
+  attrParent .
+  -- GffEntry -> Attributes
+  gff_attr $ g
+  where
+    getParent :: IdMap -> T.Text -> ThrowsError (Parent)
+    getParent m' p = case MS.lookup p m' of
+      Just pg  -> Right $ Parent p (gff_type pg)
+      Nothing  -> Left $ ModelInvalidParent
 
 mapEntries :: [GffEntry] -> IdMap
 mapEntries = MS.fromList . concatMap plist where
-  plist g = case lookup "ID" (gff_attr g) of
+  plist g = case attrID $ gff_attr g of
     Just p  -> [(p, g)]
     Nothing -> []
 
@@ -89,15 +103,16 @@ buildModels :: [GffEntry] -> ThrowsError [GeneModel]
 buildModels gs
   = (sequence . map extract' $ gs) >>=
     (sequence . map requireParent) >>=
-    return . removeOrphans         >>=
+    return . concatMap mRnaParent  >>=
     toModels
 
   where
-    extract' :: GffEntry -> ThrowsError (Maybe Parent, GffEntry)
+    extract' :: GffEntry -> ThrowsError ([Parent], GffEntry)
     extract' = extractParent (mapEntries gs)
 
-    -- remove entries without a defined parent
-    removeOrphans :: [(Maybe Parent, GffEntry)] -> [(Parent, GffEntry)]
-    removeOrphans ((Nothing, _):xs) = removeOrphans xs
-    removeOrphans ((Just p, g):xs)  = [(p,g)] ++ removeOrphans xs
-    removeOrphans [] = []
+    isMRna :: Parent -> Bool
+    isMRna (Parent _ MRna) = True
+    isMRna _               = False
+
+    mRnaParent :: ([Parent], GffEntry) -> [(Parent, GffEntry)]
+    mRnaParent (ps, g) = map (\p -> (p, g)) $ filter isMRna ps

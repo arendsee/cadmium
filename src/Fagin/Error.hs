@@ -15,7 +15,7 @@ data FaginError
   | MultiError [FaginError]
   -- Errors in gene models
   | ModelInvalidParent
-  | ModelExpectParent
+  | ModelExpectParent String
   | ModelStrandMissing
   | ModelStrandMismatch
   -- Errors in GFF files
@@ -25,6 +25,7 @@ data FaginError
   | GffExpectInteger    T.Text
   | GffExpectAttribute  T.Text
   | GffExpectStrand     T.Text
+  | GFFAttributeError   T.Text
   | GffLineError LineNumber FaginError
   deriving(Eq,Ord)
 
@@ -40,9 +41,9 @@ instance Monoid FaginError where
 
 instance Show FaginError where
   -- GeneModel
-  show ModelInvalidParent  = "ModelInvalidParent: 'Parent' tag matches no entry 'Id' tag"
-  show ModelExpectParent   = "ModelExpectParent: entry of this type ought to have a parent"
-  show ModelStrandMissing  = "ModelStrandMissing: CDS and exon entries specify no strand"
+  show ModelInvalidParent = "ModelInvalidParent: 'Parent' tag matches no entry 'Id' tag"
+  show (ModelExpectParent msg) = "ModelExpectParent: entry of this type ought to have a parent\n" ++ msg
+  show ModelStrandMissing = "ModelStrandMissing: CDS and exon entries specify no strand"
   show ModelStrandMismatch = "ModelStrandMismatch: all elements of a gene model must be on the same strand"
   -- GFF
   show (GffInvalidRowNumber xs)
@@ -59,3 +60,4 @@ instance Show FaginError where
   show NoError               = ""
   -- contectualize a GFF error with line information
   show (GffLineError i e) = "GFF line " ++ show i ++ ": " ++ show e
+  show (GFFAttributeError msg) = "GFFAttributeError: " ++ T.unpack msg

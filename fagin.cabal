@@ -31,6 +31,7 @@ library
                      Fagin.Interval
 
     build-depends: base,
+                   safe,
                    attoparsec,
                    containers,
                    bytestring,

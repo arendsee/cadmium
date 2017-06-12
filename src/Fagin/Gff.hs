@@ -57,11 +57,13 @@ module Fagin.Gff (
 ) where
 
 import qualified Data.Text as T
-import           Data.Monoid ((<>))
 import qualified Data.Char as DC
+import qualified Data.List as DL
+import qualified Data.List.Extra as DLE
+import qualified Control.Monad as CM
 
 import Fagin.Interval
-import Fagin.Report (ReportS, pass', fail', warn', note')
+import Fagin.Report (ReportS, pass', fail', warn')
 
 -- | Holds the types that are currently used by Fagin. I may extend this later.
 -- Since these types are required to be Sequence Ontology terms, I really ought
@@ -159,7 +161,7 @@ data GffEntry = GffEntry {
   deriving(Show,Eq,Ord)
 
 -- | Construct a GffEntry from the full data of a parsed GFF line
-gffEntry ::
+gffEntry
   :: T.Text       -- ^ seqid
   -> T.Text       -- ^ source
   -> IntervalType -- ^ type
@@ -169,7 +171,8 @@ gffEntry ::
   -> Maybe Strand -- ^ strand
   -> T.Text       -- ^ phase
   -> Attributes   -- ^ attributes
-gffEntry seqid source ftype start stop score strand phase attr = 
+  -> GffEntry
+gffEntry seqid _ ftype start stop _ strand _ attr = 
   GffEntry {
       gff_seqid    = seqid
     , gff_type     = ftype
@@ -230,13 +233,14 @@ readAttributes s =
     . map (T.splitOn "=")
     . T.splitOn ";"
     $ s
-  ) >>= toAttr >>= warnIfTagsRepeat where
+  ) >>= warnIfTagsRepeat >>= toAttr where
 
   toPair :: [T.Text] -> ReportS (T.Text, T.Text)
   toPair []             = fail' $ "GffExpectAttribute: expected attribute (<tag>=<val>), found ''"
   toPair [tag,val]      = pass' (tag , val)
   toPair [val]          = pass' (""  , val)
-  toPair fs             = fail' $ "GffExpectAttribute: expected attribute (<tag>=<val>), found '" ++ T.intercalate "=" fs ++ "'"
+  toPair fs             = fail' $ concat 
+    ["GffExpectAttribute: expected attribute (<tag>=<val>), found '", T.unpack $ T.intercalate "=" fs, "'"]
 
   toAttr :: [(T.Text, T.Text)] -> ReportS Attributes
   toAttr attr = toAttr' attr <$> isCircular attr
@@ -244,7 +248,7 @@ readAttributes s =
   -- There is certainly a cleaner way to do this ...
   toAttr' :: [(T.Text, T.Text)] -> (Maybe Bool) -> Attributes
   toAttr' attr circular = 
-    pass' $ Attributes {
+    Attributes {
         attrID           = handleID attr
       , attrName         = lookup    "NAME"          attr
       , attrAlias        = maybeMany "Alias"         attr
@@ -283,11 +287,11 @@ readAttributes s =
     Just x -> T.splitOn "," x
     Nothing -> []
 
-  warnIfTagsRepeat :: (Ord k) => [(k, b)] -> ReportS [(k, b)]
-  warnIfTagsRepeat ps = case filter (\(_,vs) -> length vs > 1) . DL.groupSort $ ps of
+  warnIfTagsRepeat :: (Ord k, Show k) => [(k, b)] -> ReportS [(k, b)]
+  warnIfTagsRepeat ps = case filter (\(_,vs) -> length vs > 1) . DLE.groupSort $ ps of
     [] -> pass' ps
-    es -> warn' $ "GFF attributes should appear once, offending tags: [" ++ tags ++ "]" where
-      tags = DL.intercalate ", " $ map first es
+    es -> pass' ps >>= warn' ("GFF attributes should appear once, offending tags: [" ++ tags ++ "]") where
+      tags = DL.intercalate ", " $ map (show . fst) es
 
 
 type GIFilter = (Integer,[T.Text]) -> Bool
@@ -302,7 +306,7 @@ empty _      = False
 
 readGff :: T.Text -> ReportS [GffEntry]
 readGff = 
-  sequence toGff         . -- Parse GFF entry and report errors. Die on first
+  CM.mapM toGff          . -- Parse GFF entry and report errors. Die on first
                            -- failed line. Most errors are highly repetitive
                            -- in GFFs, so just dying on the first failure
                            -- avoids extremely long error message. A better
@@ -318,7 +322,7 @@ readGff =
   T.lines                  -- this allows space in fields
 
   where
-    toGff (i, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
+    toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
       = gffEntry
       <$> pure           c1 -- seqid   (used as is)
       <*> pure           c2 -- source  (not used)

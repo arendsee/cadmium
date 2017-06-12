@@ -34,11 +34,10 @@ data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
 
 requireParent :: ([Parent], GffEntry) -> ReportS ([Parent], GffEntry)
 requireParent ([], g) = case gff_type g of
-  Exon -> fail $ ["ModelExpectParent: an exon must have a parent\n" ++ show g]
-  CDS  -> fail $ ["ModelExpectParent: a CDS must have a parent\n" ++ show g]
-  _    -> pass ([], g)
-    
-requireParent x = Right x
+  Exon -> fail' $ "ModelExpectParent: an exon must have a parent\n" ++ show g
+  CDS  -> fail' $ "ModelExpectParent: a CDS must have a parent\n" ++ show g
+  _    -> pass' ([], g)
+requireParent x = pass' x
 
 extractParent :: IdMap -> GffEntry -> ReportS ([Parent], GffEntry)
 extractParent m g =
@@ -70,13 +69,14 @@ extractParent m g =
     getParent :: IdMap -> T.Text -> ReportS (Parent)
     getParent m' p = case MS.lookup p m' of
       Just pg  -> pass' $ Parent p (gff_type pg)
-      Nothing  -> fail' $ unwords [
-        "ModelInvalidParent: In 'Parent=",
-        T.unpack s,
-        "', no matchinf 'Id' found\n",
-        " - Offending line:\n",
-        show g
-      ]
+      Nothing  -> fail' $ unwords
+        [
+            "ModelInvalidParent: In 'Parent="
+          , T.unpack p
+          , "', no matchinf 'Id' found\n"
+          , " - Offending line:\n"
+          , show g
+        ]
 
 
 mapEntries :: [GffEntry] -> IdMap

@@ -1,15 +1,11 @@
 import qualified Data.Text.IO as TIO
-import qualified System.IO as IO
 
-import Fagin (readModels)
+import Fagin (readModels, writeResultAndExit)
 
 gfffile :: String
 gfffile = "sample-data/test.gff"
 
-main :: IO ()
+main :: IO a
 main = do
-  dat <- TIO.readFile gfffile
-  case readModels dat of
-    Left err -> IO.hPutStrLn IO.stderr (" *** ERROR in " ++ gfffile ++ " ***\n") >>
-                IO.hPutStrLn IO.stderr (show err)
-    Right gff -> IO.hPutStrLn IO.stdout (show gff)
+  text <- TIO.readFile gfffile
+  writeResultAndExit $ readModels text

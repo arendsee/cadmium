@@ -4,15 +4,16 @@ module Fagin.BioSeq (BioSeq(..)) where
 
 import qualified Data.ByteString.Char8 as B
 
-import Fagin.Error
+-- import Fagin.Report
+--
+-- data DNA
+-- data AA
+-- data Unknown
 
 type RawSeq = B.ByteString
 type SeqId = B.ByteString
 type Desc = B.ByteString
 
-data DNA
-data AA
-data Unknown
 
 data BioSeq a
   = BioSeq {

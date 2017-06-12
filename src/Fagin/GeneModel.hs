@@ -11,8 +11,9 @@ import qualified Data.List as L
 import qualified Data.List.Extra as LE
 import qualified Data.Maybe as M
 
+import Prelude hiding(fail)
 import Fagin.Gff
-import Fagin.Error
+import Fagin.Report
 import Fagin.Interval
 
 data GeneModel = GeneModel {
@@ -31,14 +32,15 @@ type IdMap = MS.Map EntryId GffEntry
 
 data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
 
-requireParent :: ([Parent], GffEntry) -> ThrowsError ([Parent], GffEntry)
+requireParent :: ([Parent], GffEntry) -> ReportS ([Parent], GffEntry)
 requireParent ([], g) = case gff_type g of
-  Exon -> Left $ ModelExpectParent (show g)
-  CDS  -> Left $ ModelExpectParent (show g)
-  _    -> Right ([], g)
+  Exon -> fail $ ["ModelExpectParent: an exon must have a parent\n" ++ show g]
+  CDS  -> fail $ ["ModelExpectParent: a CDS must have a parent\n" ++ show g]
+  _    -> pass ([], g)
+    
 requireParent x = Right x
 
-extractParent :: IdMap -> GffEntry -> ThrowsError ([Parent], GffEntry)
+extractParent :: IdMap -> GffEntry -> ReportS ([Parent], GffEntry)
 extractParent m g =
 
   -- _ -> ThrowsError ([Parent], GffEntry)
@@ -65,10 +67,17 @@ extractParent m g =
   gff_attr $ g
 
   where
-    getParent :: IdMap -> T.Text -> ThrowsError (Parent)
+    getParent :: IdMap -> T.Text -> ReportS (Parent)
     getParent m' p = case MS.lookup p m' of
-      Just pg  -> Right $ Parent p (gff_type pg)
-      Nothing  -> Left $ ModelInvalidParent
+      Just pg  -> pass' $ Parent p (gff_type pg)
+      Nothing  -> fail' $ unwords [
+        "ModelInvalidParent: In 'Parent=",
+        T.unpack s,
+        "', no matchinf 'Id' found\n",
+        " - Offending line:\n",
+        show g
+      ]
+
 
 mapEntries :: [GffEntry] -> IdMap
 mapEntries = MS.fromList . concatMap plist where
@@ -76,7 +85,7 @@ mapEntries = MS.fromList . concatMap plist where
     Just p  -> [(p, g)]
     Nothing -> []
 
-toModels :: [(Parent, GffEntry)] -> ThrowsError [GeneModel]
+toModels :: [(Parent, GffEntry)] -> ReportS [GeneModel]
 toModels = sequence . map toModel . LE.groupSort where
 
   isExon :: GffEntry -> Bool
@@ -92,21 +101,21 @@ toModels = sequence . map toModel . LE.groupSort where
   -- TODO check that each CDS is subsumed by an exon
   -- TODO check that no exons overlap
 
-  toModel :: (Parent, [GffEntry]) -> ThrowsError GeneModel
+  toModel :: (Parent, [GffEntry]) -> ReportS GeneModel
   toModel ((Parent pid _), gs)
     = case L.group . M.catMaybes . map gff_strand $ gs of
       [(s:_)] ->
-        Right $ GeneModel {
+        pass' GeneModel {
             model_parent = Nothing
           , model_id     = pid
           , model_cds    = map gff_interval . filter isCDS  $ gs
           , model_exon   = map gff_interval . filter isExon $ gs
           , model_strand = s
         }
-      [] -> Left $ ModelStrandMissing
-      _  -> Left $ ModelStrandMismatch
+      [] -> fail' $ "ModelStrandMissing: CDS and exon entries specify no strand\n"
+      _  -> fail' $ "ModelStrandMismatch: all elements of a gene model must be on the same strand"
 
-buildModels :: [GffEntry] -> ThrowsError [GeneModel]
+buildModels :: [GffEntry] -> ReportS [GeneModel]
 buildModels gs
   = (sequence . map extract' $ gs) >>=
     (sequence . map requireParent) >>=
@@ -114,7 +123,7 @@ buildModels gs
     toModels
 
   where
-    extract' :: GffEntry -> ThrowsError ([Parent], GffEntry)
+    extract' :: GffEntry -> ReportS ([Parent], GffEntry)
     extract' = extractParent (mapEntries gs)
 
     isMRna :: Parent -> Bool

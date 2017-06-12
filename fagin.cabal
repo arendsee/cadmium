@@ -26,12 +26,13 @@ library
     exposed-modules: Fagin,
                      Fagin.Gff,
                      Fagin.BioSeq
-                     Fagin.Error,
+                     Fagin.Report,
                      Fagin.GeneModel,
                      Fagin.Interval
 
     build-depends: base,
                    safe,
+                   mtl,
                    attoparsec,
                    containers,
                    bytestring,

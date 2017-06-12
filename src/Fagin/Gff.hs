@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-
 {-|
 
 Perhaps the most error prone step of preparing data for Fagin is gathering
@@ -49,6 +48,7 @@ All of these need special consideration. Currently they are not handled.
 
 -}
 
+
 module Fagin.Gff (
     readGff
   , IntervalType(..)
@@ -61,7 +61,7 @@ import           Data.Monoid ((<>))
 import qualified Data.Char as DC
 
 import Fagin.Interval
-import Fagin.Error
+import Fagin.Report (ReportS, pass', fail', warn', note')
 
 -- | Holds the types that are currently used by Fagin. I may extend this later.
 -- Since these types are required to be Sequence Ontology terms, I really ought
@@ -158,85 +158,113 @@ data GffEntry = GffEntry {
   }
   deriving(Show,Eq,Ord)
 
+-- | Construct a GffEntry from the full data of a parsed GFF line
+gffEntry ::
+  :: T.Text       -- ^ seqid
+  -> T.Text       -- ^ source
+  -> IntervalType -- ^ type
+  -> Integer      -- ^ start
+  -> Integer      -- ^ stop
+  -> T.Text       -- ^ score
+  -> Maybe Strand -- ^ strand
+  -> T.Text       -- ^ phase
+  -> Attributes   -- ^ attributes
+gffEntry seqid source ftype start stop score strand phase attr = 
+  GffEntry {
+      gff_seqid    = seqid
+    , gff_type     = ftype
+    , gff_interval = Interval start stop
+    , gff_strand   = strand
+    , gff_attr     = attr
+  }
 
-type GParser a = T.Text -> ThrowsError a
+
+type GParser a = T.Text -> ReportS a
 
 readInt :: GParser Integer
 readInt s = case reads (T.unpack s) :: [(Integer,String)] of
-  [(x,"")] -> Right x
-  _        -> Left $ GffExpectInteger s
+  [(x,"")] -> pass' x
+  _        -> fail' $ "GffExpectInteger: expected integer, found '" ++ T.unpack s ++ "'"
 
 readType :: GParser IntervalType
 readType s = case s of
-  ""                -> Left  GffNoType
+  ""                -> fail' "GffNoType: exected <type> in column 3, found nothing"
 
-  "gene"            -> Right Gene
-  "SO:0000704"      -> Right Gene
+  "gene"            -> pass' Gene
+  "SO:0000704"      -> pass' Gene
 
-  "mRNA"            -> Right MRna
-  "messenger RNA"   -> Right MRna -- synonym
-  "SO:0000234"      -> Right MRna
+  "mRNA"            -> pass' MRna
+  "messenger RNA"   -> pass' MRna -- synonym
+  "SO:0000234"      -> pass' MRna
   -- - this may or may not be a coding transcript
   -- - technically, mRNA is_a transcript, and a CDS or exon is only transitively
   --   a part of ta transcript.
-  "transcript"      -> Right MRna
-  "SO:0000673"      -> Right MRna
+  "transcript"      -> pass' MRna
+  "SO:0000673"      -> pass' MRna
 
-  "CDS"             -> Right CDS
-  "coding_sequence" -> Right CDS -- synonym
-  "coding sequence" -> Right CDS -- synonym
-  "SO:0000316"      -> Right CDS
+  "CDS"             -> pass' CDS
+  "coding_sequence" -> pass' CDS -- synonym
+  "coding sequence" -> pass' CDS -- synonym
+  "SO:0000316"      -> pass' CDS
 
-  "exon"            -> Right Exon
-  "SO:0000147"      -> Right Exon
+  "exon"            -> pass' Exon
+  "SO:0000147"      -> pass' Exon
   -- This is slightly more specific then exon, hence the different SO id,
   -- however, it is not terribly common.
-  "coding_exon"     -> Right Exon
-  "coding exon"     -> Right Exon -- synonym
-  "SO:0000195"      -> Right Exon
-  x                 -> Right $ Other x
+  "coding_exon"     -> pass' Exon
+  "coding exon"     -> pass' Exon -- synonym
+  "SO:0000195"      -> pass' Exon
+  x                 -> pass' $ Other x
 
 readStrand :: GParser (Maybe Strand)
 readStrand s = case s of
-  "+" -> Right $ Just Plus
-  "-" -> Right $ Just Minus
-  "." -> Right Nothing
-  v   -> Left $ GffExpectStrand v
+  "+" -> pass' $ Just Plus
+  "-" -> pass' $ Just Minus
+  "." -> pass' Nothing
+  v   -> fail' $ "GffExpectStrand: expected strand ('+', '-' or '.'), found '" ++ T.unpack v ++ "."
 
 readAttributes :: GParser Attributes
-readAttributes s = (sequence . map toPair . map (T.splitOn "=") . T.splitOn ";" $ s) >>= toAttr where
+readAttributes s =
+  (   sequence
+    . map toPair
+    . map (T.splitOn "=")
+    . T.splitOn ";"
+    $ s
+  ) >>= toAttr >>= warnIfTagsRepeat where
 
-  toPair :: [T.Text] -> ThrowsError (T.Text, T.Text)
-  toPair []             = Left $ GffExpectAttribute ""
-  toPair [tag,val]      = Right (tag , val)
-  toPair [val]          = Right (""  , val)
-  toPair fs             = Left $ GffExpectAttribute $ T.intercalate "=" fs
+  toPair :: [T.Text] -> ReportS (T.Text, T.Text)
+  toPair []             = fail' $ "GffExpectAttribute: expected attribute (<tag>=<val>), found ''"
+  toPair [tag,val]      = pass' (tag , val)
+  toPair [val]          = pass' (""  , val)
+  toPair fs             = fail' $ "GffExpectAttribute: expected attribute (<tag>=<val>), found '" ++ T.intercalate "=" fs ++ "'"
 
-  toAttr :: [(T.Text, T.Text)] -> ThrowsError Attributes
-  toAttr attr = case isCircular attr of
-    Right circular ->
-      Right $ Attributes {
-          attrID           = handleID attr
-        , attrName         = lookup    "NAME"          attr
-        , attrAlias        = maybeMany "Alias"         attr
-        , attrParent       = maybeMany "Parent"        attr
-        , attrTarget       = lookup    "Target"        attr
-        , attrGap          = lookup    "Gap"           attr
-        , attrDerivesFrom  = lookup    "Derives_from"  attr
-        , attrNote         = maybeMany "Note"          attr
-        , attrDbxref       = maybeMany "Dbxref"        attr
-        , attrOntologyTerm = maybeMany "Ontology_term" attr
-        , attrIsCircular   = circular
-        , attrUserDefined  = filter isUserDefined attr
-      }
-    Left msg -> Left msg
-    where
-      isCircular :: [(T.Text, T.Text)] -> ThrowsError (Maybe Bool)
-      isCircular a = case lookup "Is_circular" a of
-        Just "true"  -> Right $ Just True
-        Just "false" -> Right $ Just False
-        Nothing      -> Right $ Nothing
-        _            -> Left $ GFFAttributeError "Is_circular tag must be either 'true' or 'false'"
+  toAttr :: [(T.Text, T.Text)] -> ReportS Attributes
+  toAttr attr = toAttr' attr <$> isCircular attr
+
+  -- There is certainly a cleaner way to do this ...
+  toAttr' :: [(T.Text, T.Text)] -> (Maybe Bool) -> Attributes
+  toAttr' attr circular = 
+    pass' $ Attributes {
+        attrID           = handleID attr
+      , attrName         = lookup    "NAME"          attr
+      , attrAlias        = maybeMany "Alias"         attr
+      , attrParent       = maybeMany "Parent"        attr
+      , attrTarget       = lookup    "Target"        attr
+      , attrGap          = lookup    "Gap"           attr
+      , attrDerivesFrom  = lookup    "Derives_from"  attr
+      , attrNote         = maybeMany "Note"          attr
+      , attrDbxref       = maybeMany "Dbxref"        attr
+      , attrOntologyTerm = maybeMany "Ontology_term" attr
+      , attrIsCircular   = circular
+      , attrUserDefined  = filter isUserDefined attr
+    }
+
+  isCircular :: [(T.Text, T.Text)] -> ReportS (Maybe Bool)
+  isCircular a = case lookup "Is_circular" a of
+    Just "true"  -> pass' $ Just True
+    Just "false" -> pass' $ Just False
+    Nothing      -> pass' $ Nothing
+    _            -> fail' $ "Is_circular tag must be either 'true' or 'false'"
 
   isUserDefined :: (T.Text, T.Text) -> Bool
   isUserDefined (t,_) = T.length t > 0 && DC.isLower (T.head t)
@@ -255,6 +283,12 @@ readAttributes s = (sequence . map toPair . map (T.splitOn "=") . T.splitOn ";" 
     Just x -> T.splitOn "," x
     Nothing -> []
 
+  warnIfTagsRepeat :: (Ord k) => [(k, b)] -> ReportS [(k, b)]
+  warnIfTagsRepeat ps = case filter (\(_,vs) -> length vs > 1) . DL.groupSort $ ps of
+    [] -> pass' ps
+    es -> warn' $ "GFF attributes should appear once, offending tags: [" ++ tags ++ "]" where
+      tags = DL.intercalate ", " $ map first es
+
 
 type GIFilter = (Integer,[T.Text]) -> Bool
 
@@ -266,11 +300,13 @@ empty :: GIFilter
 empty (_,[]) = True
 empty _      = False
 
-readGff :: T.Text -> ThrowsError [GffEntry]
-readGff =
-  sequence               . -- Merge errors, die on first failure
-
-  toGff                  . -- Parse GFF entry and report errors
+readGff :: T.Text -> ReportS [GffEntry]
+readGff = 
+  sequence toGff         . -- Parse GFF entry and report errors. Die on first
+                           -- failed line. Most errors are highly repetitive
+                           -- in GFFs, so just dying on the first failure
+                           -- avoids extremely long error message. A better
+                           -- solution would be to merge the similar errors.
 
   filter (not . empty)   . -- Filter out lines that are either empty
   filter (not . comment) . -- or start with a comment (#) character
@@ -280,26 +316,17 @@ readGff =
 
   map (T.splitOn "\t")   . -- Break tests by line and TAB. NOTE:
   T.lines                  -- this allows space in fields
+
   where
-    toGff :: [(Integer,[T.Text])] -> [ThrowsError GffEntry]
-    toGff ((i, [chr, _, typ, a, b, _, str, _, attr]):xs)
-      = case (readType typ, readInt a, readInt b, readStrand str, readAttributes attr) of
-        -- If everything is good, make an entry
-        (Right typ', Right a', Right b', Right str', Right attr') ->
-          [ Right $
-              GffEntry {
-                  gff_seqid    = chr
-                , gff_type     = typ'
-                , gff_interval = Interval a' b'
-                , gff_strand   = str'
-                , gff_attr     = attr'
-              }
-          ] ++ toGff xs
-        -- else, join the errors and annotate them with the line number
-        (typ', a', b', str', attr') -> [ Left (GffLineError i err) ] where
-          l :: ThrowsError a -> FaginError
-          l (Right _) = mempty
-          l (Left  e) = e
-          err = l typ' <> l a' <> l b' <> l str' <> l attr'
-    toGff [] = []
-    toGff ((i,fs):_) = [ Left $ GffLineError i (GffInvalidRowNumber fs) ]
+    toGff (i, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
+      = gffEntry
+      <$> pure           c1 -- seqid   (used as is)
+      <*> pure           c2 -- source  (not used)
+      <*> readType       c3 -- type    
+      <*> readInt        c4 -- start   
+      <*> readInt        c5 -- stop    
+      <*> pure           c6 -- score   (not used)
+      <*> readStrand     c7 -- strand  
+      <*> pure           c8 -- phase   (not used)
+      <*> readAttributes c9 -- attributes
+    toGff (i,fs) = fail' $ concat ["(GFF line ", show i, ") Expected 9 columns, found '", show (length fs), "'"]

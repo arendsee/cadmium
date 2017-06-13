@@ -17,13 +17,15 @@ import Fagin.Report
 import Fagin.Interval
 
 data GeneModel = GeneModel {
-      model_parent :: Maybe T.Text
-    , model_id     :: T.Text
-    , model_cds    :: [Interval]
-    , model_exon   :: [Interval]
-    , model_strand :: Strand
+      model_chrid  :: T.Text       -- ^ chromosome/scaffold
+    , model_parent :: Maybe T.Text -- ^ parent (a 'gene') is given
+    , model_id     :: T.Text       -- ^ the ID value (must be unique)
+    , model_cds    :: [Interval]   -- ^ list of coding intervals
+    , model_exon   :: [Interval]   -- ^ list of exon intervals
+    , model_strand :: Strand       -- ^ strand [+-.?]
   }
   deriving(Show)
+
 
 type ParentId = T.Text
 type EntryId = T.Text
@@ -88,32 +90,44 @@ mapEntries = MS.fromList . concatMap plist where
 toModels :: [(Parent, GffEntry)] -> ReportS [GeneModel]
 toModels = sequence . map toModel . LE.groupSort where
 
-  isExon :: GffEntry -> Bool
-  isExon g = case gff_type g of
-    Exon -> True
-    _    -> False
-
-  isCDS :: GffEntry -> Bool
-  isCDS g = case gff_type g of
-    CDS -> True
-    _   -> False
-
   -- TODO check that each CDS is subsumed by an exon
   -- TODO check that no exons overlap
 
   toModel :: (Parent, [GffEntry]) -> ReportS GeneModel
   toModel ((Parent pid _), gs)
     = case L.group . M.catMaybes . map gff_strand $ gs of
-      [(s:_)] ->
-        pass' GeneModel {
-            model_parent = Nothing
-          , model_id     = pid
-          , model_cds    = map gff_interval . filter isCDS  $ gs
-          , model_exon   = map gff_interval . filter isExon $ gs
-          , model_strand = s
-        }
+      [(s:_)] ->  GeneModel
+              <$> getChrid gs  -- model_chrid
+              <*> pure Nothing -- model_parent
+              <*> pure pid     -- model_id
+              <*> getCDS' gs   -- model_cds
+              <*> getExon' gs  -- model_exon
+              <*> pure s       -- model_strand
       [] -> fail' $ "ModelStrandMissing: CDS and exon entries specify no strand\n"
       _  -> fail' $ "ModelStrandMismatch: all elements of a gene model must be on the same strand"
+
+  getChrid :: [GffEntry] -> ReportS T.Text
+  getChrid gs = case L.group . map gff_seqid $ gs of
+    [(s:_)] -> pass' s
+    ss -> fail' $ "Gene model span multiple scaffolds: " ++
+                  L.intercalate ", " (map (T.unpack . head) ss)
+
+  getCDS' :: [GffEntry] -> ReportS [Interval]
+  getCDS' gs = pass' . map gff_interval . filter isCDS $ gs
+
+  isCDS :: GffEntry -> Bool
+  isCDS g = case gff_type g of
+    CDS -> True
+    _   -> False
+
+  isExon :: GffEntry -> Bool
+  isExon g = case gff_type g of
+    Exon -> True
+    _    -> False
+
+  getExon' :: [GffEntry] -> ReportS [Interval]
+  getExon' gs = pass' . map gff_interval . filter isExon $ gs
+
 
 buildModels :: [GffEntry] -> ReportS [GeneModel]
 buildModels gs

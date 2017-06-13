@@ -54,11 +54,13 @@ module Fagin.Gff (
   , IntervalType(..)
   , GffEntry(..)
   , Attributes(..)
+  , defaultAttributes
 ) where
 
 import qualified Data.Text as T
 import qualified Data.Char as DC
 import qualified Data.List as DL
+import qualified Data.Maybe as DM
 import qualified Data.List.Extra as DLE
 import qualified Control.Monad as CM
 
@@ -76,7 +78,14 @@ data IntervalType
   | Exon
   | Gene
   | Other T.Text
-  deriving(Show,Eq,Ord)
+  deriving(Eq,Ord)
+
+instance Show IntervalType where
+  show MRna      =  "mRNA"
+  show CDS       =  "CDS"
+  show Exon      =  "exon"
+  show Gene      =  "gene"
+  show (Other t) = T.unpack t
 
 -- | Attributes of a GFF entry, exactly according to the specification. The
 -- data constructors nearly follow the tag names, except that they have been
@@ -127,7 +136,50 @@ data Attributes
     -- official use.
     , attrUserDefined   :: [(T.Text, T.Text)]
   
-  } deriving(Show,Eq,Ord)
+  } deriving(Eq,Ord)
+
+defaultAttributes :: Attributes
+defaultAttributes = Attributes {
+      attrID            = Nothing
+    , attrName          = Nothing
+    , attrAlias         = []
+    , attrParent        = []
+    , attrTarget        = Nothing
+    , attrGap           = Nothing
+    , attrDerivesFrom   = Nothing
+    , attrNote          = []
+    , attrDbxref        = []
+    , attrOntologyTerm  = []
+    , attrIsCircular    = Nothing
+    , attrUserDefined   = []
+  }
+
+instance Show Attributes where
+  show g =
+    DL.intercalate ";" $ concat
+    [
+        maybeAttr "ID"           (attrID           g)
+      , maybeAttr "Name"         (attrName         g)
+      , listAttr  "Alias"        (attrAlias        g)
+      , listAttr  "Parent"       (attrParent       g)
+      , maybeAttr "Target"       (attrTarget       g)
+      , maybeAttr "Gap"          (attrGap          g)
+      , maybeAttr "DerivesFrom"  (attrDerivesFrom  g)
+      , listAttr  "Note"         (attrNote         g)
+      , listAttr  "Dbxref"       (attrDbxref       g)
+      , listAttr  "OntologyTerm" (attrOntologyTerm g)
+      , DM.maybe [] (\b -> if b then ["true"] else ["false"]) (attrIsCircular g)
+      , map (\(k,v) -> T.unpack k ++ "=" ++ T.unpack v) (attrUserDefined g)
+    ]
+    where
+    maybeAttr :: String -> (Maybe T.Text) -> [String]
+    maybeAttr s (Just t) = [s ++ "=" ++ T.unpack t]
+    maybeAttr _ Nothing  = []
+
+    listAttr :: String -> [T.Text] -> [String]
+    listAttr _ [] = []
+    listAttr s ts = [s ++ "=" ++ DL.intercalate "," (map T.unpack ts)]
+
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
 -- columns are skipped. These may be added later, but for now I don't need
@@ -158,7 +210,7 @@ data GffEntry = GffEntry {
     -- | GFF column 9. Feature attributes (see 'Attributes')
     , gff_attr     :: Attributes
   }
-  deriving(Show,Eq,Ord)
+  deriving(Eq,Ord)
 
 -- | Construct a GffEntry from the full data of a parsed GFF line
 gffEntry
@@ -180,6 +232,26 @@ gffEntry seqid _ ftype start stop _ strand _ attr =
     , gff_strand   = strand
     , gff_attr     = attr
   }
+
+instance Show GffEntry where
+  show GffEntry { 
+      gff_seqid    = seqid
+    , gff_type     = ftype
+    , gff_interval = Interval start stop
+    , gff_strand   = strand
+    , gff_attr     = attr
+  } = DL.intercalate "\t"
+    [
+        T.unpack $ seqid
+      , "."
+      , show $ ftype
+      , show start
+      , show stop
+      , "."
+      , maybe "." show strand
+      , "."
+      , show attr
+    ]
 
 
 type GParser a = T.Text -> ReportS a

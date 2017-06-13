@@ -3,6 +3,7 @@
 module Fagin.GeneModel (
     GeneModel(..)
   , buildModels
+  , model2gff
 ) where
 
 import qualified Data.Map.Strict as MS
@@ -23,12 +24,42 @@ data GeneModel = GeneModel {
     , model_cds    :: [Interval]   -- ^ list of coding intervals
     , model_exon   :: [Interval]   -- ^ list of exon intervals
     , model_strand :: Strand       -- ^ strand [+-.?]
-  }
-  deriving(Show)
+  } deriving(Show)
 
-instance Show GeneModel where
-  show gm = T.unpack model_chrid gm ++ "\t" ++ T.unpack 
+model2gff :: GeneModel -> ReportS [GffEntry]
+model2gff GeneModel { model_cds = [], model_exon = [] } = fail' "InvalidModel: no CDS or exons"
+model2gff GeneModel {
+      model_chrid  = chrid'
+    , model_parent = parent'
+    , model_id     = id'
+    , model_cds    = cds'
+    , model_exon   = exon'
+    , model_strand = strand'
+  } = pass' $ [mrnaGff] ++ cdsGff ++ exonGff
+  where
+    mrnaGff = GffEntry {
+        gff_seqid    = chrid'
+      , gff_type     = MRna
+      , gff_interval = foldl1 intervalSpan (cds' ++ exon')
+      , gff_strand   = Just strand'
+      , gff_attr     = defaultAttributes
+        {
+            attrID     = Just id'
+          , attrParent = M.maybe [] (\s -> [s]) parent' 
+        }
+    }
 
+    cdsGff = map (newChild CDS) cds'
+    exonGff = map (newChild Exon) exon'
+
+    newChild :: IntervalType -> Interval -> GffEntry
+    newChild t i = GffEntry {
+        gff_seqid    = chrid'
+      , gff_type     = t
+      , gff_interval = i
+      , gff_strand   = Just strand'
+      , gff_attr     = defaultAttributes { attrParent = [id'] }
+    }
 
 type ParentId = T.Text
 type EntryId = T.Text

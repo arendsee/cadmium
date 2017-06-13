@@ -4,6 +4,7 @@ module Fagin
   , GeneModel
   , writeResult
   , writeResultAndExit
+  , model2gff
 ) where
 
 import Fagin.Gff

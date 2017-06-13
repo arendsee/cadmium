@@ -187,11 +187,11 @@ type GParser a = T.Text -> ReportS a
 readInt :: GParser Integer
 readInt s = case reads (T.unpack s) :: [(Integer,String)] of
   [(x,"")] -> pass' x
-  _        -> fail' $ "GffExpectInteger: expected integer, found '" ++ T.unpack s ++ "'"
+  _        -> fail' $ "GffParse: expected integer, found '" ++ T.unpack s ++ "'"
 
 readType :: GParser IntervalType
 readType s = case s of
-  ""                -> fail' "GffNoType: exected <type> in column 3, found nothing"
+  ""                -> fail' "GffParse: exected <type> in column 3, found nothing"
 
   "gene"            -> pass' Gene
   "SO:0000704"      -> pass' Gene
@@ -223,8 +223,9 @@ readStrand :: GParser (Maybe Strand)
 readStrand s = case s of
   "+" -> pass' $ Just Plus
   "-" -> pass' $ Just Minus
-  "." -> pass' Nothing
-  v   -> fail' $ "GffExpectStrand: expected strand ('+', '-' or '.'), found '" ++ T.unpack v ++ "."
+  "." -> pass' Nothing -- The distinction between '.' and '?' is a nuance I
+  "?" -> pass' Nothing -- will ignore for now
+  v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ T.unpack v
 
 readAttributes :: GParser Attributes
 readAttributes s =
@@ -236,11 +237,11 @@ readAttributes s =
   ) >>= warnIfTagsRepeat >>= toAttr where
 
   toPair :: [T.Text] -> ReportS (T.Text, T.Text)
-  toPair []             = fail' $ "GffExpectAttribute: expected attribute (<tag>=<val>), found ''"
+  toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
   toPair [tag,val]      = pass' (tag , val)
   toPair [val]          = pass' (""  , val)
   toPair fs             = fail' $ concat 
-    ["GffExpectAttribute: expected attribute (<tag>=<val>), found '", T.unpack $ T.intercalate "=" fs, "'"]
+    ["GffAttribute: expected attribute (<tag>=<val>), found '", T.unpack $ T.intercalate "=" fs, "'"]
 
   toAttr :: [(T.Text, T.Text)] -> ReportS Attributes
   toAttr attr = toAttr' attr <$> isCircular attr
@@ -268,7 +269,7 @@ readAttributes s =
     Just "true"  -> pass' $ Just True
     Just "false" -> pass' $ Just False
     Nothing      -> pass' $ Nothing
-    _            -> fail' $ "Is_circular tag must be either 'true' or 'false'"
+    _            -> fail' $ "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
 
   isUserDefined :: (T.Text, T.Text) -> Bool
   isUserDefined (t,_) = T.length t > 0 && DC.isLower (T.head t)
@@ -290,7 +291,7 @@ readAttributes s =
   warnIfTagsRepeat :: (Ord k, Show k) => [(k, b)] -> ReportS [(k, b)]
   warnIfTagsRepeat ps = case filter (\(_,vs) -> length vs > 1) . DLE.groupSort $ ps of
     [] -> pass' ps
-    es -> pass' ps >>= warn' ("GFF attributes should appear once, offending tags: [" ++ tags ++ "]") where
+    es -> pass' ps >>= warn' ("GFFAttribute: each tag may appear only once, offending tag(s): [" ++ tags ++ "]") where
       tags = DL.intercalate ", " $ map (show . fst) es
 
 

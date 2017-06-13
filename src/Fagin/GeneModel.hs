@@ -26,6 +26,9 @@ data GeneModel = GeneModel {
   }
   deriving(Show)
 
+instance Show GeneModel where
+  show gm = T.unpack model_chrid gm ++ "\t" ++ T.unpack 
+
 
 type ParentId = T.Text
 type EntryId = T.Text
@@ -36,8 +39,8 @@ data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
 
 requireParent :: ([Parent], GffEntry) -> ReportS ([Parent], GffEntry)
 requireParent ([], g) = case gff_type g of
-  Exon -> fail' $ "ModelExpectParent: an exon must have a parent\n" ++ show g
-  CDS  -> fail' $ "ModelExpectParent: a CDS must have a parent\n" ++ show g
+  Exon -> fail' $ "FeatureExpectParent: exon must have a parent\n" ++ show g
+  CDS  -> fail' $ "FeatureExpectParent: CDS must have a parent\n" ++ show g
   _    -> pass' ([], g)
 requireParent x = pass' x
 
@@ -73,7 +76,7 @@ extractParent m g =
       Just pg  -> pass' $ Parent p (gff_type pg)
       Nothing  -> fail' $ unwords
         [
-            "ModelInvalidParent: In 'Parent="
+            "FeatureInvalidParent: In 'Parent="
           , T.unpack p
           , "', no matchinf 'Id' found\n"
           , " - Offending line:\n"
@@ -103,13 +106,13 @@ toModels = sequence . map toModel . LE.groupSort where
               <*> getCDS' gs   -- model_cds
               <*> getExon' gs  -- model_exon
               <*> pure s       -- model_strand
-      [] -> fail' $ "ModelStrandMissing: CDS and exon entries specify no strand\n"
-      _  -> fail' $ "ModelStrandMismatch: all elements of a gene model must be on the same strand"
+      [] -> fail' $ "InvalidGeneModel: CDS and exon entries specify no strand\n"
+      _  -> fail' $ "InvalidGeneModel: all elements of a gene model must be on the same strand"
 
   getChrid :: [GffEntry] -> ReportS T.Text
   getChrid gs = case L.group . map gff_seqid $ gs of
     [(s:_)] -> pass' s
-    ss -> fail' $ "Gene model span multiple scaffolds: " ++
+    ss -> fail' $ "InvalidGeneModel: model span multiple scaffolds: " ++
                   L.intercalate ", " (map (T.unpack . head) ss)
 
   getCDS' :: [GffEntry] -> ReportS [Interval]

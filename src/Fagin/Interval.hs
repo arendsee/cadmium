@@ -1,19 +1,20 @@
 module Fagin.Interval (
     Strand(..)
   , Interval(..)
-  , intervalSpan
 ) where
+
+import Fagin.Prelude
 
 data Strand
   = Plus
   | Minus
-  deriving(Ord,Eq)
+  deriving(Ord,Eq,Show)
 
-instance Show Strand where
-  show Plus  = "+"
-  show Minus = "-"
+instance BShow Strand where
+  bshow Plus  = "+"
+  bshow Minus = "-"
 
-data Interval = Interval Integer Integer deriving(Show,Ord,Eq)
+data Interval = Interval Integer Integer deriving(Ord,Eq,Show)
 
-intervalSpan :: Interval -> Interval -> Interval
-intervalSpan (Interval a1 b1) (Interval a2 b2) = Interval (min a1 a2) (max b1 b2) 
+instance Semigroup Interval where
+  (Interval a1 b1) <> (Interval a2 b2) = Interval (min a1 a2) (max b1 b2) 

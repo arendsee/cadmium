@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Fagin.GeneModel (
     GeneModel(..)
   , buildModels
@@ -7,50 +5,46 @@ module Fagin.GeneModel (
 ) where
 
 import qualified Data.Map.Strict as MS
-import qualified Data.Text as T
-import qualified Data.List as L
 import qualified Data.List.Extra as LE
-import qualified Data.Maybe as M
 
-import Prelude hiding(fail)
+import Fagin.Prelude
 import Fagin.Gff
 import Fagin.Report
 import Fagin.Interval
 
 data GeneModel = GeneModel {
-      model_chrid  :: T.Text       -- ^ chromosome/scaffold
-    , model_parent :: Maybe T.Text -- ^ parent (a 'gene') is given
-    , model_id     :: T.Text       -- ^ the ID value (must be unique)
-    , model_cds    :: [Interval]   -- ^ list of coding intervals
-    , model_exon   :: [Interval]   -- ^ list of exon intervals
-    , model_strand :: Strand       -- ^ strand [+-.?]
+      model_chrid  :: ByteString       -- ^ chromosome/scaffold
+    , model_parent :: Maybe ByteString -- ^ parent (a 'gene') is given
+    , model_id     :: ByteString       -- ^ the ID value (must be unique)
+    , model_cds    :: [Interval]       -- ^ list of coding intervals
+    , model_exon   :: [Interval]       -- ^ list of exon intervals
+    , model_strand :: Strand           -- ^ strand [+-.?]
   } deriving(Show)
 
 model2gff :: GeneModel -> ReportS [GffEntry]
-model2gff GeneModel { model_cds = [], model_exon = [] } = fail' "InvalidModel: no CDS or exons"
 model2gff GeneModel {
       model_chrid  = chrid'
     , model_parent = parent'
     , model_id     = id'
-    , model_cds    = cds'
-    , model_exon   = exon'
+    , model_cds    = cdss
+    , model_exon   = (exon0:exons) -- require at least one exon
     , model_strand = strand'
   } = pass' $ [mrnaGff] ++ cdsGff ++ exonGff
   where
     mrnaGff = GffEntry {
         gff_seqid    = chrid'
       , gff_type     = MRna
-      , gff_interval = foldl1 intervalSpan (cds' ++ exon')
+      , gff_interval = foldl' (<>) exon0 (cdss ++ exons)
       , gff_strand   = Just strand'
       , gff_attr     = defaultAttributes
         {
             attrID     = Just id'
-          , attrParent = M.maybe [] (\s -> [s]) parent' 
+          , attrParent = maybe [] (\s -> [s]) parent' 
         }
     }
 
-    cdsGff = map (newChild CDS) cds'
-    exonGff = map (newChild Exon) exon'
+    cdsGff = map (newChild CDS) cdss
+    exonGff = map (newChild Exon) (exon0:exons)
 
     newChild :: IntervalType -> Interval -> GffEntry
     newChild t i = GffEntry {
@@ -60,9 +54,10 @@ model2gff GeneModel {
       , gff_strand   = Just strand'
       , gff_attr     = defaultAttributes { attrParent = [id'] }
     }
+model2gff _ = fail' "InvalidModel: no exons"
 
-type ParentId = T.Text
-type EntryId = T.Text
+type ParentId = ByteString
+type EntryId = ByteString
 
 type IdMap = MS.Map EntryId GffEntry
 
@@ -70,8 +65,8 @@ data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
 
 requireParent :: ([Parent], GffEntry) -> ReportS ([Parent], GffEntry)
 requireParent ([], g) = case gff_type g of
-  Exon -> fail' $ "FeatureExpectParent: exon must have a parent\n" ++ show g
-  CDS  -> fail' $ "FeatureExpectParent: CDS must have a parent\n" ++ show g
+  Exon -> fail' $ "FeatureExpectParent: exon must have a parent\n" ++ bshow g
+  CDS  -> fail' $ "FeatureExpectParent: CDS must have a parent\n" ++ bshow g
   _    -> pass' ([], g)
 requireParent x = pass' x
 
@@ -87,7 +82,7 @@ extractParent m g =
   -- _ -> [ThrowsError Parent]
   map (getParent m) .
 
-  -- [Text] -> [Text]
+  -- [ByteString] -> [ByteString]
   -- I have to add this filter because some programs don't follow the specs.
   -- They add 'Parent' tags to things that don't have parents, like genes (i.e.
   -- "Parent=-"). They shouldn't do this, they really should know better. But
@@ -95,28 +90,29 @@ extractParent m g =
   -- malformed trash gets thrown at it.
   filter (/= "-") .
 
-  -- _ -> [Text] -- list of Parent ids
+  -- _ -> [ByteString] -- list of Parent ids
   attrParent .
 
   -- GffEntry -> Attributes
   gff_attr $ g
 
   where
-    getParent :: IdMap -> T.Text -> ReportS (Parent)
-    getParent m' p = case MS.lookup p m' of
+    getParent :: IdMap -> ByteString -> ReportS (Parent)
+    getParent m' p = case lookup p m' of
       Just pg  -> pass' $ Parent p (gff_type pg)
       Nothing  -> fail' $ unwords
         [
             "FeatureInvalidParent: In 'Parent="
-          , T.unpack p
+          , p
           , "', no matchinf 'Id' found\n"
           , " - Offending line:\n"
-          , show g
+          , bshow g
         ]
 
 
 mapEntries :: [GffEntry] -> IdMap
 mapEntries = MS.fromList . concatMap plist where
+  plist :: GffEntry -> [(ByteString, GffEntry)]
   plist g = case attrID $ gff_attr g of
     Just p  -> [(p, g)]
     Nothing -> []
@@ -129,7 +125,7 @@ toModels = sequence . map toModel . LE.groupSort where
 
   toModel :: (Parent, [GffEntry]) -> ReportS GeneModel
   toModel ((Parent pid _), gs)
-    = case L.group . M.catMaybes . map gff_strand $ gs of
+    = case group . catMaybes . map gff_strand $ gs of
       [(s:_)] ->  GeneModel
               <$> getChrid gs  -- model_chrid
               <*> pure Nothing -- model_parent
@@ -140,11 +136,11 @@ toModels = sequence . map toModel . LE.groupSort where
       [] -> fail' $ "InvalidGeneModel: CDS and exon entries specify no strand\n"
       _  -> fail' $ "InvalidGeneModel: all elements of a gene model must be on the same strand"
 
-  getChrid :: [GffEntry] -> ReportS T.Text
-  getChrid gs = case L.group . map gff_seqid $ gs of
+  getChrid :: [GffEntry] -> ReportS ByteString 
+  getChrid gs = case group . map gff_seqid $ gs of
     [(s:_)] -> pass' s
     ss -> fail' $ "InvalidGeneModel: model span multiple scaffolds: " ++
-                  L.intercalate ", " (map (T.unpack . head) ss)
+                  intercalate ", " (mapMaybe headMay ss)
 
   getCDS' :: [GffEntry] -> ReportS [Interval]
   getCDS' gs = pass' . map gff_interval . filter isCDS $ gs

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 {-|
 
 Perhaps the most error prone step of preparing data for Fagin is gathering
@@ -57,13 +55,9 @@ module Fagin.Gff (
   , defaultAttributes
 ) where
 
-import qualified Data.Text as T
-import qualified Data.Char as DC
-import qualified Data.List as DL
-import qualified Data.Maybe as DM
-import qualified Data.List.Extra as DLE
-import qualified Control.Monad as CM
+import Data.ByteString.Char8 (readInteger)
 
+import Fagin.Prelude
 import Fagin.Interval
 import Fagin.Report (ReportS, pass', fail', warn')
 
@@ -77,15 +71,15 @@ data IntervalType
   | CDS
   | Exon
   | Gene
-  | Other T.Text
-  deriving(Eq,Ord)
+  | Other ByteString
+  deriving(Eq,Ord,Show)
 
-instance Show IntervalType where
-  show MRna      =  "mRNA"
-  show CDS       =  "CDS"
-  show Exon      =  "exon"
-  show Gene      =  "gene"
-  show (Other t) = T.unpack t
+instance BShow IntervalType where
+  bshow MRna      = "mRNA"
+  bshow CDS       = "CDS"
+  bshow Exon      = "exon"
+  bshow Gene      = "gene"
+  bshow (Other t) = t
 
 -- | Attributes of a GFF entry, exactly according to the specification. The
 -- data constructors nearly follow the tag names, except that they have been
@@ -96,36 +90,36 @@ data Attributes
     -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
-    attrID              :: Maybe T.Text
+    attrID              :: Maybe ByteString
 
     -- | The display name of the feature. Does not have to be unique.
-    , attrName          :: Maybe T.Text
+    , attrName          :: Maybe ByteString
 
     -- | List of aliases for the feature (for example locus and model ids)
-    , attrAlias         :: [T.Text]
+    , attrAlias         :: [ByteString]
 
     -- | List of parents of this feature. Indicates a part_of relationship.
-    , attrParent        :: [T.Text]
+    , attrParent        :: [ByteString]
 
     -- | Not currently used by Fagin
-    , attrTarget        :: Maybe T.Text
+    , attrTarget        :: Maybe ByteString
     
     -- | Not currently used by Fagin
-    , attrGap           :: Maybe T.Text
+    , attrGap           :: Maybe ByteString
 
     -- | Not currently used by Fagin
-    , attrDerivesFrom   :: Maybe T.Text
+    , attrDerivesFrom   :: Maybe ByteString
 
     -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
-    , attrNote          :: [T.Text]
+    , attrNote          :: [ByteString]
     
     -- | A database cross reference
-    , attrDbxref        :: [T.Text]
+    , attrDbxref        :: [ByteString]
 
     -- | Ontology cross reference
-    , attrOntologyTerm  :: [T.Text]
+    , attrOntologyTerm  :: [ByteString]
 
     -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
     , attrIsCircular    :: Maybe Bool
@@ -134,9 +128,9 @@ data Attributes
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
-    , attrUserDefined   :: [(T.Text, T.Text)]
+    , attrUserDefined   :: [(ByteString, ByteString)]
   
-  } deriving(Eq,Ord)
+  } deriving(Eq,Ord,Show)
 
 defaultAttributes :: Attributes
 defaultAttributes = Attributes {
@@ -154,9 +148,9 @@ defaultAttributes = Attributes {
     , attrUserDefined   = []
   }
 
-instance Show Attributes where
-  show g =
-    DL.intercalate ";" $ concat
+instance BShow Attributes where
+  bshow g =
+    intercalate ";" $ concat
     [
         maybeAttr "ID"           (attrID           g)
       , maybeAttr "Name"         (attrName         g)
@@ -168,17 +162,17 @@ instance Show Attributes where
       , listAttr  "Note"         (attrNote         g)
       , listAttr  "Dbxref"       (attrDbxref       g)
       , listAttr  "OntologyTerm" (attrOntologyTerm g)
-      , DM.maybe [] (\b -> if b then ["true"] else ["false"]) (attrIsCircular g)
-      , map (\(k,v) -> T.unpack k ++ "=" ++ T.unpack v) (attrUserDefined g)
+      , maybe [] (\b -> if b then ["true"] else ["false"]) (attrIsCircular g)
+      , map (\(k,v) -> k ++ "=" ++ v) (attrUserDefined g)
     ]
     where
-    maybeAttr :: String -> (Maybe T.Text) -> [String]
-    maybeAttr s (Just t) = [s ++ "=" ++ T.unpack t]
+    maybeAttr :: ByteString -> (Maybe ByteString) -> [ByteString]
+    maybeAttr s (Just t) = [s ++ "=" ++ t]
     maybeAttr _ Nothing  = []
 
-    listAttr :: String -> [T.Text] -> [String]
+    listAttr :: ByteString -> [ByteString] -> [ByteString]
     listAttr _ [] = []
-    listAttr s ts = [s ++ "=" ++ DL.intercalate "," (map T.unpack ts)]
+    listAttr s ts = [s ++ "=" ++ intercalate "," ts]
 
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
@@ -188,7 +182,7 @@ data GffEntry = GffEntry {
 
     -- | GFF column 1. The name of the genomic scaffold and chromosome to which
     -- the feature maps
-    gff_seqid    :: T.Text
+    gff_seqid    :: ByteString
 
     -- | GFF column 3. The type of the feature. This must be a Sequence
     -- Ontology term or identification id.
@@ -210,18 +204,18 @@ data GffEntry = GffEntry {
     -- | GFF column 9. Feature attributes (see 'Attributes')
     , gff_attr     :: Attributes
   }
-  deriving(Eq,Ord)
+  deriving(Eq,Ord,Show)
 
 -- | Construct a GffEntry from the full data of a parsed GFF line
 gffEntry
-  :: T.Text       -- ^ seqid
-  -> T.Text       -- ^ source
+  :: ByteString       -- ^ seqid
+  -> ByteString       -- ^ source
   -> IntervalType -- ^ type
   -> Integer      -- ^ start
   -> Integer      -- ^ stop
-  -> T.Text       -- ^ score
+  -> ByteString       -- ^ score
   -> Maybe Strand -- ^ strand
-  -> T.Text       -- ^ phase
+  -> ByteString       -- ^ phase
   -> Attributes   -- ^ attributes
   -> GffEntry
 gffEntry seqid _ ftype start stop _ strand _ attr = 
@@ -233,33 +227,33 @@ gffEntry seqid _ ftype start stop _ strand _ attr =
     , gff_attr     = attr
   }
 
-instance Show GffEntry where
-  show GffEntry { 
+instance BShow GffEntry where
+  bshow GffEntry { 
       gff_seqid    = seqid
     , gff_type     = ftype
     , gff_interval = Interval start stop
     , gff_strand   = strand
     , gff_attr     = attr
-  } = DL.intercalate "\t"
+  } = intercalate "\t"
     [
-        T.unpack $ seqid
+        seqid
       , "."
-      , show $ ftype
-      , show start
-      , show stop
+      , bshow ftype
+      , bshow start
+      , bshow stop
       , "."
-      , maybe "." show strand
+      , maybe "." bshow strand
       , "."
-      , show attr
+      , bshow attr
     ]
 
 
-type GParser a = T.Text -> ReportS a
+type GParser a = ByteString -> ReportS a
 
 readInt :: GParser Integer
-readInt s = case reads (T.unpack s) :: [(Integer,String)] of
-  [(x,"")] -> pass' x
-  _        -> fail' $ "GffParse: expected integer, found '" ++ T.unpack s ++ "'"
+readInt s = case readInteger s of
+  Just (x,"") -> pass' x
+  _ -> fail' $ "GffParse: expected integer, found '" ++ s ++ "'"
 
 readType :: GParser IntervalType
 readType s = case s of
@@ -297,29 +291,29 @@ readStrand s = case s of
   "-" -> pass' $ Just Minus
   "." -> pass' Nothing -- The distinction between '.' and '?' is a nuance I
   "?" -> pass' Nothing -- will ignore for now
-  v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ T.unpack v
+  v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ v
 
 readAttributes :: GParser Attributes
 readAttributes s =
   (   sequence
     . map toPair
-    . map (T.splitOn "=")
-    . T.splitOn ";"
+    . map (splitSeq "=")
+    . splitSeq ";"
     $ s
   ) >>= warnIfTagsRepeat >>= toAttr where
 
-  toPair :: [T.Text] -> ReportS (T.Text, T.Text)
+  toPair :: [ByteString] -> ReportS (ByteString, ByteString)
   toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
   toPair [tag,val]      = pass' (tag , val)
   toPair [val]          = pass' (""  , val)
   toPair fs             = fail' $ concat 
-    ["GffAttribute: expected attribute (<tag>=<val>), found '", T.unpack $ T.intercalate "=" fs, "'"]
+    ["GffAttribute: expected attribute (<tag>=<val>), found '", intercalate "=" fs, "'"]
 
-  toAttr :: [(T.Text, T.Text)] -> ReportS Attributes
+  toAttr :: [(ByteString, ByteString)] -> ReportS Attributes
   toAttr attr = toAttr' attr <$> isCircular attr
 
   -- There is certainly a cleaner way to do this ...
-  toAttr' :: [(T.Text, T.Text)] -> (Maybe Bool) -> Attributes
+  toAttr' :: [(ByteString, ByteString)] -> (Maybe Bool) -> Attributes
   toAttr' attr circular = 
     Attributes {
         attrID           = handleID attr
@@ -336,17 +330,18 @@ readAttributes s =
       , attrUserDefined  = filter isUserDefined attr
     }
 
-  isCircular :: [(T.Text, T.Text)] -> ReportS (Maybe Bool)
+  isCircular :: [(ByteString, ByteString)] -> ReportS (Maybe Bool)
   isCircular a = case lookup "Is_circular" a of
     Just "true"  -> pass' $ Just True
     Just "false" -> pass' $ Just False
     Nothing      -> pass' $ Nothing
     _            -> fail' $ "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
 
-  isUserDefined :: (T.Text, T.Text) -> Bool
-  isUserDefined (t,_) = T.length t > 0 && DC.isLower (T.head t)
+  isUserDefined :: (ByteString, ByteString) -> Bool
+  isUserDefined (t,_) = maybe False isLower (headMay t) where
+    isLower = \c -> c <= 122 && c >= 97
 
-  handleID :: [(T.Text, T.Text)] -> Maybe T.Text
+  handleID :: [(ByteString, ByteString)] -> Maybe ByteString
   handleID a = case lookup "ID" a of
     Just x  -> Just x
     -- This interprets untagged value as an ID if no ID is provided
@@ -357,42 +352,42 @@ readAttributes s =
       Nothing -> Nothing
 
   maybeMany k attrs = case lookup k attrs of
-    Just x -> T.splitOn "," x
+    Just x -> splitSeq "," x
     Nothing -> []
 
-  warnIfTagsRepeat :: (Ord k, Show k) => [(k, b)] -> ReportS [(k, b)]
-  warnIfTagsRepeat ps = case filter (\(_,vs) -> length vs > 1) . DLE.groupSort $ ps of
+  warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
+  warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of
     [] -> pass' ps
     es -> pass' ps >>= warn' ("GFFAttribute: each tag may appear only once, offending tag(s): [" ++ tags ++ "]") where
-      tags = DL.intercalate ", " $ map (show . fst) es
+      tags = intercalate ", " es
 
 
-type GIFilter = (Integer,[T.Text]) -> Bool
+type GIFilter = (Integer,[ByteString]) -> Bool
 
-comment :: GIFilter
-comment (_,(x:_)) = T.isPrefixOf (T.singleton '#') x
-comment _ = True
+comment' :: GIFilter
+comment' (_,(x:_)) = isPrefixOf "#" x
+comment' _ = True
 
-empty :: GIFilter
-empty (_,[]) = True
-empty _      = False
+empty' :: GIFilter
+empty' (_,[]) = True
+empty' _      = False
 
-readGff :: T.Text -> ReportS [GffEntry]
+readGff :: ByteString -> ReportS [GffEntry]
 readGff = 
-  CM.mapM toGff          . -- Parse GFF entry and report errors. Die on first
-                           -- failed line. Most errors are highly repetitive
-                           -- in GFFs, so just dying on the first failure
-                           -- avoids extremely long error message. A better
-                           -- solution would be to merge the similar errors.
+  mapM toGff              . -- Parse GFF entry and report errors. Die on first
+                            -- failed line. Most errors are highly repetitive
+                            -- in GFFs, so just dying on the first failure
+                            -- avoids extremely long error message. A better
+                            -- solution would be to merge the similar errors.
 
-  filter (not . empty)   . -- Filter out lines that are either empty
-  filter (not . comment) . -- or start with a comment (#) character
+  filter (not . empty')   . -- Filter out lines that are either empty
+  filter (not . comment') . -- or start with a comment (#) character
 
-  zip [1..]              . -- Add line numbers. This must precede filters
-                           -- so line numbering in error messages is correct
-
-  map (T.splitOn "\t")   . -- Break tests by line and TAB. NOTE:
-  T.lines                  -- this allows space in fields
+  zip [1..]               . -- Add line numbers. This must precede filters
+                            -- so line numbering in error messages is correct
+                          
+  map (splitSeq "\t")     . -- Break tests by line and TAB. NOTE:
+  lines                     -- this allows space in fields
 
   where
     toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
@@ -406,4 +401,4 @@ readGff =
       <*> readStrand     c7 -- strand  
       <*> pure           c8 -- phase   (not used)
       <*> readAttributes c9 -- attributes
-    toGff (i,fs) = fail' $ concat ["(GFF line ", show i, ") Expected 9 columns, found '", show (length fs), "'"]
+    toGff (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]

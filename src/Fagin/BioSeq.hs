@@ -1,8 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Fagin.BioSeq (BioSeq(..)) where
-
-import qualified Data.ByteString.Char8 as B
 
 -- import Fagin.Report
 --
@@ -10,9 +6,11 @@ import qualified Data.ByteString.Char8 as B
 -- data AA
 -- data Unknown
 
-type RawSeq = B.ByteString
-type SeqId = B.ByteString
-type Desc = B.ByteString
+import Fagin.Prelude
+
+type RawSeq = ByteString
+type SeqId  = ByteString
+type Desc   = ByteString
 
 
 data BioSeq a

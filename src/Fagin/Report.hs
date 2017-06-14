@@ -19,10 +19,9 @@ module Fagin.Report
   , note , note'
 ) where
 
-import Prelude hiding(fail)
-import Data.Monoid ((<>), mempty)
+import Fagin.Prelude
 
-type ReportS = Report [String]
+type ReportS = Report [ByteString]
 
 data Report e a
   = Pass a e e
@@ -63,8 +62,8 @@ instance (Monoid e) => Monad (Report e) where
   return x = Pass x mempty mempty
 
   (Pass x1 w1 n1) >>= f = case f x1 of
-    (Pass x2 w2 n2) -> Pass x2 (w1 <> w2) (n1 <> n2)
-    (Fail e2 w2 n2) -> Fail e2 (w1 <> w2) (n1 <> n2)
+    (Pass x2 w2 n2) -> Pass x2 (w1 ++ w2) (n1 ++ n2)
+    (Fail e2 w2 n2) -> Fail e2 (w1 ++ w2) (n1 ++ n2)
   (Fail e w n) >>= _ = (Fail e w n)
 
 instance Functor (Report e) where
@@ -74,27 +73,27 @@ instance Functor (Report e) where
 instance (Monoid e) => Applicative (Report e) where
   pure x = Pass x mempty mempty
 
-  Pass f  w1 n1 <*> Pass x  w2 n2 = Pass (f x)      (w1 <> w2) (n1 <> n2)
-  Pass _  w1 n1 <*> Fail e2 w2 n2 = Fail e2         (w1 <> w2) (n1 <> n2)
-  Fail e1 w1 n1 <*> Pass _  w2 n2 = Fail e1         (w1 <> w2) (n1 <> n2)
-  Fail e1 w1 n1 <*> Fail e2 w2 n2 = Fail (e1 <> e2) (w1 <> w2) (n1 <> n2)
+  Pass f  w1 n1 <*> Pass x  w2 n2 = Pass (f x)      (w1 ++ w2) (n1 ++ n2)
+  Pass _  w1 n1 <*> Fail e2 w2 n2 = Fail e2         (w1 ++ w2) (n1 ++ n2)
+  Fail e1 w1 n1 <*> Pass _  w2 n2 = Fail e1         (w1 ++ w2) (n1 ++ n2)
+  Fail e1 w1 n1 <*> Fail e2 w2 n2 = Fail (e1 ++ e2) (w1 ++ w2) (n1 ++ n2)
 
 class ShowE e where
-  showE :: e -> String
+  showE :: e -> ByteString
 
-  showError :: e -> String
+  showError :: e -> ByteString
   showError = showE
 
-  showWarning :: e -> String
+  showWarning :: e -> ByteString
   showWarning = showE
 
-  showNote :: e -> String
+  showNote :: e -> ByteString
   showNote = showE
 
-  show3E :: e -> e -> e -> String
-  show3E e w n = unlines [showError e, showWarning w, showNote n]
+  show3E :: e -> e -> e -> ByteString
+  show3E e w n = intercalate "\n" [showError e, showWarning w, showNote n]
 
-instance ShowE [String] where
+instance ShowE [ByteString] where
   showE = unlines
 
   show3E e w n = concat
@@ -105,7 +104,7 @@ instance ShowE [String] where
     , summary'
     ]
     where
-      ne = show $ length e
-      nw = show $ length w
-      nn = show $ length n
+      ne = bshow $ length e
+      nw = bshow $ length w
+      nn = bshow $ length n
       summary' = unwords [ne, "error(s),", nw, "warning(s),", nn, "note(s)\n"]

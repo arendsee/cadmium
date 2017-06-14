@@ -1,24 +1,32 @@
-import qualified Data.Text.IO as TIO
+import qualified System.Exit as SE
 
 import Fagin
+import Fagin.Prelude
 
 gfffile :: String
 gfffile = "sample-data/test.gff"
 
-main :: IO a
-main = do
-  text <- TIO.readFile gfffile
-  -- gffs :: ReportS [[GffEntry]]
-  writeResultAndExit
-    $ fmap (concatMap show . concat)
-    $ readModels text >>= sequence . map model2gff
-   
 
--- model2gff :: GeneModel -> ReportS [GffEntry]
--- fmap :: (a -> b) -> m a -> m b
---
--- map mode2gff :: [GeneModel] -> [ReportS [GffEntry]]
---
--- sequence . map mode2gff :: [GeneModel] -> ReportS [[GffEntry]]
---
--- readModels :: Text -> ReportS [GeneModel]
+writeResult :: (Monoid e, ShowE e, BShow o) => Report e o -> IO ()
+writeResult (Pass x w n)
+  =  hPut stdout (bshow x)
+  >> hPut stderr (show3E mempty w n)
+writeResult (Fail e w n)
+  =  hPut stderr (show3E e w n)
+
+writeResultAndExit :: (Monoid e, ShowE e, BShow o) => Report e o -> IO a
+writeResultAndExit (Pass x w n)
+  =  writeResult (Pass x w n)
+  >> SE.exitWith SE.ExitSuccess
+writeResultAndExit f
+  =  writeResult f
+  >> SE.exitWith (SE.ExitFailure 1)
+
+
+main :: IO ()
+main = do
+  text <- readFile gfffile
+  writeResultAndExit
+    $   readGff text
+    >>= buildModels
+    >>= sequence . map model2gff

@@ -90,45 +90,45 @@ data Attributes
     -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
-    attrID              :: Maybe ByteString
+    attrID              :: !(Maybe ByteString)
 
     -- | The display name of the feature. Does not have to be unique.
-    , attrName          :: Maybe ByteString
+    , attrName          :: !(Maybe ByteString)
 
     -- | List of aliases for the feature (for example locus and model ids)
-    , attrAlias         :: [ByteString]
+    , attrAlias         :: ![ByteString]
 
     -- | List of parents of this feature. Indicates a part_of relationship.
-    , attrParent        :: [ByteString]
+    , attrParent        :: ![ByteString]
 
     -- | Not currently used by Fagin
-    , attrTarget        :: Maybe ByteString
+    , attrTarget        :: !(Maybe ByteString)
     
     -- | Not currently used by Fagin
-    , attrGap           :: Maybe ByteString
+    , attrGap           :: !(Maybe ByteString)
 
     -- | Not currently used by Fagin
-    , attrDerivesFrom   :: Maybe ByteString
+    , attrDerivesFrom   :: !(Maybe ByteString)
 
     -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
-    , attrNote          :: [ByteString]
+    , attrNote          :: ![ByteString]
     
     -- | A database cross reference
-    , attrDbxref        :: [ByteString]
+    , attrDbxref        :: ![ByteString]
 
     -- | Ontology cross reference
-    , attrOntologyTerm  :: [ByteString]
+    , attrOntologyTerm  :: ![ByteString]
 
     -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
-    , attrIsCircular    :: Maybe Bool
+    , attrIsCircular    :: !(Maybe Bool)
 
     -- | The tags defined above are all the tags with predefined meanings.
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
-    , attrUserDefined   :: [(ByteString, ByteString)]
+    , attrUserDefined   :: ![(ByteString, ByteString)]
   
   } deriving(Eq,Ord,Show)
 
@@ -182,15 +182,15 @@ data GffEntry = GffEntry {
 
     -- | GFF column 1. The name of the genomic scaffold and chromosome to which
     -- the feature maps
-    gff_seqid    :: ByteString
+    gff_seqid :: !ByteString
 
     -- | GFF column 3. The type of the feature. This must be a Sequence
     -- Ontology term or identification id.
-    , gff_type     :: IntervalType
+    , gff_type :: !IntervalType
 
     -- | GFF column 4 and 5. The 1-based start and stop positions of this
     -- feature.
-    , gff_interval :: Interval
+    , gff_interval :: !Interval
 
     {-| GFF column 7. The strand on which the interval resides. This must be
        one of the following:
@@ -199,10 +199,10 @@ data GffEntry = GffEntry {
         * '.' - strand is irrelevant
         * '?' - strand is relevant but unknown
     -}
-    , gff_strand   :: Maybe Strand
+    , gff_strand :: !(Maybe Strand)
 
     -- | GFF column 9. Feature attributes (see 'Attributes')
-    , gff_attr     :: Attributes
+    , gff_attr :: !Attributes
   }
   deriving(Eq,Ord,Show)
 

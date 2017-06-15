@@ -13,12 +13,12 @@ import Fagin.Report
 import Fagin.Interval
 
 data GeneModel = GeneModel {
-      model_chrid  :: ByteString       -- ^ chromosome/scaffold
-    , model_parent :: Maybe ByteString -- ^ parent (a 'gene') is given
-    , model_id     :: ByteString       -- ^ the ID value (must be unique)
-    , model_cds    :: [Interval]       -- ^ list of coding intervals
-    , model_exon   :: [Interval]       -- ^ list of exon intervals
-    , model_strand :: Strand           -- ^ strand [+-.?]
+      model_chrid  :: !ByteString         -- ^ chromosome/scaffold
+    , model_parent :: !(Maybe ByteString) -- ^ parent (a 'gene') is given
+    , model_id     :: !ByteString         -- ^ the ID value (must be unique)
+    , model_cds    :: ![Interval]         -- ^ list of coding intervals
+    , model_exon   :: ![Interval]         -- ^ list of exon intervals
+    , model_strand :: !Strand             -- ^ strand [+-.?]
   } deriving(Show)
 
 model2gff :: GeneModel -> ReportS [GffEntry]

@@ -56,6 +56,7 @@ module Fagin.Gff (
 ) where
 
 import Data.ByteString.Char8 (readInteger)
+import qualified Data.Char as DC
 
 import Fagin.Prelude
 import Fagin.Interval
@@ -150,7 +151,7 @@ defaultAttributes = Attributes {
 
 instance BShow Attributes where
   bshow g =
-    intercalate ";" $ concat
+    unsplit ';' $ concat
     [
         maybeAttr "ID"           (attrID           g)
       , maybeAttr "Name"         (attrName         g)
@@ -172,7 +173,7 @@ instance BShow Attributes where
 
     listAttr :: ByteString -> [ByteString] -> [ByteString]
     listAttr _ [] = []
-    listAttr s ts = [s ++ "=" ++ intercalate "," ts]
+    listAttr s ts = [s ++ "=" ++ unsplit ',' ts]
 
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
@@ -208,14 +209,14 @@ data GffEntry = GffEntry {
 
 -- | Construct a GffEntry from the full data of a parsed GFF line
 gffEntry
-  :: ByteString       -- ^ seqid
-  -> ByteString       -- ^ source
+  :: ByteString   -- ^ seqid
+  -> ByteString   -- ^ source
   -> IntervalType -- ^ type
   -> Integer      -- ^ start
   -> Integer      -- ^ stop
-  -> ByteString       -- ^ score
+  -> ByteString   -- ^ score
   -> Maybe Strand -- ^ strand
-  -> ByteString       -- ^ phase
+  -> ByteString   -- ^ phase
   -> Attributes   -- ^ attributes
   -> GffEntry
 gffEntry seqid _ ftype start stop _ strand _ attr = 
@@ -234,7 +235,7 @@ instance BShow GffEntry where
     , gff_interval = Interval start stop
     , gff_strand   = strand
     , gff_attr     = attr
-  } = intercalate "\t"
+  } = unsplit '\t'
     [
         seqid
       , "."
@@ -297,8 +298,8 @@ readAttributes :: GParser Attributes
 readAttributes s =
   (   sequence
     $ map toPair
-    $ map ( {-# SCC "readAttributes_mapsplitEq" #-} splitSeq "=")
-    $ {-# SCC "readAttributes_mapsplitSC" #-} splitSeq ";"
+    $ map ( {-# SCC "readAttributes_mapsplitEq" #-} split '=')
+    $ {-# SCC "readAttributes_mapsplitSC" #-} split ';'
     $ s
   ) >>= warnIfTagsRepeat >>= toAttr where
 
@@ -307,7 +308,7 @@ readAttributes s =
   toPair [tag,val]      = pass' (tag , val)
   toPair [val]          = pass' (""  , val)
   toPair fs             = fail' $ concat 
-    ["GffAttribute: expected attribute (<tag>=<val>), found '", intercalate "=" fs, "'"]
+    ["GffAttribute: expected attribute (<tag>=<val>), found '", unsplit '=' fs, "'"]
 
   toAttr :: [(ByteString, ByteString)] -> ReportS Attributes
   toAttr attr = toAttr' attr <$> isCircular attr
@@ -338,8 +339,9 @@ readAttributes s =
     _            -> fail' $ "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
 
   isUserDefined :: (ByteString, ByteString) -> Bool
-  isUserDefined (t,_) = maybe False isLower (headMay t) where
-    isLower = \c -> c <= 122 && c >= 97
+  isUserDefined (t,_) = case uncons t of
+    Just (c,_) -> DC.isLower c
+    Nothing -> False
 
   handleID :: [(ByteString, ByteString)] -> Maybe ByteString
   handleID a = case lookup "ID" a of
@@ -352,14 +354,14 @@ readAttributes s =
       Nothing -> Nothing
 
   maybeMany k attrs = case lookup k attrs of
-    Just x -> splitSeq "," x
+    Just x -> split ',' x
     Nothing -> []
 
   warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
   warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of
     [] -> pass' ps
     es -> pass' ps >>= warn' ("GFFAttribute: each tag may appear only once, offending tag(s): [" ++ tags ++ "]") where
-      tags = intercalate ", " es
+      tags = unsplit ',' es
 
 
 type GIFilter = (Integer,[ByteString]) -> Bool
@@ -386,10 +388,10 @@ readGff =
   zip [1..]               . -- Add line numbers. This must precede filters
                             -- so line numbering in error messages is correct
                           
-  map ( {-# SCC "readGFF_splitTAB" #-} words) . -- splitSeq "\t")     . -- Break tests by line and TAB. NOTE:
+  map ( {-# SCC "readGFF_splitTAB" #-} split '\t') . -- Break tests by line and TAB. NOTE:
 
   
-  {-# SCC "readGFF_lines" #-} lines                     -- this allows space in fields
+  {-# SCC "readGFF_lines" #-} split '\n'                     -- this allows space in fields
 
   where
     toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])

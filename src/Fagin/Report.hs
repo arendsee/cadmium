@@ -91,12 +91,12 @@ class ShowE e where
   showNote = showE
 
   show3E :: e -> e -> e -> ByteString
-  show3E e w n = intercalate "\n" [showError e, showWarning w, showNote n]
+  show3E e w n = unlines [showError e, showWarning w, showNote n]
 
 instance ShowE [ByteString] where
-  showE = unlines
+  showE = unlines 
 
-  show3E e w n = concat
+  show3E e w n = mconcat
     [
       showError   (map (\x -> "ERROR: "   ++ x) e)
     , showWarning (map (\x -> "WARNING: " ++ x) w)

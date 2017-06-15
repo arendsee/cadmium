@@ -34,7 +34,7 @@ model2gff GeneModel {
     mrnaGff = GffEntry {
         gff_seqid    = chrid'
       , gff_type     = MRna
-      , gff_interval = foldl' (<>) exon0 (cdss ++ exons)
+      , gff_interval = foldr' (<>) exon0 (cdss ++ exons)
       , gff_strand   = Just strand'
       , gff_attr     = defaultAttributes
         {
@@ -98,7 +98,7 @@ extractParent m g =
 
   where
     getParent :: IdMap -> ByteString -> ReportS (Parent)
-    getParent m' p = case lookup p m' of
+    getParent m' p = case MS.lookup p m' of
       Just pg  -> pass' $ Parent p (gff_type pg)
       Nothing  -> fail' $ unwords
         [
@@ -140,7 +140,7 @@ toModels = sequence . map toModel . LE.groupSort where
   getChrid gs = case group . map gff_seqid $ gs of
     [(s:_)] -> pass' s
     ss -> fail' $ "InvalidGeneModel: model span multiple scaffolds: " ++
-                  intercalate ", " (mapMaybe headMay ss)
+                  unsplit ',' (mapMaybe headMay ss)
 
   getCDS' :: [GffEntry] -> ReportS [Interval]
   getCDS' gs = pass' . map gff_interval . filter isCDS $ gs

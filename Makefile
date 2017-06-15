@@ -5,7 +5,7 @@ all:
 
 .PHONY: profile
 profile:
-	./fagin +RTS -p -RTS
+	./fagin +RTS -p -RTS > /dev/null
 
 .PHONY: test
 test:

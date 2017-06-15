@@ -1,4 +1,5 @@
 import qualified System.Exit as SE
+import System.IO (stderr, stdout)
 
 import Fagin
 import Fagin.Prelude

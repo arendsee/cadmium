@@ -1,5 +1,11 @@
 all:
-	cabal install
+	cabal install \
+		--bindir=./ \
+		--enable-profiling
+
+.PHONY: profile
+profile:
+	./fagin +RTS -p -RTS
 
 .PHONY: test
 test:

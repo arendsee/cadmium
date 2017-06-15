@@ -296,9 +296,9 @@ readStrand s = case s of
 readAttributes :: GParser Attributes
 readAttributes s =
   (   sequence
-    . map toPair
-    . map (splitSeq "=")
-    . splitSeq ";"
+    $ map toPair
+    $ map ( {-# SCC "readAttributes_mapsplitEq" #-} splitSeq "=")
+    $ {-# SCC "readAttributes_mapsplitSC" #-} splitSeq ";"
     $ s
   ) >>= warnIfTagsRepeat >>= toAttr where
 
@@ -386,8 +386,10 @@ readGff =
   zip [1..]               . -- Add line numbers. This must precede filters
                             -- so line numbering in error messages is correct
                           
-  map (splitSeq "\t")     . -- Break tests by line and TAB. NOTE:
-  lines                     -- this allows space in fields
+  map ( {-# SCC "readGFF_splitTAB" #-} words) . -- splitSeq "\t")     . -- Break tests by line and TAB. NOTE:
+
+  
+  {-# SCC "readGFF_lines" #-} lines                     -- this allows space in fields
 
   where
     toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])

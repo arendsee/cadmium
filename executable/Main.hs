@@ -4,7 +4,7 @@ import Fagin
 import Fagin.Prelude
 
 gfffile :: String
-gfffile = "sample-data/test.gff"
+gfffile = "sample-data/z.gff3"
 
 
 writeResult :: (Monoid e, ShowE e, BShow o) => Report e o -> IO ()

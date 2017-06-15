@@ -1,21 +1,19 @@
-name:     fagin
-version:  0.8.0-dev
+name:                fagin
+version:             0.8.0-dev
 homepage: https://github.com/arendsee/fagin
 synopsis: Classify orphan genes
 description:
 
     Fagin does this and that
 
-category:           Compiler
-license:            GPL-3
-license-file:       LICENSE
-author:             Zebulun Arendsee 
-maintainer:         arendsee@iastate.edu
-extra-source-files: README.md TODO CONFIG
-                    etc/*.yml
-cabal-version:      >= 1.10
-bug-reports:        https://github.com/arendsee/fagin/issues
-build-type:         Simple
+license:             GPL-3
+license-file:        LICENSE
+author:              Zebulun Arendsee
+maintainer:          arendsee@iastate.edu
+category:            Bioinformatics
+build-type:          Simple
+extra-source-files:  ChangeLog.md, README.md
+cabal-version:       >=1.10
 
 flag documentation
     default: False
@@ -31,11 +29,11 @@ library
                      Fagin.Prelude,
                      Fagin.Report
 
-    build-depends: base,
-                   classy-prelude,
-                   bytestring,
-                   extra,
-                   containers
+    build-depends: base >=4.9 && <4.10,
+                   bytestring >=0.10 && <0.11,
+                   containers >=0.5 && <0.6,
+                   extra >=1.5 && <1.6,
+                   classy-prelude >=1.2 && <1.3
 
     default-extensions: NoImplicitPrelude,
                         OverloadedStrings,

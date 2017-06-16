@@ -55,7 +55,7 @@ module Fagin.Gff (
   , defaultAttributes
 ) where
 
-import Data.ByteString.Char8 (readInteger)
+import Data.ByteString.Lazy.Char8 (readInteger)
 import qualified Data.Char as DC
 
 import Fagin.Prelude

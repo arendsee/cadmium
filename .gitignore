@@ -3,3 +3,6 @@ dist/
 
 *.o
 *.hi
+*.aux
+*.hp
+*.ps

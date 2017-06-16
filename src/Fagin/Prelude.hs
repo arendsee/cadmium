@@ -28,6 +28,7 @@ module Fagin.Prelude (
   , DF.foldl'
   -- ByteString IO
   , print
+  , DBC.ByteString
   , DBC.readFile
   , DBC.writeFile
   , DBC.appendFile
@@ -36,7 +37,6 @@ module Fagin.Prelude (
   , DBC.putStrLn
   , DBC.interact
   , DBC.hGet
-  , DBC.hGetLine
   , DBC.hGetContents
   , DBC.hPut
   , DBC.hPutStr
@@ -72,6 +72,8 @@ import CorePrelude hiding (
     , putStrLn
     , getArgs
     , terror
+    -- hide strict bytestrings
+    , ByteString
     -- hide String functions
     , print
     -- hide unsafe functions
@@ -82,7 +84,7 @@ import CorePrelude hiding (
 import Safe (headMay)
 
 import qualified Prelude as P
-import qualified Data.ByteString.Char8 as DBC
+import qualified Data.ByteString.Lazy.Char8 as DBC
 import qualified Data.List as DL
 import qualified Control.Monad as CM
 import qualified Data.Foldable as DF
@@ -95,22 +97,22 @@ infixr 6 ++
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
 
-class (Monoid f) => Sequence f e | f -> e where
-  length      :: f -> Int
+class (Monoid f, P.Integral i) => Sequence f e i | f -> e i where
+  length      :: f -> i
   reverse     :: f -> f
   intersperse :: e -> f -> f
   transpose   :: [f] -> [f]
-  replicate   :: Int -> e -> f
+  replicate   :: i -> e -> f
   takeWhile   :: (e -> Bool) -> f -> f
   dropWhile   :: (e -> Bool) -> f -> f
   concat      :: [f] -> f
   isPrefixOf  :: f -> f -> Bool
   isSuffixOf  :: f -> f -> Bool
-  take        :: Int -> f -> f
-  drop        :: Int -> f -> f
+  take        :: i -> f -> f
+  drop        :: i -> f -> f
   uncons      :: f -> Maybe (e,f)
 
-instance Sequence ByteString Char where
+instance Sequence DBC.ByteString Char Int64 where
   length      = DBC.length
   reverse     = DBC.reverse
   intersperse = DBC.intersperse
@@ -125,7 +127,7 @@ instance Sequence ByteString Char where
   drop        = DBC.drop
   uncons      = DBC.uncons
 
-instance (Eq a) => Sequence [a] a where
+instance (Eq a) => Sequence [a] a Int where
   length      = DL.length
   reverse     = DL.reverse
   intersperse = DL.intersperse
@@ -143,7 +145,7 @@ instance (Eq a) => Sequence [a] a where
 map :: (Functor f) => (a -> b) -> f a -> f b
 map = P.fmap
 
-unsplit :: Char -> [ByteString] -> ByteString
+unsplit :: Char -> [DBC.ByteString] -> DBC.ByteString
 unsplit c = DBC.intercalate (DBC.singleton c)
 
 -- Set default IO to ByteString
@@ -152,7 +154,7 @@ print :: (BShow a) => a -> IO ()
 print = DBC.putStrLn . bshow 
 
 class (Show a) => BShow a where
-  bshow :: a -> ByteString
+  bshow :: a -> DBC.ByteString
   bshow = DBC.pack . P.show
 
 instance BShow Int
@@ -162,7 +164,7 @@ instance BShow Integer
 instance BShow String where
   bshow = DBC.pack
 
-instance BShow ByteString where
+instance BShow DBC.ByteString where
   bshow = id
 
 instance BShow a => BShow [a] where

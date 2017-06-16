@@ -1,0 +1,110 @@
+Replacing Strict bytestrings with Lazy. Now, of course, going from strict to
+lazy is not usually what we do to improve performance. But I suspect that the
+append operation is the bottleneck and it is asymptotically faster for the lazy
+bytestrings. I should probably also use the builder combinators.
+
+Basically, the problem is that I have long chains of append operations, and I
+think each operation may need to reallocate the string.
+
+	Fri Jun 16 02:24 2017 Time and Allocation Profiling Report  (Final)
+
+	   fagin +RTS -p -RTS
+
+	total time  =        2.88 secs   (2883 ticks @ 1000 us, 1 processor)
+	total alloc = 1,537,491,632 bytes  (excludes profiling overheads)
+
+COST CENTRE               MODULE           %time %alloc
+
+readGff                   Fagin.Gff         47.2   34.6
+writeResult               Main              20.7   38.6
+buildModels               Fagin.GeneModel   17.0   11.2
+unsplit                   Fagin.Prelude      3.7    6.9
+groupSort                 Data.List.Extra    3.6    2.6
+readAttributes_mapsplitSC Fagin.Gff          2.3    3.1
+model2gff                 Fagin.GeneModel    1.5    0.8
+groupOn                   Data.List.Extra    1.2    0.5
+readGFF_lines             Fagin.Gff          1.0    1.2
+
+
+                                                                           individual      inherited
+COST CENTRE                  MODULE                     no.     entries  %time %alloc   %time %alloc
+
+MAIN                         MAIN                        67          0    0.0    0.0   100.0  100.0
+ main                        Main                       135          0    0.5    0.4    99.4   99.8
+  ++                         Fagin.Prelude              195       6310    0.0    0.0     0.0    0.0
+  writeResultAndExit         Main                       169          1    0.0    0.0    24.5   45.5
+   writeResult               Main                       170          1   20.7   38.6    24.5   45.5
+    attrUserDefined          Fagin.Gff                  193      41278    0.0    0.0     0.0    0.0
+    attrIsCircular           Fagin.Gff                  192      41278    0.0    0.0     0.0    0.0
+    attrOntologyTerm         Fagin.Gff                  191      41278    0.0    0.0     0.0    0.0
+    attrDbxref               Fagin.Gff                  190      41278    0.0    0.0     0.0    0.0
+    attrNote                 Fagin.Gff                  189      41278    0.0    0.0     0.0    0.0
+    attrDerivesFrom          Fagin.Gff                  188      41278    0.0    0.0     0.0    0.0
+    attrGap                  Fagin.Gff                  187      41278    0.0    0.0     0.0    0.0
+    attrTarget               Fagin.Gff                  186      41278    0.0    0.0     0.0    0.0
+    attrParent               Fagin.Gff                  185      41278    0.0    0.0     0.0    0.0
+    attrAlias                Fagin.Gff                  184      41278    0.0    0.0     0.0    0.0
+    attrName                 Fagin.Gff                  183      41278    0.0    0.0     0.0    0.0
+    ++                       Fagin.Prelude              182      82556    0.0    0.0     0.0    0.0
+    attrID                   Fagin.Gff                  181      41278    0.0    0.0     0.0    0.0
+    unsplit                  Fagin.Prelude              180          0    3.7    6.9     3.7    6.9
+    map                      Fagin.Prelude              171      41282    0.0    0.0     0.0    0.0
+  model2gff                  Fagin.GeneModel            167       3153    1.5    0.8     1.5    0.8
+   map                       Fagin.Prelude              194       6306    0.0    0.0     0.0    0.0
+   ++                        Fagin.Prelude              175       9459    0.0    0.0     0.0    0.0
+   pass'                     Fagin.Report               168       3153    0.0    0.0     0.0    0.0
+  buildModels                Fagin.GeneModel            150          1   17.0   11.2    22.8   14.4
+   ++                        Fagin.Prelude              197     301544    0.0    0.0     0.0    0.0
+   gff_interval              Fagin.Gff                  177      38125    0.0    0.0     0.0    0.0
+   gff_seqid                 Fagin.Gff                  165      44477    0.2    0.0     0.2    0.0
+   gff_strand                Fagin.Gff                  164      44477    0.1    0.0     0.1    0.0
+   groupSort                 Data.List.Extra            161          0    3.6    2.6     4.8    3.2
+    groupOn                  Data.List.Extra            163          0    1.2    0.5     1.2    0.5
+   gff_type                  Fagin.Gff                  158     138947    0.1    0.0     0.1    0.0
+   pass'                     Fagin.Report               156     107082    0.0    0.0     0.0    0.0
+   attrID                    Fagin.Gff                  155      49993    0.0    0.0     0.0    0.0
+   gff_attr                  Fagin.Gff                  154      99986    0.3    0.0     0.3    0.0
+   attrParent                Fagin.Gff                  153      49993    0.2    0.0     0.2    0.0
+   map                       Fagin.Prelude              152      99987    0.0    0.0     0.0    0.0
+  readGff                    Fagin.Gff                  138          0   46.7   34.4    50.2   38.6
+   ++                        Fagin.Prelude              196    1407690    0.0    0.0     0.0    0.0
+   headMay                   Safe                       148          0    0.2    0.0     0.2    0.0
+    liftMay                  Safe.Util                  149     153922    0.0    0.0     0.0    0.0
+   pass'                     Fagin.Report               146     360246    0.0    0.0     0.0    0.0
+   readAttributes_mapsplitSC Fagin.Gff                  144      49993    2.3    3.1     2.3    3.1
+   readGFF_lines             Fagin.Gff                  141          0    1.0    1.2     1.0    1.2
+ CAF                         Main                       133          0    0.0    0.0     0.0    0.0
+  gfffile                    Main                       136          1    0.0    0.0     0.0    0.0
+  main                       Main                       134          1    0.0    0.0     0.0    0.0
+   writeResultAndExit        Main                       172          0    0.0    0.0     0.0    0.0
+    writeResult              Main                       173          0    0.0    0.0     0.0    0.0
+     map                     Fagin.Prelude              174          1    0.0    0.0     0.0    0.0
+   map                       Fagin.Prelude              166          1    0.0    0.0     0.0    0.0
+ CAF                         Fagin.GeneModel            132          0    0.0    0.0     0.0    0.0
+  ++                         Fagin.Prelude              198          5    0.0    0.0     0.0    0.0
+  groupSort                  Data.List.Extra            160          1    0.0    0.0     0.0    0.0
+   groupOn                   Data.List.Extra            162          1    0.0    0.0     0.0    0.0
+  map                        Fagin.Prelude              159          4    0.0    0.0     0.0    0.0
+  buildModels                Fagin.GeneModel            151          0    0.0    0.0     0.0    0.0
+   map                       Fagin.Prelude              157          1    0.0    0.0     0.0    0.0
+ CAF                         Fagin.Gff                  131          0    0.0    0.0     0.6    0.2
+  unsplit                    Fagin.Prelude              179          3    0.0    0.0     0.0    0.0
+  defaultAttributes          Fagin.Gff                  178          1    0.0    0.0     0.0    0.0
+  readGff                    Fagin.Gff                  137          1    0.6    0.2     0.6    0.2
+   readAttributes_mapsplitEq Fagin.Gff                  145          1    0.0    0.0     0.0    0.0
+   pass'                     Fagin.Report               143          6    0.0    0.0     0.0    0.0
+   readGFF_splitTAB          Fagin.Gff                  142          1    0.0    0.0     0.0    0.0
+   readGFF_lines             Fagin.Gff                  140          1    0.0    0.0     0.0    0.0
+   map                       Fagin.Prelude              139          5    0.0    0.0     0.0    0.0
+ CAF                         Fagin.Interval             130          0    0.0    0.0     0.0    0.0
+ CAF                         Fagin.Report               128          0    0.0    0.0     0.0    0.0
+ CAF                         Safe                       125          0    0.0    0.0     0.0    0.0
+  headMay                    Safe                       147          1    0.0    0.0     0.0    0.0
+ CAF                         Data.ByteString.Lazy.Char8 122          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Exception           116          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Handle.FD           115          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.FD                  109          0    0.0    0.0     0.0    0.0
+ CAF                         System.Exit                104          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.Conc.Signal            101          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Encoding            100          0    0.0    0.0     0.0    0.0
+ CAF                         GHC.IO.Encoding.Iconv       85          0    0.0    0.0     0.0    0.0

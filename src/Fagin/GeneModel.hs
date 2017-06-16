@@ -13,12 +13,12 @@ import Fagin.Report
 import Fagin.Interval
 
 data GeneModel = GeneModel {
-      model_chrid  :: !ByteString         -- ^ chromosome/scaffold
-    , model_parent :: !(Maybe ByteString) -- ^ parent (a 'gene') is given
-    , model_id     :: !ByteString         -- ^ the ID value (must be unique)
-    , model_cds    :: ![Interval]         -- ^ list of coding intervals
-    , model_exon   :: ![Interval]         -- ^ list of exon intervals
-    , model_strand :: !Strand             -- ^ strand [+-.?]
+      model_chrid  :: !ByteString   -- ^ chromosome/scaffold
+    , model_parent :: ![ByteString] -- ^ parent (a 'gene') is given
+    , model_id     :: !ByteString   -- ^ the ID value (must be unique)
+    , model_cds    :: ![Interval]   -- ^ list of coding intervals
+    , model_exon   :: ![Interval]   -- ^ list of exon intervals
+    , model_strand :: !Strand       -- ^ strand [+-.?]
   } deriving(Show)
 
 model2gff :: GeneModel -> ReportS [GffEntry]
@@ -36,12 +36,11 @@ model2gff GeneModel {
       , gff_type     = MRna
       , gff_interval = foldr' (<>) exon0 (cdss ++ exons)
       , gff_strand   = Just strand'
-      , gff_attr     = defaultAttributes
-        {
-            attrID     = Just id'
-          , attrParent = maybe [] (\s -> [s]) parent' 
-        }
+      , gff_attr     = mrnaAttr parent'
     }
+
+    mrnaAttr [] = [AttrID id']  
+    mrnaAttr ps = [AttrID id', AttrParent ps]  
 
     cdsGff = map (newChild CDS) cdss
     exonGff = map (newChild Exon) (exon0:exons)
@@ -52,7 +51,7 @@ model2gff GeneModel {
       , gff_type     = t
       , gff_interval = i
       , gff_strand   = Just strand'
-      , gff_attr     = defaultAttributes { attrParent = [id'] }
+      , gff_attr     = [AttrParent [id']]
     }
 model2gff _ = fail' "InvalidModel: no exons"
 
@@ -91,12 +90,21 @@ extractParent m g =
   filter (/= "-") .
 
   -- _ -> [ByteString] -- list of Parent ids
-  attrParent .
+  extractParents .
 
   -- GffEntry -> Attributes
   gff_attr $ g
 
   where
+    extractParents :: [Attribute] -> [ByteString]
+    extractParents attrs = case find isParent attrs of
+      Just (AttrParent ps) -> ps
+      _ -> []
+
+    isParent :: Attribute -> Bool
+    isParent (AttrParent _) = True
+    isParent             _  = False
+
     getParent :: IdMap -> ByteString -> ReportS (Parent)
     getParent m' p = case MS.lookup p m' of
       Just pg  -> pass' $ Parent p (gff_type pg)
@@ -113,9 +121,13 @@ extractParent m g =
 mapEntries :: [GffEntry] -> IdMap
 mapEntries = MS.fromList . concatMap plist where
   plist :: GffEntry -> [(ByteString, GffEntry)]
-  plist g = case attrID $ gff_attr g of
-    Just p  -> [(p, g)]
-    Nothing -> []
+  plist g = case find isID $ gff_attr g of
+    Just (AttrID p)  -> [(p, g)]
+    _ -> []
+
+  isID :: Attribute -> Bool
+  isID (AttrID _) = True
+  isID _          = False
 
 toModels :: [(Parent, GffEntry)] -> ReportS [GeneModel]
 toModels = sequence . map toModel . LE.groupSort where
@@ -128,7 +140,7 @@ toModels = sequence . map toModel . LE.groupSort where
     = case group . catMaybes . map gff_strand $ gs of
       [(s:_)] ->  GeneModel
               <$> getChrid gs  -- model_chrid
-              <*> pure Nothing -- model_parent
+              <*> pure []      -- model_parent
               <*> pure pid     -- model_id
               <*> getCDS' gs   -- model_cds
               <*> getExon' gs  -- model_exon

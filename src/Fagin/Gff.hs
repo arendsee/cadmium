@@ -51,12 +51,10 @@ module Fagin.Gff (
     readGff
   , IntervalType(..)
   , GffEntry(..)
-  , Attributes(..)
-  , defaultAttributes
+  , Attribute(..)
 ) where
 
 import Data.ByteString.Lazy.Char8 (readInteger)
-import qualified Data.Char as DC
 
 import Fagin.Prelude
 import Fagin.Interval
@@ -86,94 +84,71 @@ instance BShow IntervalType where
 -- data constructors nearly follow the tag names, except that they have been
 -- converted to camel case, as per Haskell conventions, for example
 -- "Derives_from" is converted to "DerivesFrom".
-data Attributes
-  = Attributes {
+data Attribute
     -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
-    attrID              :: !(Maybe ByteString)
+    = AttrID ByteString
 
     -- | The display name of the feature. Does not have to be unique.
-    , attrName          :: !(Maybe ByteString)
+    | AttrName ByteString
 
     -- | List of aliases for the feature (for example locus and model ids)
-    , attrAlias         :: ![ByteString]
+    | AttrAlias [ByteString]
 
     -- | List of parents of this feature. Indicates a part_of relationship.
-    , attrParent        :: ![ByteString]
+    | AttrParent [ByteString]
 
     -- | Not currently used by Fagin
-    , attrTarget        :: !(Maybe ByteString)
+    | AttrTarget ByteString
     
     -- | Not currently used by Fagin
-    , attrGap           :: !(Maybe ByteString)
+    | AttrGap ByteString
 
     -- | Not currently used by Fagin
-    , attrDerivesFrom   :: !(Maybe ByteString)
+    | AttrDerivesFrom ByteString
 
     -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
-    , attrNote          :: ![ByteString]
-    
+    | AttrNote [ByteString]
+
     -- | A database cross reference
-    , attrDbxref        :: ![ByteString]
+    | AttrDbxref [ByteString]
 
     -- | Ontology cross reference
-    , attrOntologyTerm  :: ![ByteString]
+    | AttrOntologyTerm [ByteString]
 
     -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
-    , attrIsCircular    :: !(Maybe Bool)
+    | AttrIsCircular Bool
 
     -- | The tags defined above are all the tags with predefined meanings.
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
-    , attrUserDefined   :: ![(ByteString, ByteString)]
-  
-  } deriving(Eq,Ord,Show)
+    | AttrUserDefined ByteString ByteString
 
-defaultAttributes :: Attributes
-defaultAttributes = Attributes {
-      attrID            = Nothing
-    , attrName          = Nothing
-    , attrAlias         = []
-    , attrParent        = []
-    , attrTarget        = Nothing
-    , attrGap           = Nothing
-    , attrDerivesFrom   = Nothing
-    , attrNote          = []
-    , attrDbxref        = []
-    , attrOntologyTerm  = []
-    , attrIsCircular    = Nothing
-    , attrUserDefined   = []
-  }
+    -- | According to the spec, all entries in the attribute column should be
+    -- wrapped in tag-value pairs. However, it is common for programs to add
+    -- untagged values, which sometimes function as ID.
+    | AttrUntagged ByteString
+    deriving(Eq,Ord,Show)
 
-instance BShow Attributes where
-  bshow g =
-    unsplit ';' $ concat
-    [
-        maybeAttr "ID"           (attrID           g)
-      , maybeAttr "Name"         (attrName         g)
-      , listAttr  "Alias"        (attrAlias        g)
-      , listAttr  "Parent"       (attrParent       g)
-      , maybeAttr "Target"       (attrTarget       g)
-      , maybeAttr "Gap"          (attrGap          g)
-      , maybeAttr "DerivesFrom"  (attrDerivesFrom  g)
-      , listAttr  "Note"         (attrNote         g)
-      , listAttr  "Dbxref"       (attrDbxref       g)
-      , listAttr  "OntologyTerm" (attrOntologyTerm g)
-      , maybe [] (\b -> if b then ["true"] else ["false"]) (attrIsCircular g)
-      , map (\(k,v) -> k ++ "=" ++ v) (attrUserDefined g)
-    ]
-    where
-    maybeAttr :: ByteString -> (Maybe ByteString) -> [ByteString]
-    maybeAttr s (Just t) = [s ++ "=" ++ t]
-    maybeAttr _ Nothing  = []
-
-    listAttr :: ByteString -> [ByteString] -> [ByteString]
-    listAttr _ [] = []
-    listAttr s ts = [s ++ "=" ++ unsplit ',' ts]
+instance BShow Attribute where
+  bshow (AttrID           s     ) = "ID="           ++ s
+  bshow (AttrName         s     ) = "Name="         ++ s
+  bshow (AttrAlias        ss    ) = "Alias="        ++ unsplit ',' ss
+  bshow (AttrParent       ss    ) = "Parent="       ++ unsplit ',' ss
+  bshow (AttrTarget       s     ) = "Target="       ++ s
+  bshow (AttrGap          s     ) = "Gap="          ++ s
+  bshow (AttrDerivesFrom  s     ) = "Derives_from="  ++ s
+  bshow (AttrNote         ss    ) = "Note="         ++ unsplit ',' ss
+  bshow (AttrDbxref       ss    ) = "Dbxref="       ++ unsplit ',' ss
+  bshow (AttrOntologyTerm ss    ) = "Ontology_term=" ++ unsplit ',' ss
+  bshow (AttrIsCircular   True  ) = "Is_circular=true"
+  bshow (AttrIsCircular   False ) = "Is_circular=false"
+  bshow (AttrUserDefined  t v   ) = t ++ "=" ++ v
+  bshow (AttrUntagged     s     ) = "Untagged=" ++ s
 
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
@@ -202,8 +177,8 @@ data GffEntry = GffEntry {
     -}
     , gff_strand :: !(Maybe Strand)
 
-    -- | GFF column 9. Feature attributes (see 'Attributes')
-    , gff_attr :: !Attributes
+    -- | GFF column 9. Feature attributes (see 'Attribute')
+    , gff_attr :: ![Attribute]
   }
   deriving(Eq,Ord,Show)
 
@@ -217,7 +192,7 @@ gffEntry
   -> ByteString   -- ^ score
   -> Maybe Strand -- ^ strand
   -> ByteString   -- ^ phase
-  -> Attributes   -- ^ attributes
+  -> [Attribute]  -- ^ attributes
   -> GffEntry
 gffEntry seqid _ ftype start stop _ strand _ attr = 
   GffEntry {
@@ -245,7 +220,7 @@ instance BShow GffEntry where
       , "."
       , maybe "." bshow strand
       , "."
-      , bshow attr
+      , (unsplit ';' . map bshow $ attr)
     ]
 
 
@@ -294,14 +269,14 @@ readStrand s = case s of
   "?" -> pass' Nothing -- will ignore for now
   v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ v
 
-readAttributes :: GParser Attributes
+readAttributes :: GParser [Attribute]
 readAttributes s =
   (   sequence
     $ map toPair
     $ map ( {-# SCC "readAttributes_mapsplitEq" #-} split '=')
     $ {-# SCC "readAttributes_mapsplitSC" #-} split ';'
     $ s
-  ) >>= warnIfTagsRepeat >>= toAttr where
+  ) >>= warnIfTagsRepeat >>= (sequence . map toAttr) where
 
   toPair :: [ByteString] -> ReportS (ByteString, ByteString)
   toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
@@ -310,52 +285,33 @@ readAttributes s =
   toPair fs             = fail' $ concat 
     ["GffAttribute: expected attribute (<tag>=<val>), found '", unsplit '=' fs, "'"]
 
-  toAttr :: [(ByteString, ByteString)] -> ReportS Attributes
-  toAttr attr = toAttr' attr <$> isCircular attr
+  toAttr :: (ByteString, ByteString) -> ReportS Attribute
+  -- single value entries
+  toAttr ("ID"           , v) = pass' $ AttrID          v
+  toAttr ("Name"         , v) = pass' $ AttrName        v
+  toAttr ("Target"       , v) = pass' $ AttrTarget      v
+  toAttr ("Gap"          , v) = pass' $ AttrGap         v
+  toAttr ("Derives_from" , v) = pass' $ AttrDerivesFrom v
+  -- multiple value entries
+  toAttr ("Alias"         , vs) = pass' $ AttrAlias        $ split ',' vs
+  toAttr ("Parent"        , vs) = pass' $ AttrParent       $ split ',' vs
+  toAttr ("Note"          , vs) = pass' $ AttrNote         $ split ',' vs
+  toAttr ("Dbxref"        , vs) = pass' $ AttrDbxref       $ split ',' vs
+  toAttr ("Ontology_term" , vs) = pass' $ AttrOntologyTerm $ split ',' vs
+  -- boolean entries
+  toAttr ("Is_circular", "true"  ) = pass' $ AttrIsCircular True
+  toAttr ("Is_circular", "false" ) = pass' $ AttrIsCircular False
+  toAttr ("Is_circular", _       ) = fail' "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
+  -- untagged entry
+  -- TODO interpret untagged value as an ID if no ID is provided The spec does
+  -- not require this, but I should add it in to handle the shit _certain_
+  -- programs throw at us.
+  toAttr ("", v) = pass' $ AttrUntagged v
+  -- other entries
+  -- TODO: Note if the tag is upper case, since these should be
+  --       reserved for future use
+  toAttr (v, t) = pass' $ AttrUserDefined v t
 
-  -- There is certainly a cleaner way to do this ...
-  toAttr' :: [(ByteString, ByteString)] -> (Maybe Bool) -> Attributes
-  toAttr' attr circular = 
-    Attributes {
-        attrID           = handleID attr
-      , attrName         = lookup    "NAME"          attr
-      , attrAlias        = maybeMany "Alias"         attr
-      , attrParent       = maybeMany "Parent"        attr
-      , attrTarget       = lookup    "Target"        attr
-      , attrGap          = lookup    "Gap"           attr
-      , attrDerivesFrom  = lookup    "Derives_from"  attr
-      , attrNote         = maybeMany "Note"          attr
-      , attrDbxref       = maybeMany "Dbxref"        attr
-      , attrOntologyTerm = maybeMany "Ontology_term" attr
-      , attrIsCircular   = circular
-      , attrUserDefined  = filter isUserDefined attr
-    }
-
-  isCircular :: [(ByteString, ByteString)] -> ReportS (Maybe Bool)
-  isCircular a = case lookup "Is_circular" a of
-    Just "true"  -> pass' $ Just True
-    Just "false" -> pass' $ Just False
-    Nothing      -> pass' $ Nothing
-    _            -> fail' $ "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
-
-  isUserDefined :: (ByteString, ByteString) -> Bool
-  isUserDefined (t,_) = case uncons t of
-    Just (c,_) -> DC.isLower c
-    Nothing -> False
-
-  handleID :: [(ByteString, ByteString)] -> Maybe ByteString
-  handleID a = case lookup "ID" a of
-    Just x  -> Just x
-    -- This interprets untagged value as an ID if no ID is provided
-    -- The spec does not require this, but I add it in to handle the shit
-    -- _certain_ programs throw at us.
-    Nothing -> case lookup "" a of
-      Just x  -> Just x
-      Nothing -> Nothing
-
-  maybeMany k attrs = case lookup k attrs of
-    Just x -> split ',' x
-    Nothing -> []
 
   warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
   warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of

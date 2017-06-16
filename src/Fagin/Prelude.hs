@@ -12,6 +12,7 @@ module Fagin.Prelude (
   , Sequence(..)
   , P.show
   , DL.filter
+  , DL.find
   , DL.zip
   , DL.sort
   , DL.group

@@ -3,19 +3,20 @@ import System.IO (stderr, stdout)
 
 import Fagin
 import Fagin.Prelude
+import Control.Monad (mapM_)
 
 gfffile :: String
 gfffile = "sample-data/z.gff3"
 
 
-writeResult :: (Monoid e, ShowE e, BShow o) => Report e o -> IO ()
-writeResult (Pass x w n)
-  =  hPut stdout (bshow x)
+writeResult :: (Monoid e, ShowE e, BShow o) => Report e [o] -> IO ()
+writeResult (Pass xs w n)
+  =  mapM_ (\s -> hPut stdout $ bshow s) xs
   >> hPut stderr (show3E mempty w n)
 writeResult (Fail e w n)
   =  hPut stderr (show3E e w n)
 
-writeResultAndExit :: (Monoid e, ShowE e, BShow o) => Report e o -> IO a
+writeResultAndExit :: (Monoid e, ShowE e, BShow o) => Report e [o] -> IO a
 writeResultAndExit (Pass x w n)
   =  writeResult (Pass x w n)
   >> SE.exitWith SE.ExitSuccess

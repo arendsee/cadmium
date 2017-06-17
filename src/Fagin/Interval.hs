@@ -14,7 +14,11 @@ instance BShow Strand where
   bshow Plus  = "+"
   bshow Minus = "-"
 
-data Interval = Interval Integer Integer deriving(Ord,Eq,Show)
+data Interval
+  = Interval
+  {-# UNPACK #-} !Integer
+  {-# UNPACK #-} !Integer
+  deriving(Ord,Eq,Show)
 
 instance Semigroup Interval where
   (Interval a1 b1) <> (Interval a2 b2) = Interval (min a1 a2) (max b1 b2) 

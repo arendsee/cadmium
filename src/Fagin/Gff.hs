@@ -54,7 +54,7 @@ module Fagin.Gff (
   , Attribute(..)
 ) where
 
-import Data.ByteString.Lazy.Char8 (readInteger)
+import Data.ByteString.Char8 (readInteger)
 
 import Fagin.Prelude
 import Fagin.Interval
@@ -70,7 +70,7 @@ data IntervalType
   | CDS
   | Exon
   | Gene
-  | Other ByteString
+  | Other ShortByteString
   deriving(Eq,Ord,Show)
 
 instance BShow IntervalType where
@@ -78,7 +78,7 @@ instance BShow IntervalType where
   bshow CDS       = "CDS"
   bshow Exon      = "exon"
   bshow Gene      = "gene"
-  bshow (Other t) = t
+  bshow (Other t) = fromShort t
 
 -- | Attributes of a GFF entry, exactly according to the specification. The
 -- data constructors nearly follow the tag names, except that they have been
@@ -88,36 +88,36 @@ data Attribute
     -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
-    = AttrID ByteString
+    = AttrID ShortByteString
 
     -- | The display name of the feature. Does not have to be unique.
-    | AttrName ByteString
+    | AttrName ShortByteString
 
     -- | List of aliases for the feature (for example locus and model ids)
-    | AttrAlias [ByteString]
+    | AttrAlias [ShortByteString]
 
     -- | List of parents of this feature. Indicates a part_of relationship.
-    | AttrParent [ByteString]
+    | AttrParent [ShortByteString]
 
     -- | Not currently used by Fagin
-    | AttrTarget ByteString
+    | AttrTarget ShortByteString
     
     -- | Not currently used by Fagin
-    | AttrGap ByteString
+    | AttrGap ShortByteString
 
     -- | Not currently used by Fagin
-    | AttrDerivesFrom ByteString
+    | AttrDerivesFrom ShortByteString
 
     -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
-    | AttrNote [ByteString]
+    | AttrNote [ShortByteString]
 
     -- | A database cross reference
-    | AttrDbxref [ByteString]
+    | AttrDbxref [ShortByteString]
 
     -- | Ontology cross reference
-    | AttrOntologyTerm [ByteString]
+    | AttrOntologyTerm [ShortByteString]
 
     -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
     | AttrIsCircular Bool
@@ -126,29 +126,29 @@ data Attribute
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
-    | AttrUserDefined ByteString ByteString
+    | AttrUserDefined ShortByteString ShortByteString
 
     -- | According to the spec, all entries in the attribute column should be
     -- wrapped in tag-value pairs. However, it is common for programs to add
     -- untagged values, which sometimes function as ID.
-    | AttrUntagged ByteString
+    | AttrUntagged ShortByteString
     deriving(Eq,Ord,Show)
 
 instance BShow Attribute where
-  bshow (AttrID           s     ) = "ID="           ++ s
-  bshow (AttrName         s     ) = "Name="         ++ s
-  bshow (AttrAlias        ss    ) = "Alias="        ++ unsplit ',' ss
-  bshow (AttrParent       ss    ) = "Parent="       ++ unsplit ',' ss
-  bshow (AttrTarget       s     ) = "Target="       ++ s
-  bshow (AttrGap          s     ) = "Gap="          ++ s
-  bshow (AttrDerivesFrom  s     ) = "Derives_from="  ++ s
-  bshow (AttrNote         ss    ) = "Note="         ++ unsplit ',' ss
-  bshow (AttrDbxref       ss    ) = "Dbxref="       ++ unsplit ',' ss
-  bshow (AttrOntologyTerm ss    ) = "Ontology_term=" ++ unsplit ',' ss
+  bshow (AttrID           s     ) = "ID="            ++ fromShort s
+  bshow (AttrName         s     ) = "Name="          ++ fromShort s
+  bshow (AttrAlias        ss    ) = "Alias="         ++ unsplit ',' (map fromShort ss)
+  bshow (AttrParent       ss    ) = "Parent="        ++ unsplit ',' (map fromShort ss)
+  bshow (AttrTarget       s     ) = "Target="        ++ fromShort s
+  bshow (AttrGap          s     ) = "Gap="           ++ fromShort s
+  bshow (AttrDerivesFrom  s     ) = "Derives_from="  ++ fromShort s
+  bshow (AttrNote         ss    ) = "Note="          ++ unsplit ',' (map fromShort ss)
+  bshow (AttrDbxref       ss    ) = "Dbxref="        ++ unsplit ',' (map fromShort ss)
+  bshow (AttrOntologyTerm ss    ) = "Ontology_term=" ++ unsplit ',' (map fromShort ss)
   bshow (AttrIsCircular   True  ) = "Is_circular=true"
   bshow (AttrIsCircular   False ) = "Is_circular=false"
-  bshow (AttrUserDefined  t v   ) = t ++ "=" ++ v
-  bshow (AttrUntagged     s     ) = "Untagged=" ++ s
+  bshow (AttrUserDefined  t v   ) = fromShort t ++ "=" ++ fromShort v
+  bshow (AttrUntagged     s     ) = "Untagged=" ++ fromShort s
 
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
@@ -158,7 +158,7 @@ data GffEntry = GffEntry {
 
     -- | GFF column 1. The name of the genomic scaffold and chromosome to which
     -- the feature maps
-    gff_seqid :: !ByteString
+    gff_seqid :: !ShortByteString
 
     -- | GFF column 3. The type of the feature. This must be a Sequence
     -- Ontology term or identification id.
@@ -196,7 +196,7 @@ gffEntry
   -> GffEntry
 gffEntry seqid _ ftype start stop _ strand _ attr = 
   GffEntry {
-      gff_seqid    = seqid
+      gff_seqid    = toShort seqid
     , gff_type     = ftype
     , gff_interval = Interval start stop
     , gff_strand   = strand
@@ -212,7 +212,7 @@ instance BShow GffEntry where
     , gff_attr     = attr
   } = unsplit '\t'
     [
-        seqid
+        fromShort seqid
       , "."
       , bshow ftype
       , bshow start
@@ -259,7 +259,7 @@ readType s = case s of
   "coding_exon"     -> pass' Exon
   "coding exon"     -> pass' Exon -- synonym
   "SO:0000195"      -> pass' Exon
-  x                 -> pass' $ Other x
+  x                 -> pass' $ Other $ toShort x
 
 readStrand :: GParser (Maybe Strand)
 readStrand s = case s of
@@ -287,17 +287,17 @@ readAttributes s =
 
   toAttr :: (ByteString, ByteString) -> ReportS Attribute
   -- single value entries
-  toAttr ("ID"           , v) = pass' $ AttrID          v
-  toAttr ("Name"         , v) = pass' $ AttrName        v
-  toAttr ("Target"       , v) = pass' $ AttrTarget      v
-  toAttr ("Gap"          , v) = pass' $ AttrGap         v
-  toAttr ("Derives_from" , v) = pass' $ AttrDerivesFrom v
+  toAttr ("ID"           , v) = pass' $ AttrID          $ toShort v
+  toAttr ("Name"         , v) = pass' $ AttrName        $ toShort v
+  toAttr ("Target"       , v) = pass' $ AttrTarget      $ toShort v
+  toAttr ("Gap"          , v) = pass' $ AttrGap         $ toShort v
+  toAttr ("Derives_from" , v) = pass' $ AttrDerivesFrom $ toShort v
   -- multiple value entries
-  toAttr ("Alias"         , vs) = pass' $ AttrAlias        $ split ',' vs
-  toAttr ("Parent"        , vs) = pass' $ AttrParent       $ split ',' vs
-  toAttr ("Note"          , vs) = pass' $ AttrNote         $ split ',' vs
-  toAttr ("Dbxref"        , vs) = pass' $ AttrDbxref       $ split ',' vs
-  toAttr ("Ontology_term" , vs) = pass' $ AttrOntologyTerm $ split ',' vs
+  toAttr ("Alias"         , vs) = pass' $ AttrAlias        $ map toShort $ split ',' vs
+  toAttr ("Parent"        , vs) = pass' $ AttrParent       $ map toShort $ split ',' vs
+  toAttr ("Note"          , vs) = pass' $ AttrNote         $ map toShort $ split ',' vs
+  toAttr ("Dbxref"        , vs) = pass' $ AttrDbxref       $ map toShort $ split ',' vs
+  toAttr ("Ontology_term" , vs) = pass' $ AttrOntologyTerm $ map toShort $ split ',' vs
   -- boolean entries
   toAttr ("Is_circular", "true"  ) = pass' $ AttrIsCircular True
   toAttr ("Is_circular", "false" ) = pass' $ AttrIsCircular False
@@ -306,11 +306,11 @@ readAttributes s =
   -- TODO interpret untagged value as an ID if no ID is provided The spec does
   -- not require this, but I should add it in to handle the shit _certain_
   -- programs throw at us.
-  toAttr ("", v) = pass' $ AttrUntagged v
+  toAttr ("", v) = pass' $ AttrUntagged (toShort v)
   -- other entries
   -- TODO: Note if the tag is upper case, since these should be
   --       reserved for future use
-  toAttr (v, t) = pass' $ AttrUserDefined v t
+  toAttr (v, t) = pass' $ AttrUserDefined (toShort v) (toShort t)
 
 
   warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]

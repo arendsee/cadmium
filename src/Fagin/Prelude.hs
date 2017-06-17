@@ -27,6 +27,10 @@ module Fagin.Prelude (
   , DF.foldr'
   , DF.foldl
   , DF.foldl'
+  -- ShortByteString
+  , DBS.ShortByteString
+  , DBS.toShort
+  , DBS.fromShort
   -- ByteString IO
   , print
   , DBC.ByteString
@@ -85,7 +89,8 @@ import CorePrelude hiding (
 import Safe (headMay)
 
 import qualified Prelude as P
-import qualified Data.ByteString.Lazy.Char8 as DBC
+import qualified Data.ByteString.Char8 as DBC
+import qualified Data.ByteString.Short as DBS 
 import qualified Data.List as DL
 import qualified Control.Monad as CM
 import qualified Data.Foldable as DF
@@ -113,7 +118,7 @@ class (Monoid f, P.Integral i) => Sequence f e i | f -> e i where
   drop        :: i -> f -> f
   uncons      :: f -> Maybe (e,f)
 
-instance Sequence DBC.ByteString Char Int64 where
+instance Sequence DBC.ByteString Char Int where
   length      = DBC.length
   reverse     = DBC.reverse
   intersperse = DBC.intersperse

@@ -44,8 +44,7 @@ library
                         FlexibleInstances,
                         FlexibleContexts,
                         DeriveGeneric,
-                        DeriveAnyClass,
-                        Strict
+                        DeriveAnyClass
 
     ghc-options: -Wall
 
@@ -59,8 +58,7 @@ executable fagin
     build-depends: base, fagin
 
     default-extensions: NoImplicitPrelude,
-                        OverloadedStrings,
-                        Strict
+                        OverloadedStrings
 
     ghc-options: -Wall -threaded
 
@@ -75,5 +73,4 @@ benchmark fagin-benchmarks
     , criterion
   default-language: Haskell2010
   default-extensions: NoImplicitPrelude,
-                      OverloadedStrings,
-                      Strict
+                      OverloadedStrings

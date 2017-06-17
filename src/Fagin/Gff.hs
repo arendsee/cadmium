@@ -94,50 +94,50 @@ data Attribute
     -- | The unique ID for this entry. Presence in more than one GFF entry
     -- implies the entries are members of a single discontinuous feature (their
     -- types should be the same).
-    = AttrID ShortByteString
+    = AttrID !ShortByteString
 
     -- | The display name of the feature. Does not have to be unique.
-    | AttrName ShortByteString
+    | AttrName !ShortByteString
 
     -- | List of aliases for the feature (for example locus and model ids)
-    | AttrAlias [ShortByteString]
+    | AttrAlias ![ShortByteString]
 
     -- | List of parents of this feature. Indicates a part_of relationship.
-    | AttrParent [ShortByteString]
+    | AttrParent ![ShortByteString]
 
     -- | Not currently used by Fagin
-    | AttrTarget ShortByteString
+    | AttrTarget !ShortByteString
     
     -- | Not currently used by Fagin
-    | AttrGap ShortByteString
+    | AttrGap !ShortByteString
 
     -- | Not currently used by Fagin
-    | AttrDerivesFrom ShortByteString
+    | AttrDerivesFrom !ShortByteString
 
     -- | Free notes about the entry. These notes do not have to be quoted
     -- (according to the specification). Thus any special characters, which
     -- include commas, need to be encoded.
-    | AttrNote [ShortByteString]
+    | AttrNote ![ShortByteString]
 
     -- | A database cross reference
-    | AttrDbxref [ShortByteString]
+    | AttrDbxref ![ShortByteString]
 
     -- | Ontology cross reference
-    | AttrOntologyTerm [ShortByteString]
+    | AttrOntologyTerm ![ShortByteString]
 
     -- | Is the sequence circular (e.g. a mitochondrial or bacterial genome)
-    | AttrIsCircular Bool
+    | AttrIsCircular !Bool
 
     -- | The tags defined above are all the tags with predefined meanings.
     -- Users are free to use any additional flags they desire. These tags must
     -- be lowercase, since the spec reserves uppercase tags be for future
     -- official use.
-    | AttrUserDefined ShortByteString ShortByteString
+    | AttrUserDefined !ShortByteString !ShortByteString
 
     -- | According to the spec, all entries in the attribute column should be
     -- wrapped in tag-value pairs. However, it is common for programs to add
     -- untagged values, which sometimes function as ID.
-    | AttrUntagged ShortByteString
+    | AttrUntagged !ShortByteString
     deriving(Eq,Ord,Show,Generic,NFData)
 
 instance BShow Attribute where
@@ -276,53 +276,53 @@ readStrand'' s = {-# SCC "gffEntry_strand" #-} case s of
   v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ v
 
 readAttributes'' :: GParser [Attribute]
-readAttributes'' s =
-  ( {-# SCC "readAttributes_top" #-}  sequenceR
-    $ map ({-# SCC "readAttributes_toPair" #-} toPair)
-    $ map ({-# SCC "readAttributes_mapsplitEq" #-} split '=')
-    $ {-# SCC "readAttributes_mapsplitSC" #-} split ';'
-    $ s
-  ) >>= warnIfTagsRepeat >>= {-# SCC "readAttributes_toAttr" #-}(sequenceR . map toAttr) where
+readAttributes'' =
+    sequenceR
+  . map toAttr
+  . map (split '=')
+  . split ';'
+  where
 
-  toPair :: [ByteString] -> ReportS (ByteString, ByteString)
-  toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
-  toPair [tag,val]      = pass' (tag , val)
-  toPair [val]          = pass' (""  , val)
-  toPair fs             = fail' $ concat 
-    ["GffAttribute: expected attribute (<tag>=<val>), found '", unsplit '=' fs, "'"]
+  toAttr :: [ByteString] -> ReportS Attribute
 
-  toAttr :: (ByteString, ByteString) -> ReportS Attribute
-  -- single value entries
-  toAttr ("ID"           , v) = pass' $ AttrID          $ toShort v
-  toAttr ("Name"         , v) = pass' $ AttrName        $ toShort v
-  toAttr ("Target"       , v) = pass' $ AttrTarget      $ toShort v
-  toAttr ("Gap"          , v) = pass' $ AttrGap         $ toShort v
-  toAttr ("Derives_from" , v) = pass' $ AttrDerivesFrom $ toShort v
+  toAttr ["ID",       v] = {-# SCC "readAttributes_id" #-}     pass' $!! AttrID     $!! toShort v
+  toAttr ["Parent" , vs] = {-# SCC "readAttributes_parent" #-} pass' $!! AttrParent $!! map toShort $!! split ',' vs
+  
+  toAttr ["Name",   v] = pass' $!! AttrName   $!! toShort v
+  toAttr ["Target", v] = pass' $!! AttrTarget $!! toShort v
+  toAttr ["Gap",    v] = pass' $!! AttrGap    $!! toShort v
+  toAttr ["Derives_from" , v] = pass' $!! AttrDerivesFrom $!! toShort v
   -- multiple value entries
-  toAttr ("Alias"         , vs) = pass' $ AttrAlias        $ map toShort $ split ',' vs
-  toAttr ("Parent"        , vs) = pass' $ AttrParent       $ map toShort $ split ',' vs
-  toAttr ("Note"          , vs) = pass' $ AttrNote         $ map toShort $ split ',' vs
-  toAttr ("Dbxref"        , vs) = pass' $ AttrDbxref       $ map toShort $ split ',' vs
-  toAttr ("Ontology_term" , vs) = pass' $ AttrOntologyTerm $ map toShort $ split ',' vs
+  toAttr ["Alias"         , vs] = pass' $!! AttrAlias        $!! map toShort $!! split ',' vs
+  toAttr ["Note"          , vs] = pass' $!! AttrNote         $!! map toShort $!! split ',' vs
+  toAttr ["Dbxref"        , vs] = pass' $!! AttrDbxref       $!! map toShort $!! split ',' vs
+  toAttr ["Ontology_term" , vs] = pass' $!! AttrOntologyTerm $!! map toShort $!! split ',' vs
   -- boolean entries
-  toAttr ("Is_circular", "true"  ) = pass' $ AttrIsCircular True
-  toAttr ("Is_circular", "false" ) = pass' $ AttrIsCircular False
-  toAttr ("Is_circular", _       ) = fail' "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
+  toAttr ["Is_circular", "true"  ] = pass' $!! AttrIsCircular True
+  toAttr ["Is_circular", "false" ] = pass' $!! AttrIsCircular False
+  toAttr ["Is_circular", _       ] = fail' "GFFAttribute: Is_circular tag must be either 'true' or 'false'"
+
+  -- other entries
+  -- TODO: Note if the tag is upper case, since these should be
+  --       reserved for future use
+  toAttr [v, t] = pass' $!! AttrUserDefined (toShort v) (toShort t)
+
   -- untagged entry
   -- TODO interpret untagged value as an ID if no ID is provided The spec does
   -- not require this, but I should add it in to handle the shit _certain_
   -- programs throw at us.
-  toAttr ("", v) = pass' $ AttrUntagged (toShort v)
-  -- other entries
-  -- TODO: Note if the tag is upper case, since these should be
-  --       reserved for future use
-  toAttr (v, t) = pass' $ AttrUserDefined (toShort v) (toShort t)
+  toAttr [v] = pass' $!! AttrUntagged (toShort v)
+  toAttr []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
+  toAttr fs             = fail' $ concat 
+    ["GffAttribute: expected attribute (<tag>=<val>), found '", unsplit '=' fs, "'"]
 
-  warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
-  warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of
-    [] -> pass' ps
-    es -> pass' ps >>= warn' ("GFFAttribute: each tag may appear only once, offending tag(s): [" ++ tags ++ "]") where
-      tags = unsplit ',' es
+
+  -- TODO: should warn about repeats
+  -- warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
+  -- warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of
+  --   [] -> pass' ps
+  --   es -> pass' ps >>= warn' ("GFFAttribute: each tag may appear only once, offending tag(s): [" ++ tags ++ "]") where
+  --     tags = unsplit ',' es
 
 
 type GIFilter = (Integer,[ByteString]) -> Bool

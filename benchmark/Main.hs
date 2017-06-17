@@ -34,8 +34,6 @@ main = do
   let matrix = getMatrix rawGff
   let cols   = getColumns rawGff
 
-  putStrLn $ bshow $ take 2 matrix
-
   defaultMain [
         bgroup "fieldParsers" [
           bench "map readType"       $ nf (map readType''       ) (coltype   cols)

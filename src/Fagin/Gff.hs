@@ -227,12 +227,12 @@ instance BShow GffEntry where
 type GParser a = ByteString -> ReportS a
 
 readInt :: GParser Integer
-readInt s = case readInteger s of
+readInt s = case {-# SCC "gffEntry_integer" #-} readInteger s of
   Just (x,"") -> pass' x
   _ -> fail' $ "GffParse: expected integer, found '" ++ s ++ "'"
 
 readType :: GParser IntervalType
-readType s = case s of
+readType s = {-# SCC "gffEntry_type" #-} case s of
   ""                -> fail' "GffParse: exected <type> in column 3, found nothing"
 
   "gene"            -> pass' Gene
@@ -262,7 +262,7 @@ readType s = case s of
   x                 -> pass' $ Other $ toShort x
 
 readStrand :: GParser (Maybe Strand)
-readStrand s = case s of
+readStrand s = {-# SCC "gffEntry_strand" #-} case s of
   "+" -> pass' $ Just Plus
   "-" -> pass' $ Just Minus
   "." -> pass' Nothing -- The distinction between '.' and '?' is a nuance I
@@ -271,12 +271,12 @@ readStrand s = case s of
 
 readAttributes :: GParser [Attribute]
 readAttributes s =
-  (   sequence
-    $ map toPair
-    $ map ( {-# SCC "readAttributes_mapsplitEq" #-} split '=')
+  ( {-# SCC "readAttributes_top" #-}  sequence
+    $ map ({-# SCC "readAttributes_toPair" #-} toPair)
+    $ map ({-# SCC "readAttributes_mapsplitEq" #-} split '=')
     $ {-# SCC "readAttributes_mapsplitSC" #-} split ';'
     $ s
-  ) >>= warnIfTagsRepeat >>= (sequence . map toAttr) where
+  ) >>= warnIfTagsRepeat >>= {-# SCC "readAttributes_toAttr" #-}(sequence . map toAttr) where
 
   toPair :: [ByteString] -> ReportS (ByteString, ByteString)
   toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
@@ -311,7 +311,6 @@ readAttributes s =
   -- TODO: Note if the tag is upper case, since these should be
   --       reserved for future use
   toAttr (v, t) = pass' $ AttrUserDefined (toShort v) (toShort t)
-
 
   warnIfTagsRepeat :: [(ByteString, ByteString)] -> ReportS [(ByteString, ByteString)]
   warnIfTagsRepeat ps = case mapMaybe headMay . map (drop 1) . group . sort . map fst $ ps of
@@ -351,14 +350,15 @@ readGff =
 
   where
     toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
-      = gffEntry
+      = {-# SCC "gffEntry" #-} gffEntry
       <$> pure           c1 -- seqid   (used as is)
       <*> pure           c2 -- source  (not used)
-      <*> readType       c3 -- type    
-      <*> readInt        c4 -- start   
-      <*> readInt        c5 -- stop    
+      <*> readType       c3 -- type
+      <*> readInt        c4 -- start
+      <*> readInt        c5 -- stop
       <*> pure           c6 -- score   (not used)
-      <*> readStrand     c7 -- strand  
+      <*> readStrand     c7 -- strand
       <*> pure           c8 -- phase   (not used)
       <*> readAttributes c9 -- attributes
+
     toGff (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]

@@ -1,7 +1,12 @@
 all:
 	cabal install \
 		--bindir=./ \
-		--enable-profiling
+		--enable-profiling \
+		--ghc-options="-threaded -XStrict"
+
+.PHONY: fast
+fast:
+	cabal install --bindir=./ -O2
 
 .PHONY: profile
 profile:

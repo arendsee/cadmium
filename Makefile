@@ -2,6 +2,7 @@ all:
 	cabal install \
 		--bindir=./ \
 		--enable-profiling \
+		--enable-benchmarks \
 		--ghc-options="-threaded -XStrict"
 
 .PHONY: fast
@@ -19,3 +20,11 @@ test:
 .PHONY: run
 run:
 	cabal run
+
+.PHONY: bench
+bench:
+	cabal bench +RTS -T
+
+.PHONY: clean
+clean:
+	rm -f *.aux *.ps *.hp *.prof

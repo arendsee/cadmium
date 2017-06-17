@@ -52,6 +52,11 @@ module Fagin.Gff (
   , IntervalType(..)
   , GffEntry(..)
   , Attribute(..)
+  -- exported just for benchmarking
+  , readType''
+  , readInt''
+  , readStrand''
+  , readAttributes''
 ) where
 
 import Data.ByteString.Char8 (readInteger)
@@ -226,13 +231,13 @@ instance BShow GffEntry where
 
 type GParser a = ByteString -> ReportS a
 
-readInt :: GParser Integer
-readInt s = case {-# SCC "gffEntry_integer" #-} readInteger s of
+readInt'' :: GParser Integer
+readInt'' s = case {-# SCC "gffEntry_integer" #-} readInteger s of
   Just (x,"") -> pass' x
   _ -> fail' $ "GffParse: expected integer, found '" ++ s ++ "'"
 
-readType :: GParser IntervalType
-readType s = {-# SCC "gffEntry_type" #-} case s of
+readType'' :: GParser IntervalType
+readType'' s = {-# SCC "gffEntry_type" #-} case s of
   ""                -> fail' "GffParse: exected <type> in column 3, found nothing"
 
   "gene"            -> pass' Gene
@@ -261,16 +266,16 @@ readType s = {-# SCC "gffEntry_type" #-} case s of
   "SO:0000195"      -> pass' Exon
   x                 -> pass' $ Other $ toShort x
 
-readStrand :: GParser (Maybe Strand)
-readStrand s = {-# SCC "gffEntry_strand" #-} case s of
+readStrand'' :: GParser (Maybe Strand)
+readStrand'' s = {-# SCC "gffEntry_strand" #-} case s of
   "+" -> pass' $ Just Plus
   "-" -> pass' $ Just Minus
   "." -> pass' Nothing -- The distinction between '.' and '?' is a nuance I
   "?" -> pass' Nothing -- will ignore for now
   v   -> fail' $ "GffParse: expected strand from set [+-.?], found '" ++ v
 
-readAttributes :: GParser [Attribute]
-readAttributes s =
+readAttributes'' :: GParser [Attribute]
+readAttributes'' s =
   ( {-# SCC "readAttributes_top" #-}  sequence
     $ map ({-# SCC "readAttributes_toPair" #-} toPair)
     $ map ({-# SCC "readAttributes_mapsplitEq" #-} split '=')
@@ -351,14 +356,14 @@ readGff =
   where
     toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
       = {-# SCC "gffEntry" #-} gffEntry
-      <$> pure           c1 -- seqid   (used as is)
-      <*> pure           c2 -- source  (not used)
-      <*> readType       c3 -- type
-      <*> readInt        c4 -- start
-      <*> readInt        c5 -- stop
-      <*> pure           c6 -- score   (not used)
-      <*> readStrand     c7 -- strand
-      <*> pure           c8 -- phase   (not used)
-      <*> readAttributes c9 -- attributes
+      <$> pure             c1 -- seqid   (used as is)
+      <*> pure             c2 -- source  (not used)
+      <*> readType''       c3 -- type
+      <*> readInt''        c4 -- start
+      <*> readInt''        c5 -- stop
+      <*> pure             c6 -- score   (not used)
+      <*> readStrand''     c7 -- strand
+      <*> pure             c8 -- phase   (not used)
+      <*> readAttributes'' c9 -- attributes
 
     toGff (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]

@@ -1,3 +1,5 @@
+simplify toAttr
+
 	Sat Jun 17 08:59 2017 Time and Allocation Profiling Report  (Final)
 
 	   fagin +RTS -p -RTS

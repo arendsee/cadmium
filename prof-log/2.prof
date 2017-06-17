@@ -1,6 +1,4 @@
-The only change between this and the previous profile, is that I replaced the
-splitSeq funtion (readGFF_splitTAB) with `words`. The ClassyPrelude
-implementation is shamefully slow.
+ClassyPrelude::splitSeq --> `words` (see readGFF_splitTAB)
 
 	Thu Jun 15 08:34 2017 Time and Allocation Profiling Report  (Final)
 

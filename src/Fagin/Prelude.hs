@@ -6,6 +6,7 @@ module Fagin.Prelude (
   , module Safe
   , module Control.DeepSeq
   , Generic
+  , ConstantString
   -- monoid operator
   , (++)
   -- semigroup (with <> operator)
@@ -29,10 +30,6 @@ module Fagin.Prelude (
   , DF.foldr'
   , DF.foldl
   , DF.foldl'
-  -- ShortByteString
-  , DBS.ShortByteString
-  , DBS.toShort
-  , DBS.fromShort
   -- ByteString IO
   , print
   , DBC.ByteString
@@ -95,10 +92,12 @@ import GHC.Generics (Generic)
 
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as DBC
-import qualified Data.ByteString.Short as DBS 
+-- import qualified Data.ByteString.Short as DBS
 import qualified Data.List as DL
 import qualified Control.Monad as CM
 import qualified Data.Foldable as DF
+
+type ConstantString = DBC.ByteString
 
 class Semigroup a where
   infixr 6 <>

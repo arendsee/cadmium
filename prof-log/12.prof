@@ -1,3 +1,5 @@
+readGff: mapM --> sequenceR . map
+
 	Sat Jun 17 09:22 2017 Time and Allocation Profiling Report  (Final)
 
 	   fagin +RTS -p -RTS

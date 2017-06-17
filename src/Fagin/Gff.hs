@@ -57,13 +57,14 @@ module Fagin.Gff (
   , readInt''
   , readStrand''
   , readAttributes''
+  , toGff''
 ) where
 
 import Data.ByteString.Char8 (readInteger)
 
 import Fagin.Prelude
 import Fagin.Interval
-import Fagin.Report (ReportS, pass', fail', warn')
+import Fagin.Report (ReportS, pass', fail', warn', sequenceR)
 
 -- | Holds the types that are currently used by Fagin. I may extend this later.
 -- Since these types are required to be Sequence Ontology terms, I really ought
@@ -276,12 +277,12 @@ readStrand'' s = {-# SCC "gffEntry_strand" #-} case s of
 
 readAttributes'' :: GParser [Attribute]
 readAttributes'' s =
-  ( {-# SCC "readAttributes_top" #-}  sequence
+  ( {-# SCC "readAttributes_top" #-}  sequenceR
     $ map ({-# SCC "readAttributes_toPair" #-} toPair)
     $ map ({-# SCC "readAttributes_mapsplitEq" #-} split '=')
     $ {-# SCC "readAttributes_mapsplitSC" #-} split ';'
     $ s
-  ) >>= warnIfTagsRepeat >>= {-# SCC "readAttributes_toAttr" #-}(sequence . map toAttr) where
+  ) >>= warnIfTagsRepeat >>= {-# SCC "readAttributes_toAttr" #-}(sequenceR . map toAttr) where
 
   toPair :: [ByteString] -> ReportS (ByteString, ByteString)
   toPair []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
@@ -334,9 +335,23 @@ empty' :: GIFilter
 empty' (_,[]) = True
 empty' _      = False
 
+toGff'' :: (BShow a) => (a, [ByteString]) -> ReportS GffEntry
+toGff'' (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
+  = {-# SCC "gffEntry" #-} gffEntry
+  <$> pure             c1 -- seqid   (used as is)
+  <*> pure             c2 -- source  (not used)
+  <*> readType''       c3 -- type
+  <*> readInt''        c4 -- start
+  <*> readInt''        c5 -- stop
+  <*> pure             c6 -- score   (not used)
+  <*> readStrand''     c7 -- strand
+  <*> pure             c8 -- phase   (not used)
+  <*> readAttributes'' c9 -- attributes
+toGff'' (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]
+
 readGff :: ByteString -> ReportS [GffEntry]
 readGff = 
-  mapM toGff              . -- Parse GFF entry and report errors. Die on first
+  mapM toGff''            . -- Parse GFF entry and report errors. Die on first
                             -- failed line. Most errors are highly repetitive
                             -- in GFFs, so just dying on the first failure
                             -- avoids extremely long error message. A better
@@ -352,18 +367,3 @@ readGff =
 
   
   {-# SCC "readGFF_lines" #-} split '\n'                     -- this allows space in fields
-
-  where
-    toGff (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
-      = {-# SCC "gffEntry" #-} gffEntry
-      <$> pure             c1 -- seqid   (used as is)
-      <*> pure             c2 -- source  (not used)
-      <*> readType''       c3 -- type
-      <*> readInt''        c4 -- start
-      <*> readInt''        c5 -- stop
-      <*> pure             c6 -- score   (not used)
-      <*> readStrand''     c7 -- strand
-      <*> pure             c8 -- phase   (not used)
-      <*> readAttributes'' c9 -- attributes
-
-    toGff (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]

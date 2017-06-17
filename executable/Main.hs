@@ -3,7 +3,7 @@ import Fagin.Prelude
 import Fagin.IO
 
 gfffile :: String
-gfffile = "sample-data/micro.gff3"
+gfffile = "sample-data/big.gff3"
 
 main :: IO ()
 main = do

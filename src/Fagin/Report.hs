@@ -10,6 +10,7 @@ module Fagin.Report
     Report(..)
   , ReportS
   , ShowE(..)
+  , sequenceR
   , pass , pass'
   , fail , fail'
   , stop , stop'
@@ -75,6 +76,16 @@ instance (Monoid e) => Applicative (Report e) where
   Pass _  w1 n1 <*> Fail e2 w2 n2 = Fail e2         (w1 ++ w2) (n1 ++ n2)
   Fail e1 w1 n1 <*> Pass _  w2 n2 = Fail e1         (w1 ++ w2) (n1 ++ n2)
   Fail e1 w1 n1 <*> Fail e2 w2 n2 = Fail (e1 ++ e2) (w1 ++ w2) (n1 ++ n2)
+
+sequenceR :: [ReportS a] -> ReportS [a]
+sequenceR [] = pass' []
+sequenceR ((Fail e w n):_) = Fail e w n
+sequenceR ((Pass v w n):rs) = foldr' comb' (Pass [v] w n) rs where 
+  comb' :: ReportS a -> ReportS [a] -> ReportS [a]
+  comb' (Pass x  w1 n1) (Pass xs w2 n2) = Pass (x:xs)     (w1 ++ w2) (n1 ++ n2)
+  comb' (Pass _  w1 n1) (Fail e2 w2 n2) = Fail e2         (w1 ++ w2) (n1 ++ n2)
+  comb' (Fail e1 w1 n1) (Pass _  w2 n2) = Fail e1         (w1 ++ w2) (n1 ++ n2)
+  comb' (Fail e1 w1 n1) (Fail e2 w2 n2) = Fail (e1 ++ e2) (w1 ++ w2) (n1 ++ n2)
 
 class ShowE e where
   showE :: e -> ByteString

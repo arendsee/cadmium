@@ -76,7 +76,7 @@ extractParent m g =
   fmap (\x -> (x, g)) .
 
   -- _ -> ThrowsError [Parent]
-  sequence .
+  sequenceR .
 
   -- _ -> [ThrowsError Parent]
   map (getParent m) .

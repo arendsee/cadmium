@@ -15,14 +15,13 @@ data Columns = Columns {
     , colattr   :: [ByteString]
   }
 
+getMatrix :: ByteString -> [[ByteString]]
+getMatrix =   map (split '\t')
+            . filter (not . isPrefixOf "#")
+            . split '\n'
+
 getColumns :: ByteString -> Columns
-getColumns rawGff
-  = case   DL.transpose
-         . map (split '\t')
-         . filter (not . isPrefixOf "#")
-         . split '\n'
-         $ rawGff
-    of
+getColumns rawGff = case DL.transpose $ getMatrix rawGff of
     [_, _, types, starts, stops, _, strands, _, attrs] -> Columns types starts stops strands attrs
     _ -> P.error "Aww fuck, that sample GFF is shit"
 
@@ -32,7 +31,10 @@ main = do
   let objGff = readGff rawGff
   let objMod = objGff >>= buildModels
   let outgff = objMod >>= sequence . map model2gff
+  let matrix = getMatrix rawGff
   let cols   = getColumns rawGff
+
+  putStrLn $ bshow $ take 2 matrix
 
   defaultMain [
         bgroup "fieldParsers" [
@@ -44,6 +46,7 @@ main = do
       ]
       , bgroup "500kb-sample" [
           bench "readFile" $ nfIO (readFile "sample-data/short.gff3")
+        , bench "map toGff" $ nf (map toGff'') (zip [1..] matrix :: [(Integer, [ByteString])] )
         , bench "readGff" $ nf readGff rawGff
         , bench "models >>= sequence . map model2gff" $ nf (CM.liftM $ sequence . map model2gff) objMod
         , bench "outgff >>= map bshow" $ nf (CM.liftM $ map bshow) outgff

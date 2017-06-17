@@ -2,6 +2,7 @@ dist/
 *sandbox*
 
 fagin
+report.html
 
 *.o
 *.hi

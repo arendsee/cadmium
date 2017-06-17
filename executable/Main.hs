@@ -1,29 +1,9 @@
-import qualified System.Exit as SE
-import System.IO (stderr, stdout)
-
 import Fagin
 import Fagin.Prelude
-import Control.Monad (mapM_)
+import Fagin.IO
 
 gfffile :: String
-gfffile = "sample-data/z.gff3"
-
-
-writeResult :: (Monoid e, ShowE e, BShow o) => Report e [o] -> IO ()
-writeResult (Pass xs w n)
-  =  mapM_ (\s -> hPut stdout $ bshow s) xs
-  >> hPut stderr (show3E mempty w n)
-writeResult (Fail e w n)
-  =  hPut stderr (show3E e w n)
-
-writeResultAndExit :: (Monoid e, ShowE e, BShow o) => Report e [o] -> IO a
-writeResultAndExit (Pass x w n)
-  =  writeResult (Pass x w n)
-  >> SE.exitWith SE.ExitSuccess
-writeResultAndExit f
-  =  writeResult f
-  >> SE.exitWith (SE.ExitFailure 1)
-
+gfffile = "sample-data/micro.gff3"
 
 main :: IO ()
 main = do

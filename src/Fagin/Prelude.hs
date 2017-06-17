@@ -4,6 +4,8 @@
 module Fagin.Prelude (
     module CorePrelude
   , module Safe
+  , module Control.DeepSeq
+  , Generic
   -- monoid operator
   , (++)
   -- semigroup (with <> operator)
@@ -87,6 +89,9 @@ import CorePrelude hiding (
     )
 
 import Safe (headMay)
+
+import Control.DeepSeq
+import GHC.Generics (Generic)
 
 import qualified Prelude as P
 import qualified Data.ByteString.Char8 as DBC

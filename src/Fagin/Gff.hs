@@ -76,7 +76,7 @@ data IntervalType
   | Exon
   | Gene
   | Other ShortByteString
-  deriving(Eq,Ord,Show)
+  deriving(Eq,Ord,Show,Generic,NFData)
 
 instance BShow IntervalType where
   bshow MRna      = "mRNA"
@@ -137,7 +137,7 @@ data Attribute
     -- wrapped in tag-value pairs. However, it is common for programs to add
     -- untagged values, which sometimes function as ID.
     | AttrUntagged ShortByteString
-    deriving(Eq,Ord,Show)
+    deriving(Eq,Ord,Show,Generic,NFData)
 
 instance BShow Attribute where
   bshow (AttrID           s     ) = "ID="            ++ fromShort s
@@ -185,7 +185,7 @@ data GffEntry = GffEntry {
     -- | GFF column 9. Feature attributes (see 'Attribute')
     , gff_attr :: ![Attribute]
   }
-  deriving(Eq,Ord,Show)
+  deriving(Eq,Ord,Show,Generic,NFData)
 
 -- | Construct a GffEntry from the full data of a parsed GFF line
 gffEntry

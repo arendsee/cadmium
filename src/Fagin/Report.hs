@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-
 {-| Error and Warning handling.
  -
  - The goal here is to be able to distinguish between Errors, which return no
@@ -26,7 +24,7 @@ type ReportS = Report [ByteString]
 data Report e a
   = Pass a e e
   | Fail e e e
-  deriving(Eq,Ord,Show)
+  deriving(Eq,Ord,Show,Generic,NFData)
 
 pass :: (Monoid e) => a -> Report e a
 pass x = Pass x mempty mempty

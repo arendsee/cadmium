@@ -19,7 +19,7 @@ data GeneModel = GeneModel {
     , model_cds    :: ![Interval]        -- ^ list of coding intervals
     , model_exon   :: ![Interval]        -- ^ list of exon intervals
     , model_strand :: !Strand            -- ^ strand [+-.?]
-  } deriving(Show)
+  } deriving(Show,Generic,NFData)
 
 model2gff :: GeneModel -> ReportS [GffEntry]
 model2gff GeneModel {
@@ -60,7 +60,7 @@ type EntryId = ShortByteString
 
 type IdMap = MS.Map EntryId GffEntry
 
-data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord)
+data Parent = Parent ParentId IntervalType deriving(Show,Eq,Ord,Generic,NFData)
 
 requireParent :: ([Parent], GffEntry) -> ReportS ([Parent], GffEntry)
 requireParent ([], g) = case gff_type g of

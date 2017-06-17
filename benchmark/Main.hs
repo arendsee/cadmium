@@ -47,6 +47,7 @@ main = do
         , bench "map toGff" $ nf (map toGff'') (zip [1..] matrix :: [(Integer, [ByteString])] )
         , bench "readGff" $ nf readGff rawGff
         , bench "models >>= sequence . map model2gff" $ nf (CM.liftM $ sequence . map model2gff) objMod
+        , bench "buildModels" $ nf (fmap buildModels) objGff
         , bench "outgff >>= map bshow" $ nf (CM.liftM $ map bshow) outgff
       ]
     ]

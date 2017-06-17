@@ -64,7 +64,7 @@ import Data.ByteString.Char8 (readInteger)
 
 import Fagin.Prelude
 import Fagin.Interval
-import Fagin.Report (ReportS, pass', fail', warn', sequenceR)
+import Fagin.Report
 
 -- | Holds the types that are currently used by Fagin. I may extend this later.
 -- Since these types are required to be Sequence Ontology terms, I really ought
@@ -200,11 +200,11 @@ gffEntry
   -> ByteString   -- ^ phase
   -> [Attribute]  -- ^ attributes
   -> GffEntry
-gffEntry seqid _ ftype start stop _ strand _ attr = 
+gffEntry seqid _ ftype a b _ strand _ attr = 
   GffEntry {
       gff_seqid    = toShort seqid
     , gff_type     = ftype
-    , gff_interval = Interval start stop
+    , gff_interval = Interval a b
     , gff_strand   = strand
     , gff_attr     = attr
   }
@@ -213,7 +213,7 @@ instance BShow GffEntry where
   bshow GffEntry { 
       gff_seqid    = seqid
     , gff_type     = ftype
-    , gff_interval = Interval start stop
+    , gff_interval = Interval a b
     , gff_strand   = strand
     , gff_attr     = attr
   } = unsplit '\t'
@@ -221,8 +221,8 @@ instance BShow GffEntry where
         fromShort seqid
       , "."
       , bshow ftype
-      , bshow start
-      , bshow stop
+      , bshow a
+      , bshow b
       , "."
       , maybe "." bshow strand
       , "."
@@ -351,7 +351,8 @@ toGff'' (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, f
 
 readGff :: ByteString -> ReportS [GffEntry]
 readGff = 
-  mapM toGff''            . -- Parse GFF entry and report errors. Die on first
+  sequenceR .
+  map toGff''             . -- Parse GFF entry and report errors. Die on first
                             -- failed line. Most errors are highly repetitive
                             -- in GFFs, so just dying on the first failure
                             -- avoids extremely long error message. A better

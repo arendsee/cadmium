@@ -76,7 +76,7 @@ data IntervalType
   | CDS
   | Exon
   | Gene
-  | Other ConstantString
+  | Other !ConstantString
   deriving(Eq,Ord,Show,Generic,NFData)
 
 instance BShow IntervalType where
@@ -84,7 +84,7 @@ instance BShow IntervalType where
   bshow CDS       = "CDS"
   bshow Exon      = "exon"
   bshow Gene      = "gene"
-  bshow (Other t) = t
+  bshow (Other t) = (fromShort t)
 
 -- | Attributes of a GFF entry, exactly according to the specification. The
 -- data constructors nearly follow the tag names, except that they have been
@@ -141,20 +141,20 @@ data Attribute
     deriving(Eq,Ord,Show,Generic,NFData)
 
 instance BShow Attribute where
-  bshow (AttrID           s     ) = "ID="            ++ s
-  bshow (AttrName         s     ) = "Name="          ++ s
-  bshow (AttrAlias        ss    ) = "Alias="         ++ unsplit ',' ss
-  bshow (AttrParent       ss    ) = "Parent="        ++ unsplit ',' ss
-  bshow (AttrTarget       s     ) = "Target="        ++ s
-  bshow (AttrGap          s     ) = "Gap="           ++ s
-  bshow (AttrDerivesFrom  s     ) = "Derives_from="  ++ s
-  bshow (AttrNote         ss    ) = "Note="          ++ unsplit ',' ss
-  bshow (AttrDbxref       ss    ) = "Dbxref="        ++ unsplit ',' ss
-  bshow (AttrOntologyTerm ss    ) = "Ontology_term=" ++ unsplit ',' ss
+  bshow (AttrID           s     ) = "ID="            ++ fromShort s
+  bshow (AttrName         s     ) = "Name="          ++ fromShort s
+  bshow (AttrAlias        ss    ) = "Alias="         ++ unsplit ',' (map fromShort ss)
+  bshow (AttrParent       ss    ) = "Parent="        ++ unsplit ',' (map fromShort ss)
+  bshow (AttrTarget       s     ) = "Target="        ++ fromShort s
+  bshow (AttrGap          s     ) = "Gap="           ++ fromShort s
+  bshow (AttrDerivesFrom  s     ) = "Derives_from="  ++ fromShort s
+  bshow (AttrNote         ss    ) = "Note="          ++ unsplit ',' (map fromShort ss)
+  bshow (AttrDbxref       ss    ) = "Dbxref="        ++ unsplit ',' (map fromShort ss)
+  bshow (AttrOntologyTerm ss    ) = "Ontology_term=" ++ unsplit ',' (map fromShort ss)
   bshow (AttrIsCircular   True  ) = "Is_circular=true"
   bshow (AttrIsCircular   False ) = "Is_circular=false"
-  bshow (AttrUserDefined  t v   ) = t ++ "=" ++ v
-  bshow (AttrUntagged     s     ) = "Untagged=" ++ s
+  bshow (AttrUserDefined  t v   ) = (fromShort t) ++ "=" ++ (fromShort v)
+  bshow (AttrUntagged     s     ) = "Untagged=" ++ (fromShort s)
 
 
 -- | Holds the data from a GFF entry that is relevant to Fagin. Some GFF
@@ -202,7 +202,7 @@ gffEntry
   -> GffEntry
 gffEntry seqid _ ftype a b _ strand _ attr = 
   GffEntry {
-      gff_seqid    = seqid
+      gff_seqid    = (toShort seqid)
     , gff_type     = ftype
     , gff_interval = Interval a b
     , gff_strand   = strand
@@ -218,7 +218,7 @@ instance BShow GffEntry where
     , gff_attr     = attr
   } = unsplit '\t'
     [
-        seqid
+        (fromShort seqid)
       , "."
       , bshow ftype
       , bshow a
@@ -265,7 +265,7 @@ readType'' s = {-# SCC "gffEntry_type" #-} case s of
   "coding_exon"     -> pass' Exon
   "coding exon"     -> pass' Exon -- synonym
   "SO:0000195"      -> pass' Exon
-  x                 -> pass' $ Other x
+  x                 -> pass' $ Other (toShort x)
 
 readStrand'' :: GParser (Maybe Strand)
 readStrand'' s = {-# SCC "gffEntry_strand" #-} case s of
@@ -285,18 +285,18 @@ readAttributes'' =
 
   toAttr :: [ByteString] -> ReportS Attribute
 
-  toAttr ["ID",       v] = {-# SCC "readAttributes_id" #-}     pass' $!! AttrID  v
-  toAttr ["Parent" , vs] = {-# SCC "readAttributes_parent" #-} pass' $!! AttrParent $!! split ',' vs
+  toAttr ["ID",       v] = {-# SCC "readAttributes_id" #-}     pass' $!! AttrID  (toShort v)
+  toAttr ["Parent" , vs] = {-# SCC "readAttributes_parent" #-} pass' $!! AttrParent $!! map toShort (split ',' vs)
   
-  toAttr ["Name",   v] = pass' $!! AttrName    v
-  toAttr ["Target", v] = pass' $!! AttrTarget  v
-  toAttr ["Gap",    v] = pass' $!! AttrGap     v
-  toAttr ["Derives_from" , v] = pass' $!! AttrDerivesFrom  v
+  toAttr ["Name",   v] = pass' $!! AttrName    (toShort v)
+  toAttr ["Target", v] = pass' $!! AttrTarget  (toShort v)
+  toAttr ["Gap",    v] = pass' $!! AttrGap     (toShort v)
+  toAttr ["Derives_from" , v] = pass' $!! AttrDerivesFrom  (toShort v)
   -- multiple value entries
-  toAttr ["Alias"         , vs] = pass' $!! AttrAlias        $!! split ',' vs
-  toAttr ["Note"          , vs] = pass' $!! AttrNote         $!! split ',' vs
-  toAttr ["Dbxref"        , vs] = pass' $!! AttrDbxref       $!! split ',' vs
-  toAttr ["Ontology_term" , vs] = pass' $!! AttrOntologyTerm $!! split ',' vs
+  toAttr ["Alias"         , vs] = pass' $!! AttrAlias        $!! map toShort (split ',' vs)
+  toAttr ["Note"          , vs] = pass' $!! AttrNote         $!! map toShort (split ',' vs)
+  toAttr ["Dbxref"        , vs] = pass' $!! AttrDbxref       $!! map toShort (split ',' vs)
+  toAttr ["Ontology_term" , vs] = pass' $!! AttrOntologyTerm $!! map toShort (split ',' vs)
   -- boolean entries
   toAttr ["Is_circular", "true"  ] = pass' $!! AttrIsCircular True
   toAttr ["Is_circular", "false" ] = pass' $!! AttrIsCircular False
@@ -305,13 +305,13 @@ readAttributes'' =
   -- other entries
   -- TODO: Note if the tag is upper case, since these should be
   --       reserved for future use
-  toAttr [v, t] = pass' $!! AttrUserDefined v t
+  toAttr [v, t] = pass' $!! AttrUserDefined (toShort v) (toShort t)
 
   -- untagged entry
   -- TODO interpret untagged value as an ID if no ID is provided The spec does
   -- not require this, but I should add it in to handle the shit _certain_
   -- programs throw at us.
-  toAttr [v] = pass' $!! AttrUntagged v
+  toAttr [v] = pass' $!! AttrUntagged (toShort v)
   toAttr []             = fail' $ "GffAttribute: expected attribute (<tag>=<val>), found ''"
   toAttr fs             = fail' $ concat 
     ["GffAttribute: expected attribute (<tag>=<val>), found '", unsplit '=' fs, "'"]

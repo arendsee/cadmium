@@ -17,6 +17,9 @@ profit () {
     mv fagin.prof $dir/prof/$base.prof
 }
 
+git log | awk 'BEGIN{RS="commit "; FS="\n"} NR == 2 {print "Commit: " $0}' > $dir/git-info
+git status >> $dir/git-info
+
 profit "hp_cost-center"  "-hc"
 profit "hm_module"       "-hm"
 profit "hd_closure_desc" "-hd"
@@ -24,9 +27,6 @@ profit "hy_type"         "-hy"
 profit "hr_retainer"     "-hr"
 profit "hb_biography"    "-hb"
 
-cabal bench --benchmark-options="-o $dir/benchmarks.html"
-
 pdfunite $dir/*pdf $dir/all-memory-plots.pdf
 
-git log | awk 'BEGIN{RS="commit "; FS="\n"} NR == 2 {print "Commit: " $0}' > $dir/git-info
-git status >> $dir/git-info
+cabal bench --benchmark-options="-o $dir/benchmarks.html"

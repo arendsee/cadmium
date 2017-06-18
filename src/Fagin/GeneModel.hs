@@ -111,7 +111,7 @@ extractParent m g =
       Nothing  -> fail' $ unwords
         [
             "FeatureInvalidParent: In 'Parent="
-          , p
+          , (fromShort p)
           , "', no matchinf 'Id' found\n"
           , " - Offending line:\n"
           , bshow g
@@ -130,7 +130,7 @@ mapEntries = MS.fromList . concatMap plist where
   isID _          = False
 
 toModels :: [(Parent, GffEntry)] -> ReportS [GeneModel]
-toModels = sequence . map toModel . LE.groupSort where
+toModels = sequenceR . map toModel . LE.groupSort where
 
   -- TODO check that each CDS is subsumed by an exon
   -- TODO check that no exons overlap
@@ -152,7 +152,7 @@ toModels = sequence . map toModel . LE.groupSort where
   getChrid gs = case group . map gff_seqid $ gs of
     [(s:_)] -> pass' s
     ss -> fail' $ "InvalidGeneModel: model span multiple scaffolds: " ++
-                  unsplit ',' (mapMaybe headMay ss)
+                  unsplit ',' (map fromShort . mapMaybe headMay $ ss)
 
   getCDS' :: [GffEntry] -> ReportS [Interval]
   getCDS' gs = pass' . map gff_interval . filter isCDS $ gs
@@ -171,20 +171,15 @@ toModels = sequence . map toModel . LE.groupSort where
   getExon' gs = pass' . map gff_interval . filter isExon $ gs
 
 
+mRnaParent :: ([Parent], GffEntry) -> [(Parent, GffEntry)]
+mRnaParent (ps, g) = map (\p -> (p, g)) $ filter isMRna ps where
+  isMRna :: Parent -> Bool
+  isMRna (Parent _ MRna) = True
+  isMRna _               = False
+
 buildModels :: [GffEntry] -> ReportS [GeneModel]
 buildModels gs
-  = (sequence . map extract' $ gs) >>=
-    (sequence . map requireParent) >>=
+  = (sequenceR . map (extractParent $ mapEntries gs) $ gs) >>=
+    (sequenceR . map requireParent) >>=
     return . concatMap mRnaParent  >>=
     toModels
-
-  where
-    extract' :: GffEntry -> ReportS ([Parent], GffEntry)
-    extract' = extractParent (mapEntries gs)
-
-    isMRna :: Parent -> Bool
-    isMRna (Parent _ MRna) = True
-    isMRna _               = False
-
-    mRnaParent :: ([Parent], GffEntry) -> [(Parent, GffEntry)]
-    mRnaParent (ps, g) = map (\p -> (p, g)) $ filter isMRna ps

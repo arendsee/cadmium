@@ -265,7 +265,7 @@ readType'' s = {-# SCC "gffEntry_type" #-} case s of
   "coding_exon"     -> pass' Exon
   "coding exon"     -> pass' Exon -- synonym
   "SO:0000195"      -> pass' Exon
-  x                 -> pass' $ Other $ x
+  x                 -> pass' $ Other x
 
 readStrand'' :: GParser (Maybe Strand)
 readStrand'' s = {-# SCC "gffEntry_strand" #-} case s of

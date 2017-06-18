@@ -8,21 +8,22 @@ all:
 fast:
 	cabal install --bindir=./ -O2
 
-.PHONY: profile
-profile:
-	./fagin +RTS -p -RTS > /dev/null
-
-.PHONY: test
-test:
-	cabal test
-
 .PHONY: run
 run:
 	cabal run
 
-.PHONY: bench
-bench:
-	cabal bench --benchmark-options="-o report.html" +RTS -T
+# The poorly named "profile" command runs all tests, benchmarks, and whatnot
+# and gathers the results into an archive, along with time and git info.
+# It first builds the dir "000_profile_<timestamp>/", which stores:
+#  * html benchmark report from Criterion
+#  * several memory profiles
+#  * git info of current commit and status
+#  * results of tests (not done yet)
+#  * test coverage (not done yet)
+#  * documentation coverage (not done yet)
+.PHONY: profile
+profile:
+	./profile.sh
 
 .PHONY: clean
 clean:

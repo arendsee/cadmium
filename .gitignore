@@ -1,8 +1,11 @@
 dist/
 *sandbox*
 
+000_*
+
 fagin
 report.html
+fagin.prof
 
 *.o
 *.hi

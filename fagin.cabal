@@ -46,7 +46,7 @@ library
                         DeriveGeneric,
                         DeriveAnyClass
 
-    ghc-options: -Wall
+    ghc-options: -Wall -O
 
     if flag(documentation)
         build-depends: hscolour
@@ -60,7 +60,7 @@ executable fagin
     default-extensions: NoImplicitPrelude,
                         OverloadedStrings
 
-    ghc-options: -Wall -threaded
+    ghc-options: -Wall -O -threaded
 
 benchmark fagin-benchmarks
   type: exitcode-stdio-1.0

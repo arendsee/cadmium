@@ -23,8 +23,8 @@ import Fagin.Prelude
 type ReportS = Report [ByteString]
 
 data Report e a
-  = Pass a e e
-  | Fail e e e
+  = Pass !a !e !e
+  | Fail !e !e !e
   deriving(Eq,Ord,Show,Generic,NFData)
 
 pass :: (Monoid e) => a -> Report e a

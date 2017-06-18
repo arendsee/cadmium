@@ -24,9 +24,10 @@ profit "hy_type"         "-hy"
 profit "hr_retainer"     "-hr"
 profit "hb_biography"    "-hb"
 
-merge-ps
-
 cabal bench --benchmark-options="-o $dir/benchmarks.html"
+
+cd $dir
+pdfunite *pdf all-memory-plots.pdf
 
 git log | awk 'BEGIN{RS="commit "; FS="\n"} NR == 2 {print "Commit: " $0}' > $dir/git-info
 git status >> $dir/git-info

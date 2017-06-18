@@ -6,6 +6,7 @@ import qualified Data.List as DL
 import Fagin.Prelude
 import Fagin.Gff
 import Fagin.GeneModel
+import Fagin.Report
 
 data Columns = Columns {
       coltype   :: [ByteString]
@@ -49,5 +50,17 @@ main = do
         , bench "models >>= sequence . map model2gff" $ nf (CM.liftM $ sequence . map model2gff) objMod
         , bench "buildModels" $ nf (fmap buildModels) objGff
         , bench "outgff >>= map bshow" $ nf (CM.liftM $ map bshow) outgff
+      ]
+      , bgroup "cumulative" [
+        bench "IO->gff->models->gff->ByteString"
+              $ nfIO (
+                do 
+                  file <- readFile "sample-data/short.gff3"
+                  case     readGff file
+                       >>= buildModels
+                       >>= sequence . map model2gff of
+                    Pass xs _ _ -> CM.mapM_ (\s -> writeFile "/dev/null" $ bshow s) xs
+                    Fail _  _ _ -> writeFile "/dev/stderr" "What the hell!!??"
+              )
       ]
     ]

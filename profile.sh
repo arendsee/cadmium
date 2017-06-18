@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-dir=000_profile_`date +%Y-%m-%d_%H%M%S`
+dir=$PWD/000_profile_`date +%Y-%m-%d_%H%M%S`
 mkdir $dir
 mkdir $dir/prof
 
@@ -26,8 +26,7 @@ profit "hb_biography"    "-hb"
 
 cabal bench --benchmark-options="-o $dir/benchmarks.html"
 
-cd $dir
-pdfunite *pdf all-memory-plots.pdf
+pdfunite $dir/*pdf $dir/all-memory-plots.pdf
 
 git log | awk 'BEGIN{RS="commit "; FS="\n"} NR == 2 {print "Commit: " $0}' > $dir/git-info
 git status >> $dir/git-info

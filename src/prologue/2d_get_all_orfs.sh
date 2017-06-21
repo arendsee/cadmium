@@ -5,18 +5,23 @@ set -o pipefail
 
 species=$1
 
-source config
-source shell-utils.sh
+smof=smof
+output_faa=z.faa
+output_gff=z.gff
+input_fna=$1
 
-# Get open reading frames from each input genome
-input_fna=$INPUT/fna/$1.fna
-output_faa=$INPUT/orf-faa/$1.faa
-output_gff=$INPUT/orf-gff/$1.gff
-
-safe-mkdir $INPUT/orf-faa
-safe-mkdir $INPUT/orf-gff
-
-check-read $input_fna $0
+# source config
+# source shell-utils.sh
+#
+# # Get open reading frames from each input genome
+# input_fna=$INPUT/fna/$1.fna
+# output_faa=$INPUT/orf-faa/$1.faa
+# output_gff=$INPUT/orf-gff/$1.gff
+#
+# safe-mkdir $INPUT/orf-faa
+# safe-mkdir $INPUT/orf-gff
+#
+# check-read $input_fna $0
 
 $smof clean --reduce-header $input_fna |
    # Find all START STOP bound ORFs with 10+ AA
@@ -29,7 +34,7 @@ $smof clean --reduce-header $input_fna |
     grep '>' |
     # Parse a header such as:
     # >scaffold_1_432765 [258 - 70] (REVERSE SENSE)
-    perl -pe 's/>(\S+)_(\d+) \[(\d+) - (\d+)\].*/$1 $3 $4 $1_$2/' |
+    perl -pe 's/>(\S+)_(\d+) \[(\d+) - (\d+)\](.*)/$1 $3 $4 $1_$2 $5/' |
     # Prepare GFF
     awk '
         BEGIN{OFS="\t"}
@@ -52,5 +57,5 @@ $smof clean --reduce-header $input_fna |
         { print seq_name, ".", "ORF", start, stop, ".", strand, ".", uid }
     ' > $output_gff
 
-# Remove the extra gunk getorf appends to headers
-$smof clean -s $output_faa > $output_faa~; mv $output_faa~ $output_faa 
+# # Remove the extra gunk getorf appends to headers
+# $smof clean -s $output_faa > $output_faa~; mv $output_faa~ $output_faa

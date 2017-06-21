@@ -18,45 +18,72 @@ data GeneModel = GeneModel ModelID Orf Mrna Strand
 data Orf       = Orf       [Interval]
 data Trans     = Mrna      MRnaID [Interval]
 
-data Feature
-  = GeneEntry GeneID
-  | MrnaEntry ModelID  Interval Strand [ParentID]
-  | ExonEntry          Interval Strand [ParentID]
-  | CDSEntry           Interval Strand [ParentID] [DerivedFrom]
-
-readGff :: ByteString -> ReportS Genome
-readGff b = 
+data GeneEntry = GeneEntry GeneID
+data MrnaEntry = MrnaEntry ModelID  Interval Strand [ParentID]
+data ExonEntry = ExonEntry          Interval Strand [ParentID]
+data CDSEntry  = CDSEntry           Interval Strand [ParentID] [DerivedFrom]
 
 
-data GffRow = GffRow {
-      gff_seqid  :: ByteString
-    , gff_source :: ByteString
-    , gff_type   :: ByteString
-    , gff_start  :: ByteString
-    , gff_stop   :: ByteString
-    , gff_score  :: ByteString
-    , gff_strand :: ByteString
-    , gff_phase  :: ByteString
-    , gff_attr   :: ByteString
-  }
+-- G0 - Initial graph
+--
+--    e_ ---n,mt--> m_ --m,p'--> g_
+--                  ^            ^
+--                 /            /
+--    c_ ---cp,m--'----1,1-----'
+--
+--    where
+--    e_ := GffEntry     n  := number of exons in a transcript
+--    m_ := GffMRna      m  := number of transcripts in a model
+--    c_ := GffCDS       t  := number of mRNA spliced into a transcript (transplicing)
+--    g_ := GffGene      c  := number of CDS in a ORF
+--                       p  := number of ORFs in a transcript
+--                       p' := number of ORFs in a model
 
-toMRna :: [MRnaEntry] -> [ExonEntry] -> ReportS [MRna]
-toMRna = undefined
 
-partitionTypes :: [GffRow] -> ([GeneEntry], [MRnaEntry], [ExonEntry], [CDSEntry])
-partitionTypes = undefined
+-- G1 - collapse exons into transcripts (assume no trans-splicing)
+--
+--            T ---m,p'--> g_
+--            ^            ^
+--         cp,m           /
+--          /            /
+--    c_ --'----1,1-----'
+collapseExons ::  [ExonEntry] -> MrnaEntry -> Transcript
 
-toGffRow :: [ByteString] -> ReportS GffRow
-toGffRow = undefined
+-- G2 - collapse CDS into ORFs
+--
+--                  T ---m,p'--> g_
+--                  ^            ^
+--               1,p            /
+--               /             /
+--        C ----'-----1,1-----'
+collapseCDS :: [CDSEntry] -> Transcript -> ORF
 
-toMatrix :: ByteString -> ReportS [GffRow]
-toMatrix =
-  sequence
-  map toGffRow                 . -- to record, catch row number errors
-  map (split '\t')             . -- Break tests by line and TAB.
-  filter (\s -> length s == 0) . -- Remove empty lines
-  filter (isPrefixOf "#")      . -- Remove comments
-  split '\n'                     -- this allows space in fields
+
+-- G3 - infer protein names
+--
+--        C --n,1--> T ---m,p'--> g_
+inferNames :: ORF -> Transcript ->
+
+
+-- toMRna :: [MRnaEntry] -> [ExonEntry] -> ReportS [MRna]
+-- toMRna = undefined
+--
+-- toGffRow :: [ByteString] -> ReportS GffRow
+-- toGffRow = undefined
+
+
+-- partitionTypes :: [GffRow] -> ([GeneEntry], [MRnaEntry], [ExonEntry], [CDSEntry])
+-- partitionTypes = undefined
+
+
+-- toMatrix :: ByteString -> ReportS [GffRow]
+-- toMatrix =
+--   sequence
+--   map toGffRow                 . -- to record, catch row number errors
+--   map (split '\t')             . -- Break tests by line and TAB.
+--   filter (\s -> length s == 0) . -- Remove empty lines
+--   filter (isPrefixOf "#")      . -- Remove comments
+--   split '\n'                     -- this allows space in fields
 
 
 -- readGff :: ByteString -> ReportS [Gene]
@@ -64,6 +91,18 @@ toMatrix =
 
 
 
+
+-- data GffRow = GffRow {
+--       gff_seqid  :: ByteString
+--     , gff_source :: ByteString
+--     , gff_type   :: ByteString
+--     , gff_start  :: ByteString
+--     , gff_stop   :: ByteString
+--     , gff_score  :: ByteString
+--     , gff_strand :: ByteString
+--     , gff_phase  :: ByteString
+--     , gff_attr   :: ByteString
+--   }
 
 
 

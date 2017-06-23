@@ -2,6 +2,7 @@ dist/
 *sandbox*
 
 [0-9][0-9]/
+000*
 
 fagin
 report.html

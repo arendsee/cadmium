@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 {-|
 
 Perhaps the most error prone step of preparing data for Fagin is gathering
@@ -195,16 +197,16 @@ data GffEntry = GffEntry {
 -- | Construct a GffEntry from the full data of a parsed GFF line
 gffEntry
   :: ByteString   -- ^ seqid
-  -> ByteString   -- ^ source
+                  --   source
   -> IntervalType -- ^ type
   -> Integer      -- ^ start
   -> Integer      -- ^ stop
-  -> ByteString   -- ^ score
+                  --   score
   -> Maybe Strand -- ^ strand
-  -> ByteString   -- ^ phase
+                  --   phase
   -> [Attribute]  -- ^ attributes
   -> GffEntry
-gffEntry seqid _ ftype a b _ strand _ attr = 
+gffEntry seqid   ftype a b   strand   attr = 
   GffEntry {
       gff_seqid    = (toShort seqid)
     , gff_type     = ftype
@@ -232,6 +234,49 @@ instance BShow GffEntry where
       , "."
       , (unsplit ';' . map bshow $ attr)
     ]
+
+data GeneModel = GeneModel {
+      model_chrid  :: !(Maybe ConstantString)  -- ^ chromosome/scaffold
+    , model_parent :: !(Maybe ConstantString)  -- ^ parent (a 'gene') is given
+    , model_id     :: !(Maybe ConstantString)  -- ^ the ID value (must be unique)
+    , model_cds    :: ![Interval]              -- ^ list of coding intervals
+    , model_exon   :: ![Interval]              -- ^ list of exon intervals
+    , model_strand :: !Strand                  -- ^ strand [+-.?]
+  } deriving(Show,Generic,NFData)
+
+model2gff :: GeneModel -> ReportS [GffEntry]
+model2gff GeneModel {
+      model_chrid  = chrid'
+    , model_parent = parent'
+    , model_id     = id'
+    , model_cds    = cdss
+    , model_exon   = (exon0:exons) -- require at least one exon
+    , model_strand = strand'
+  } = pass' $ [mrnaGff] ++ cdsGff ++ exonGff
+  where
+    mrnaGff = GffEntry {
+        gff_seqid    = chrid'
+      , gff_type     = MRna
+      , gff_interval = foldr' (<>) exon0 (cdss ++ exons)
+      , gff_strand   = Just strand'
+      , gff_attr     = mrnaAttr parent'
+    }
+
+    mrnaAttr [] = [AttrID id']  
+    mrnaAttr ps = [AttrID id', AttrParent ps]  
+
+    cdsGff = map (newChild CDS) cdss
+    exonGff = map (newChild Exon) (exon0:exons)
+
+    newChild :: IntervalType -> Interval -> GffEntry
+    newChild t i = GffEntry {
+        gff_seqid    = chrid'
+      , gff_type     = t
+      , gff_interval = i
+      , gff_strand   = Just strand'
+      , gff_attr     = [AttrParent [id']]
+    }
+model2gff _ = fail' "InvalidModel: no exons"
 
 
 type GParser a = ByteString -> ReportS a
@@ -331,43 +376,103 @@ readAttributes'' =
 
 type GIFilter = (Integer,[ByteString]) -> Bool
 
-comment' :: GIFilter
-comment' (_,(x:_)) = isPrefixOf "#" x
-comment' _ = True
 
-empty' :: GIFilter
-empty' (_,[]) = True
-empty' _      = False
+toMap :: (Foldable f, Ord k, Monad m)
+    => (a -> m (Maybe k)) -- try to extract key
+    -> (a -> b -> m b)    -- merge element (key is in map)
+    -> (a -> m b)         -- create new element (key wasn't in map)
+    -> f a                -- the functor of stuff
+    -> m (Map k b)        -- the output map
 
-toGff'' :: (BShow a) => (a, [ByteString]) -> ReportS GffEntry
-toGff'' (_, [c1,c2,c3,c4,c5,c6,c7,c8,c9])
-  = gffEntry
+toMap ek mabb mab xs = foldr magic DM.empty xs where
+  magic x m = do
+    k <- ek entry
+    b <- maybe (mab x) (mabb x) (DM.lookup k m)
+    DM.insert k b m
+
+
+readGff :: ByteString -> ReportS (Map ByteString GeneModel)
+readGff = toMap ek mabb mab . map toEntry'' . toTable where
+  ek :: GffEntry -> Maybe ByteString 
+  ek GffEntry { ftype = MRna, attribute = attr } =
+    maybe
+      (fail' "Each mRNA entry must have an ID attribute")
+      pass'
+      (lookup "ID" attr)
+
+  ek GffEntry { ftype = Gene, attribute = attr } =
+    maybe
+      (fail' "Each Gene entry must have an ID attribute")
+      pass'
+      (lookup "ID" attr)
+
+  ek GffEntry { ftype = CDS, attribute = attr } =
+    maybe
+      (fail' "Each CDS entry must have an Parent attribute")
+      pass'
+      (lookup "Parent" attr)
+
+  ek GffEntry { ftype = Exon, attribute = attr } =
+    maybe
+      (fail' "Each Exon entry must have an Parent attribute")
+      pass'
+      (lookup "Parent" attr)
+
+  -- initialize the model if one doesn't yet exist
+  mab :: GffEntry -> ReportS GeneModel
+  mab GffEntry g
+    | t == Gene = GeneModel { model_chrid = Just s,  model_parent = Nothing, model_id = Nothing, model_cds = [ ], model_exon = [ ] model_strand = r }
+    | t == MRna = GeneModel { model_chrid = Just s,  model_parent = p,       model_id = d,       model_cds = [ ], model_exon = [ ] model_strand = r }
+    | t == Exon = GeneModel { model_chrid = Nothing, model_parent = Nothing, model_id = p,       model_cds = [ ], model_exon = [i] model_strand = r }
+    | t == CDS  = GeneModel { model_chrid = Nothing, model_parent = Nothing, model_id = p,       model_cds = [i], model_exon = [ ] model_strand = r }
+    where
+      s = gff_seqid    g
+      t = gff_type     g
+      a = gff_attr     g
+      i = gff_interval g
+      r = gff_strand   g
+
+      p = lookup "Parent" (gff_attr g)
+      d = lookup "ID"     (gff_attr g)
+
+
+  -- merge gff line into the model if it does already exist
+  mabb :: GffEntry -> GeneModel -> ReportS GeneModel
+  mabb e g
+    | t == Gene = pass' g
+    | t == MRna = pass' $
+      g {   model_chrid  = gff_seqid e
+          , model_parent = lookup "Parent" (gff_attr e)
+          , model_strand = gff_strand e
+        }
+    | t == CDS = pass' $
+      g { model_cds = (g model_cds) ++ [gff_interval e] }
+    | t == Exon = pass' $
+      g { model_exon = (g model_cds) ++ [gff_interval e] }
+    | otherwise = g
+    where
+      t = gff_type e
+
+
+toTable :: ByteString -> [[ByteString]]
+toTable =
+  filter (\s -> length(s) == 0) . -- Filter out lines of inappropriate length
+  map (split '\t')              . -- Break tests by line and TAB
+  filter (not . isPrefixOf "#") . -- or start with a comment (#) character
+  split '\n'                      -- this allows space in fields
+
+toGff'' :: [ByteString] -> ReportS GffEntry
+toGff'' [c1,_,c3,c4,c5,_,c7,_,c9]
+  =   gffEntry
   <$> pure             c1 -- seqid   (used as is)
-  <*> pure             c2 -- source  (not used)
+                          -- source  (not used)
   <*> readType''       c3 -- type
   <*> readInt''        c4 -- start
   <*> readInt''        c5 -- stop
-  <*> pure             c6 -- score   (not used)
-  <*> readStrand''     c7 -- strand
-  <*> pure             c8 -- phase   (not used)
+                          -- score   (not used)
+  <*> readString''     c7 -- strand
+                          -- phase   (not used)
   <*> readAttributes'' c9 -- attributes
-toGff'' (i,fs) = fail' $ concat ["(GFF line ", bshow i, ") Expected 9 columns, found '", bshow (length fs), "'"]
-
-readGff :: ByteString -> ReportS [GffEntry]
-readGff = 
-  sequenceR .
-  map toGff''             . -- Parse GFF entry and report errors. Die on first
-                            -- failed line. Most errors are highly repetitive
-                            -- in GFFs, so just dying on the first failure
-                            -- avoids extremely long error message. A better
-                            -- solution would be to merge the similar errors.
-
-  filter (not . empty')   . -- Filter out lines that are either empty
-  filter (not . comment') . -- or start with a comment (#) character
-
-  zip [1..]               . -- Add line numbers. This must precede filters
-                            -- so line numbering in error messages is correct
-
-  map ( split '\t')       . -- Break tests by line and TAB. NOTE:
-
-  split '\n'                -- this allows space in fields
+toGff'' fs = fail' $ concat [
+  "GffFormatError: Expected 9 columns, offending column:\n  "
+  ++ unsplit '\t' fs]

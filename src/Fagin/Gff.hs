@@ -68,9 +68,8 @@ import Fagin.Prelude
 import Fagin.Interval
 import Fagin.Report
 
-import qualified Control.Lens as CL
-import Control.Lens.Operators
-
+import Data.Map (Map)
+import qualified Data.Map as DM
 
 -- | Holds the types that are currently used by Fagin. I may extend this later.
 -- Since these types are required to be Sequence Ontology terms, I really ought
@@ -236,47 +235,16 @@ instance BShow GffEntry where
     ]
 
 data GeneModel = GeneModel {
-      model_chrid  :: !(Maybe ConstantString)  -- ^ chromosome/scaffold
-    , model_parent :: !(Maybe ConstantString)  -- ^ parent (a 'gene') is given
-    , model_id     :: !(Maybe ConstantString)  -- ^ the ID value (must be unique)
-    , model_cds    :: ![Interval]              -- ^ list of coding intervals
-    , model_exon   :: ![Interval]              -- ^ list of exon intervals
-    , model_strand :: !Strand                  -- ^ strand [+-.?]
+      model_chrid  :: !ConstantString         -- ^ chromosome/scaffold
+    , model_locid  :: !(Maybe ConstantString) -- ^ parent (a 'gene') is given
+    , model_bound  :: !(Maybe Interval)       -- ^ bounds of the gene model
+    , model_cds    :: ![Interval]             -- ^ list of coding intervals
+    , model_exon   :: ![Interval]             -- ^ list of exon intervals
+    , model_strand :: !Strand                 -- ^ strand [+-.?]
   } deriving(Show,Generic,NFData)
 
 model2gff :: GeneModel -> ReportS [GffEntry]
-model2gff GeneModel {
-      model_chrid  = chrid'
-    , model_parent = parent'
-    , model_id     = id'
-    , model_cds    = cdss
-    , model_exon   = (exon0:exons) -- require at least one exon
-    , model_strand = strand'
-  } = pass' $ [mrnaGff] ++ cdsGff ++ exonGff
-  where
-    mrnaGff = GffEntry {
-        gff_seqid    = chrid'
-      , gff_type     = MRna
-      , gff_interval = foldr' (<>) exon0 (cdss ++ exons)
-      , gff_strand   = Just strand'
-      , gff_attr     = mrnaAttr parent'
-    }
-
-    mrnaAttr [] = [AttrID id']  
-    mrnaAttr ps = [AttrID id', AttrParent ps]  
-
-    cdsGff = map (newChild CDS) cdss
-    exonGff = map (newChild Exon) (exon0:exons)
-
-    newChild :: IntervalType -> Interval -> GffEntry
-    newChild t i = GffEntry {
-        gff_seqid    = chrid'
-      , gff_type     = t
-      , gff_interval = i
-      , gff_strand   = Just strand'
-      , gff_attr     = [AttrParent [id']]
-    }
-model2gff _ = fail' "InvalidModel: no exons"
+model2gff = undefined 
 
 
 type GParser a = ByteString -> ReportS a
@@ -394,25 +362,25 @@ toMap ek mabb mab xs = foldr magic DM.empty xs where
 readGff :: ByteString -> ReportS (Map ByteString GeneModel)
 readGff = toMap ek mabb mab . map toEntry'' . toTable where
   ek :: GffEntry -> Maybe ByteString 
-  ek GffEntry { ftype = MRna, attribute = attr } =
+  ek GffEntry { gff_type = MRna, gff_attr = attr } =
     maybe
       (fail' "Each mRNA entry must have an ID attribute")
       pass'
       (lookup "ID" attr)
 
-  ek GffEntry { ftype = Gene, attribute = attr } =
+  ek GffEntry { gff_type = Gene, gff_attr = attr } =
     maybe
       (fail' "Each Gene entry must have an ID attribute")
       pass'
       (lookup "ID" attr)
 
-  ek GffEntry { ftype = CDS, attribute = attr } =
+  ek GffEntry { gff_type = CDS, gff_attr = attr } =
     maybe
       (fail' "Each CDS entry must have an Parent attribute")
       pass'
       (lookup "Parent" attr)
 
-  ek GffEntry { ftype = Exon, attribute = attr } =
+  ek GffEntry { gff_type = Exon, gff_attr = attr } =
     maybe
       (fail' "Each Exon entry must have an Parent attribute")
       pass'
@@ -421,37 +389,61 @@ readGff = toMap ek mabb mab . map toEntry'' . toTable where
   -- initialize the model if one doesn't yet exist
   mab :: GffEntry -> ReportS GeneModel
   mab GffEntry g
-    | t == Gene = GeneModel { model_chrid = Just s,  model_parent = Nothing, model_id = Nothing, model_cds = [ ], model_exon = [ ] model_strand = r }
-    | t == MRna = GeneModel { model_chrid = Just s,  model_parent = p,       model_id = d,       model_cds = [ ], model_exon = [ ] model_strand = r }
-    | t == Exon = GeneModel { model_chrid = Nothing, model_parent = Nothing, model_id = p,       model_cds = [ ], model_exon = [i] model_strand = r }
-    | t == CDS  = GeneModel { model_chrid = Nothing, model_parent = Nothing, model_id = p,       model_cds = [i], model_exon = [ ] model_strand = r }
+    | t == Gene = (commonModel g) { model_locid = d, model_bound = [i] }
+    | t == MRna = (commonModel g) { model_locid = p, model_bound = [i] }
+    | t == Exon = (commonModel g) {                  model_exon  = [i] }
+    | t == CDS  = (commonModel g) {                  model_cds   = [i] }
     where
-      s = gff_seqid    g
       t = gff_type     g
-      a = gff_attr     g
       i = gff_interval g
-      r = gff_strand   g
-
       p = lookup "Parent" (gff_attr g)
       d = lookup "ID"     (gff_attr g)
+
+      commonModel g = GeneModel {
+            model_chrid  = toShort (gff_chrid g)
+          , model_locid  = Nothing
+          , model_bound  = Nothing
+          , model_cds    = []
+          , model_exon   = []
+          , model_strand = gff_strand g
+        }
 
 
   -- merge gff line into the model if it does already exist
   mabb :: GffEntry -> GeneModel -> ReportS GeneModel
   mabb e g
-    | t == Gene = pass' g
-    | t == MRna = pass' $
-      g {   model_chrid  = gff_seqid e
-          , model_parent = lookup "Parent" (gff_attr e)
+    -- Sometimes the mRNA may be missing, so all required information needs to
+    -- be extracted from the gene entry
+    | t == Gene = pass' $
+      g {   model_chrid  = seqChrid e g
+          , model_locid  = p
           , model_strand = gff_strand e
         }
+    -- mRNA needs to set the model bound, it must override any bound set
+    -- by the Gene entry.
+    | t == MRna = pass' $
+      g {   model_chrid  = seqChrid e g
+          , model_locid  = p
+          , model_strand = gff_strand e
+          , model_bound  = gff_interval e
+        }
+    -- The CDS and Exon entries both append the interval list
+    -- There are a few checks I should add eventually
     | t == CDS = pass' $
       g { model_cds = (g model_cds) ++ [gff_interval e] }
     | t == Exon = pass' $
       g { model_exon = (g model_cds) ++ [gff_interval e] }
+    -- Any other entry I currently skip
     | otherwise = g
+
     where
-      t = gff_type e
+      t = gff_type     e
+      i = gff_interval e
+      p = lookup "Parent" (gff_attr e)
+      d = lookup "ID"     (gff_attr e)
+
+      setChrid (GffEntry { gff_seqid = Nothing}) g = toShort (gff_chrid g)
+      setChrid (GffEntry { gff_seqid = Just s }) _ = s
 
 
 toTable :: ByteString -> [[ByteString]]

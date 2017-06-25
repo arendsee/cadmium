@@ -16,8 +16,8 @@ instance BShow Strand where
 
 data Interval
   = Interval
-  {-# UNPACK #-} !Integer
-  {-# UNPACK #-} !Integer
+    !Integer
+    !Integer
   deriving(Ord,Eq,Show,Generic,NFData)
 
 instance Semigroup Interval where

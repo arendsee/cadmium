@@ -24,7 +24,7 @@ library
     exposed-modules: Fagin,
                      Fagin.IO,
                      Fagin.BioSeq,
-                     Fagin.GeneModel,
+                     -- Fagin.GeneModel,
                      Fagin.Gff,
                      Fagin.Interval,
                      Fagin.Prelude,

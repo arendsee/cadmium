@@ -56,6 +56,8 @@ module Fagin.Prelude (
   , DBC.unwords
   , DBC.lines
   , DBC.unlines
+  , DBC.pack
+  , DBC.unpack
 ) where
 
 {-|
@@ -180,6 +182,9 @@ instance BShow String where
 
 instance BShow DBC.ByteString where
   bshow = id
+
+instance BShow DBS.ShortByteString where
+  bshow = DBS.fromShort
 
 instance BShow a => BShow [a] where
   bshow = DBC.unlines . map bshow

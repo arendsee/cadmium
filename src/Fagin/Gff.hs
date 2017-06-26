@@ -247,6 +247,23 @@ data GeneModel = GeneModel {
     , model_strand :: !(Maybe Strand)         -- ^ strand [+-.?]
   } deriving(Show,Generic,NFData)
 
+-- this is mostly meant for diagnostics, I would usually just convert back to GFF and view that
+-- but this gives a clean one-liner
+instance BShow GeneModel where
+  bshow GeneModel {
+      model_chrid  = chrid  
+    , model_modid  = modid  
+    , model_locid  = locid  
+    , model_bound  = bound  
+    , model_cds    = cds    
+    , model_exon   = exon   
+    , model_strand = strand 
+  } = unsplit '|' [say chrid, say locid, say modid, say bound, say cds, say exon, say strand] where
+    say :: Show a => a -> ByteString
+    say = pack . show
+
+
+
 model2gff :: GeneModel -> ReportS [GffEntry]
 model2gff GeneModel { model_modid  = Nothing } = fail' "BadGeneModel: no model id"
 model2gff GeneModel { model_locid  = Nothing } = fail' "BadGeneModel: no locus (gene) id"
@@ -404,7 +421,7 @@ toMap ek mab mabb xs = foldr magic (return DM.empty) xs
 
 toTable :: ByteString -> [[ByteString]]
 toTable =
-  filter (\s -> length(s) == 0) . -- Filter out lines of inappropriate length
+  filter (\s -> length(s) /= 0) . -- Filter out lines of inappropriate length
   map (split '\t')              . -- Break tests by line and TAB
   filter (not . isPrefixOf "#") . -- or start with a comment (#) character
   split '\n'                      -- this allows space in fields
@@ -431,9 +448,9 @@ readGff s = fmap DM.elems $ (CM.sequence . map toGff'' . toTable) s >>= toMap ek
 
   getParent :: [Attribute] -> ReportS (Maybe ConstantString)
   getParent [] = pass' Nothing
-  getParent ((AttrParent [p]):_)   = pass' (Just p)
-  getParent ((AttrParent (_:_)):_) = fail' "MultipleParentError: send me an angry email"
-  getParent (_:xs)                 = getParent xs
+  getParent ((AttrParent [p]):_) = pass' (Just p)
+  getParent ((AttrParent  _ ):_) = fail' "MultipleParentError: send me an angry email"
+  getParent (_:xs)               = getParent xs
 
   getID :: [Attribute] -> Maybe ConstantString
   getID [] = Nothing
@@ -446,24 +463,28 @@ readGff s = fmap DM.elems $ (CM.sequence . map toGff'' . toTable) s >>= toMap ek
       (fail' "Each mRNA entry must have an ID attribute")
       (\x -> pass' $ Just x)
       (getID attr)
+    >>= note' "get mRNA ID key"
 
   ek GffEntry { gff_type = Gene, gff_attr = attr } =
     maybe
       (fail' "Each Gene entry must have an ID attribute")
       (\x -> pass' $ Just x)
       (getID attr)
+    >>= note' "get gene ID key"
 
   ek GffEntry { gff_type = CDS, gff_attr = attr } =
     getParent attr >>=
       maybe
         (fail' "Each CDS entry must have an Parent attribute")
         (\x -> pass' $ Just x)
+      >>= note' "get CDS parent key"
 
   ek GffEntry { gff_type = Exon, gff_attr = attr } =
     getParent attr >>=
       maybe
         (fail' "Each Exon entry must have an Parent attribute")
         (\x -> pass' $ Just x)
+      >>= note' "get exon parent key"
 
   -- ignore any types other than gene, mRNA, exon, and CDS
   ek _ = pass' Nothing
@@ -472,10 +493,10 @@ readGff s = fmap DM.elems $ (CM.sequence . map toGff'' . toTable) s >>= toMap ek
   mab :: GffEntry -> ReportS (Maybe GeneModel)
   -- initialize the model if one doesn't yet exist
   mab g
-    | t == Gene =              pass' $ Just $ (commonModel g) { model_locid = d, model_modid = Nothing, model_bound = Just i }
-    | t == MRna = mp >>= \p -> pass' $ Just $ (commonModel g) { model_locid = p, model_modid = d, model_bound = Just i }
-    | t == Exon = mp >>= \p -> pass' $ Just $ (commonModel g) {                  model_modid = p, model_exon  = [i] }
-    | t == CDS  = mp >>= \p -> pass' $ Just $ (commonModel g) {                  model_modid = p, model_cds   = [i] }
+    | t == Gene = (              pass' $ Just $ (commonModel g) { model_locid = d, model_modid = Nothing, model_bound = Just i } ) >>= \x -> note' ("init gene: " ++ maybe "NIL" bshow x) x
+    | t == MRna = ( mp >>= \p -> pass' $ Just $ (commonModel g) { model_locid = p, model_modid = d, model_bound = Just i }       ) >>= \x -> note' ("init mRNA: " ++ maybe "NIL" bshow x) x
+    | t == Exon = ( mp >>= \p -> pass' $ Just $ (commonModel g) {                  model_modid = p, model_exon  = [i] }          ) >>= \x -> note' ("init exon: " ++ maybe "NIL" bshow x) x
+    | t == CDS  = ( mp >>= \p -> pass' $ Just $ (commonModel g) {                  model_modid = p, model_cds   = [i] }          ) >>= \x -> note' ("init CDS: "  ++ maybe "NIL" bshow x) x
     | otherwise = pass' Nothing
     where
       t  = gff_type     g
@@ -498,26 +519,24 @@ readGff s = fmap DM.elems $ (CM.sequence . map toGff'' . toTable) s >>= toMap ek
   mabb e g
     -- Sometimes the mRNA may be missing, so all required information needs to
     -- be extracted from the gene entry
-    | t == Gene = pm >>= \p -> pass' $ Just $
+    | t == Gene = ( pm >>= \p -> pass' $ Just $
       g {   model_locid  = p
           , model_strand = gff_strand e
-        }
+        } ) >>= \x -> note' ("mabb gene: " ++ maybe "NIL" bshow x) x
     -- mRNA needs to set the model bound, it must override any bound set
     -- by the Gene entry.
-    | t == MRna = pm >>= \p -> pass' $ Just $
+    | t == MRna = ( pm >>= \p -> pass' $ Just $
       g {   model_locid  = p
           , model_modid  = d
           , model_strand = gff_strand e
-          , model_bound  = Just $ i
-        }
+          , model_bound  = Just i
+        } ) >>= \x -> note' ("mabb mRNA: " ++ maybe "NIL" bshow x) x
     -- The CDS and Exon entries both append the interval list
-    -- There are a few checks I should add eventually
-    | t == CDS = pass' $ Just $
-      g { model_cds = (model_cds g) ++ [i] }
-    | t == Exon = pass' $ Just $
-      g { model_exon = (model_cds g) ++ [i] }
+    -- There are a few checks I should add eventually 
+    | t == CDS  = ( pass' $ Just $ g { model_cds  = (model_cds  g) ++ [i] } ) >>= \x -> note' ("mabb CDS: "  ++ maybe "NIL" bshow x) x
+    | t == Exon = ( pass' $ Just $ g { model_exon = (model_exon g) ++ [i] } ) >>= \x -> note' ("mabb exon: " ++ maybe "NIL" bshow x) x
     -- Any other entry I currently skip
-    | otherwise = pass' (Just g)
+    | otherwise = pass' (Just g)  >>= \x -> note' ("mabb other: " ++ maybe "NIL" bshow x) x
 
     where
       t  = gff_type     e

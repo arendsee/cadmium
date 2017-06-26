@@ -426,8 +426,8 @@ toGff'' fs = fail' $ concat [
   ++ unsplit '\t' fs]
 
 
-readGff :: ByteString -> ReportS (Map ConstantString GeneModel)
-readGff s = (CM.sequence . map toGff'' . toTable) s >>= toMap ek mab mabb where
+readGff :: ByteString -> ReportS [GeneModel]
+readGff s = fmap DM.elems $ (CM.sequence . map toGff'' . toTable) s >>= toMap ek mab mabb where
 
   getParent :: [Attribute] -> ReportS (Maybe ConstantString)
   getParent [] = pass' Nothing

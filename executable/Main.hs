@@ -10,5 +10,4 @@ main = do
   text <- readFile gfffile
   writeResultAndExit
     $   readGff text
-    >>= buildModels
     >>= sequence . map model2gff

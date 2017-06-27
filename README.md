@@ -73,7 +73,6 @@ make load && make test && make run
 # TODO
 
 Content
- - [ ] remove hard-coded assumption of depth=3 species trees
  - [ ] generalize from 'orphan' to 'query'
  - [ ] prepare report for each query
  - [ ] create gene pages
@@ -87,12 +86,23 @@ Content
  - [ ] implement non-quadratic alignment
 
 Implementation
- - [ ] ab initio refactor as pure R package
- - [ ] replace all shellscripts with R code
- - [ ] full testit coverage
+ - [ ] Merge with R synder version
+ - [ ] * ab initio refactor as pure R package
+ - [ ] * replace all shellscripts
+ - [ ] * full test coverage
  - [ ] all data in RSQLite databases (constant memory)
  - [ ] parallelize everything (divide-analyze-recombine)
  - [ ] integrate BLAST orphan identification
  - [ ] integrate phylostratigraphy
  - [ ] toss knitr, modularize for interactive exploration
  - [ ] integrate with Trelliscope and datadr
+
+Final Destination
+ - [ ] Fagin will include everything needed for orphan analysis
+ - [ ] Identification of initial orphans using BLAST
+ - [ ] Manage blast results (not a trivial manner)
+ - [ ] Phylostratigraphic contextualization using NCBI common tree
+ - [ ] Syntenic map creation
+ - [ ] Synder interface
+ - [ ] Search within syntenic context
+ - [ ] Visualize the results genewise with Trelliscope

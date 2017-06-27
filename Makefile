@@ -28,3 +28,8 @@ profile:
 .PHONY: clean
 clean:
 	rm -f *.aux *.ps *.hp *.prof
+
+.PHONY: deepclean
+deepclean:
+	${MAKE} clean
+	rm -rf fagin dist

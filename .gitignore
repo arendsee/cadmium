@@ -7,18 +7,11 @@
 *.fasta
 
 log.Rout
-
 preconfig.sh
 runconfig.R
 config
-
-preconfig.sh
-runconfig.R
-
 *.un~
-
 archives/
-
 # latex temporary files and folders
 cache/
 figure/
@@ -30,21 +23,16 @@ figure/
 *.fls
 *.toc
 *.out
-
-
 # Haskell things
 dist/
 *sandbox*
-
 [0-9][0-9]/
 000*
-
 fagin
 report.html
 fagin.prof
-
 *.o
 *.hi
-*.aux
 *.hp
 *.ps
+inst/doc

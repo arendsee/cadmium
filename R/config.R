@@ -1,9 +1,21 @@
+#' Special printers
+#'
+#' @param x An object to print
+#' @param ... Additional arguments going to God knows where
+#' @name fagin_printer
+NULL
+
 #' Load the configuration file for the Fagin workflow
 #'
 #' @export
 #' @param filename YAML configuration file
 load_config <- function(filename="inst/etc/config-template.yml"){
   conf <- yaml::yaml.load_file(filename)
+}
+
+prettyCat <- function(tag, value, indent){
+  space <- paste0(rep(" ", indent), collapse="")
+  cat(sprintf("%s%s = %s\n", space, tag, value))
 }
 
 #' Thresholds for alignment significance
@@ -30,6 +42,15 @@ config_alignment_thresholds <- setClass(
   )
 )
 
+#' @rdname fagin_printer
+#' @export 
+print.config_alignment_thresholds <- function(x, ...){
+  prettyCat("prot2prot",     x@prot2prot,     4)
+  prettyCat("prot2allorf",   x@prot2allorf,   4)
+  prettyCat("prot2transorf", x@prot2transorf, 4)
+  prettyCat("dna2dna",       x@dna2dna,       4)
+}
+
 #' Simulation parameters
 #'
 #' For details on inputs see main package documentation
@@ -51,6 +72,14 @@ config_alignment_simulation <- setClass(
   )
 )
 
+#' @rdname fagin_printer
+#' @export 
+print.config_alignment_simulation <- function(x, ...){
+  prettyCat("prot2prot",     x@prot2prot,     4)
+  prettyCat("prot2allorf",   x@prot2allorf,   4)
+  prettyCat("prot2transorf", x@prot2transorf, 4)
+}
+
 #' Alignment settings and thresholds
 #'
 #' For details on inputs see main package documentation
@@ -69,9 +98,24 @@ config_alignment <- setClass(
   ),
   prototype(
     thresholds = config_alignment_thresholds(),
-    simulation = config_alignment_simulation()
+    simulation = config_alignment_simulation(),
+    dna2dna_maxspace = 1e7L,
+    indel_threshold  = 0.25
   )
 )
+
+#' @rdname fagin_printer
+#' @export 
+print.config_alignment <- function(x, ...){
+  prettyCat("dna2dna_maxspace", x@dna2dna_maxspace, 2)
+  prettyCat("indel_threshold",  x@indel_threshold,  2)
+  cat('  Slot "thresholds":\n')
+  print(x@thresholds)
+  cat('  Slot "simulation":\n')
+  print(x@simulation)
+}
+
+
 
 #' Paths to inputs and the focal species name
 #'
@@ -103,6 +147,20 @@ config_input <- setClass(
   )
 )
 
+
+#' @rdname fagin_printer
+#' @export 
+print.config_input <- function(x, ...){
+  prettyCat("gff_dir"         , x@gff_dir         , 2)
+  prettyCat("fna_dir"         , x@fna_dir         , 2)
+  prettyCat("syn_dir"         , x@syn_dir         , 2)
+  prettyCat("tree"            , x@tree            , 2)
+  prettyCat("focal_species"   , x@focal_species   , 2)
+  prettyCat("query_gene_list" , x@query_gene_list , 2)
+}
+
+
+
 #' Settings for Synder
 #'
 #' For details on inputs see main package documentation
@@ -120,6 +178,15 @@ config_synder <- setClass(
     k       = 10L
   )
 )
+
+#' @rdname fagin_printer
+#' @export 
+print.config_synder <- function(x, ...){
+  prettyCat("offsets" , x@offsets , 2)
+  prettyCat("k"       , x@k       , 2)
+}
+
+
 
 #' The top configuration class
 #'
@@ -141,3 +208,11 @@ config <- setClass(
     alignment = config_alignment()
   )
 )
+
+#' @rdname fagin_printer
+#' @export 
+print.config <- function(x, ...){
+  print(x@input)
+  print(x@synder)
+  print(x@alignment)
+}

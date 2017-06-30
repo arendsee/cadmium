@@ -5,14 +5,6 @@
 #' @name fagin_printer
 NULL
 
-#' Load the configuration file for the Fagin workflow
-#'
-#' @export
-#' @param filename YAML configuration file
-load_config <- function(filename="inst/etc/config-template.yml"){
-  conf <- yaml::yaml.load_file(filename)
-}
-
 prettyCat <- function(tag, value, indent){
   space <- paste0(rep(" ", indent), collapse="")
   cat(sprintf("%s%s = %s\n", space, tag, value))

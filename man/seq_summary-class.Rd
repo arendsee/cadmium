@@ -11,13 +11,13 @@ This is a parent to both DNA and protien summary classes
 \section{Slots}{
 
 \describe{
-\item{\code{seqids}}{character}
+\item{\code{seqids}}{character the name of each entry}
 
-\item{\code{length}}{integer}
+\item{\code{sizes}}{integer lengths of each sequence}
 
-\item{\code{nseq}}{integer}
+\item{\code{nseq}}{integer total number of sequences}
 
-\item{\code{comp}}{numeric}
+\item{\code{comp}}{numeric base composition}
 
 \item{\code{comp_dist}}{list}
 

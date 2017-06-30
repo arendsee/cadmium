@@ -176,27 +176,28 @@ numeric_summary <- setClass(
     mean   = "numeric",
     sd     = "numeric",
     n      = "integer",
-    shapiro_norm     = "htest",
+    # NOTE: the following all fail length(x) < 3
+    shapiro_norm = "htest",
+    # NOTE: fails for negative values
     log_shapiro_norm = "htest",
-    density          = "density"
+    density = "density"
   )
 )
 
 #' Summary of a single synteny map
 #'
-#' @slot nrow                      integer
-#' @slot query_target_length_ratio numeric_summary
-#' @slot length_summary            numeric_summary
-#' @slot score_summary             numeric_summary
-#' @slot length_to_score_coref     matrix
+#' @slot nrow   integer
+#' @slot width  numeric_summary
+#' @slot score  numeric_summary
+#' @slot query_target_log2_ratio numeric_summary
 synmap_summary <- setClass(
   "synmap_summary",
   representation(
-    nrow = "integer",
-    query_target_length_ratio = "numeric_summary",
-    length_summary            = "numeric_summary",
-    score_summary             = "numeric_summary",
-    length_to_score_coref     = "matrix"
+    # length_to_score_coref   = "matrix"
+    nrow  = "integer",
+    width = "numeric_summary",
+    score = "numeric_summary",
+    query_target_log2_ratio = "numeric_summary"
   )
 )
 
@@ -204,11 +205,11 @@ synmap_summary <- setClass(
 #'
 #' This is a parent to both DNA and protien summary classes
 #'
-#' @slot seqids          character
-#' @slot length          integer
-#' @slot nseq            integer
-#' @slot comp            numeric
-#' @slot comp_dist       list
+#' @slot seqids          character the name of each entry
+#' @slot sizes           integer lengths of each sequence
+#' @slot nseq            integer total number of sequences
+#' @slot comp            numeric base composition
+#' @slot comp_dist       list 
 #' @slot n_non_canonical integer
 #' @slot n_initial_start integer
 #' @slot n_terminal_stop integer
@@ -217,7 +218,7 @@ seq_summary <- setClass(
   "seq_summary",
   representation(
     seqids          = "character",
-    length          = "integer",
+    sizes           = "integer",
     nseq            = "integer",
     comp            = "numeric",
     comp_dist       = "list",
@@ -256,21 +257,24 @@ faa_summary <- setClass(
 
 #' Summary of a GFF file
 #'
-#' @slot n_features     integer
-#' @slot mRNA_per_model numeric_summary
-#' @slot exon_per_mRNA  numeric_summary
-#' @slot cds_per_mRNA   numeric_summary
-#' @slot exon_per_cds   numeric_summary
+#' @slot seqstats    data.frame
+#' @slot mRNA_length numeric_summary
+#' @slot CDS_length  numeric_summary
+#' @slot exon_length numeric_summary
 gff_summary <- setClass(
   "gff_summary",
   representation(
-    n_features     = "integer",
-    mRNA_per_model = "numeric_summary",
-    exon_per_mRNA  = "numeric_summary",
-    cds_per_mRNA   = "numeric_summary",
-    exon_per_cds   = "numeric_summary"
+    seqstats    = "data.frame",
+    mRNA_length = "numeric_summary",
+    CDS_length  = "numeric_summary",
+    exon_length = "numeric_summary"
   )
 )
+  # TODO: consider adding these:
+  # mRNA_per_model = "numeric_summary"
+  # exon_per_mRNA  = "numeric_summary"
+  # cds_per_mRNA   = "numeric_summary"
+  # exon_per_cds   = "numeric_summary"
 
 #' References to each of the RData files for a given species
 #'

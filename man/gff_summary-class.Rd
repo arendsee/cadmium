@@ -11,14 +11,12 @@ Summary of a GFF file
 \section{Slots}{
 
 \describe{
-\item{\code{n_features}}{integer}
+\item{\code{seqstats}}{data.frame}
 
-\item{\code{mRNA_per_model}}{numeric_summary}
+\item{\code{mRNA_length}}{numeric_summary}
 
-\item{\code{exon_per_mRNA}}{numeric_summary}
+\item{\code{CDS_length}}{numeric_summary}
 
-\item{\code{cds_per_mRNA}}{numeric_summary}
-
-\item{\code{exon_per_cds}}{numeric_summary}
+\item{\code{exon_length}}{numeric_summary}
 }}
 

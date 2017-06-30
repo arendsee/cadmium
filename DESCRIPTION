@@ -16,7 +16,9 @@ Imports:
     Biostrings,
     GenomicRanges,
     ape,
+    rlang,
     readr,
+    dplyr,
     yaml
 License: GPL-3 + file LICENSE
 Encoding: UTF-8

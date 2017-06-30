@@ -13,12 +13,10 @@ Summary of a single synteny map
 \describe{
 \item{\code{nrow}}{integer}
 
-\item{\code{query_target_length_ratio}}{numeric_summary}
+\item{\code{width}}{numeric_summary}
 
-\item{\code{length_summary}}{numeric_summary}
+\item{\code{score}}{numeric_summary}
 
-\item{\code{score_summary}}{numeric_summary}
-
-\item{\code{length_to_score_coref}}{matrix}
+\item{\code{query_target_log2_ratio}}{numeric_summary}
 }}
 

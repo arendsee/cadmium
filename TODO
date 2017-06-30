@@ -1,0 +1,17 @@
+Add back these dependencies, as needed:
+ - [ ] readr
+ - [ ] tibble
+ - [ ] ape
+ - [ ] Biostrings
+ - [ ] data.tree
+ - [ ] dplyr
+ - [ ] fitdistrplus
+ - [ ] GenomicRanges
+ - [ ] ggplot2
+ - [ ] gridExtra
+ - [ ] magrittr
+ - [ ] reshape2
+ - [ ] robustreg
+ - [ ] scales
+ - [ ] tidyr
+ - [ ] xtable

@@ -1,0 +1,25 @@
+input:
+    gff_dir:         "INPUT/gff"
+    fna_dir:         "INPUT/fna"
+    syn_dir:         "INPUT/syn"
+    tree:            "INPUT/tree"
+    focal_species:   "Saccharomyces cerevisiae"
+    query_gene_list: "INPUT/orphan-list.txt"
+
+synder_settings:
+    offsets: "0111"
+    k: 10
+
+thresholds:
+    prot2prot: 0.05
+    prot2allorf: 0.05
+    prot2transorf: 0.05
+    dna2dna: 0.05
+
+details:
+    simulations:
+        prot2prot: 1000
+        prot2allorf: 1000
+        prot2transorf: 1000
+    dna2dna_maxspace: 100_000_000
+    indel_threshold: 0.25

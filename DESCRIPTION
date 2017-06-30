@@ -11,22 +11,8 @@ Description:
     syntenic filter.
 Depends: R (>= 3.4.0)
 Imports:
-    readr,
-    tibble,
-    ape,
-    Biostrings,
-    data.tree,
-    dplyr,
-    fitdistrplus,
-    GenomicRanges,
-    ggplot2,
-    gridExtra,
+    methods,
     magrittr,
-    reshape2,
-    robustreg,
-    scales,
-    tidyr,
-    xtable,
     yaml
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
@@ -35,3 +21,4 @@ Suggests: testthat,
     knitr,
     rmarkdown
 VignetteBuilder: knitr
+RoxygenNote: 6.0.1

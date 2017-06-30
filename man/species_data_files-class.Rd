@@ -11,17 +11,19 @@ References to each of the RData files for a given species
 \section{Slots}{
 
 \describe{
-\item{\code{aa.file}}{character}
+\item{\code{gff.file}}{character}
 
 \item{\code{dna.file}}{character}
+
+\item{\code{aa.file}}{character}
+
+\item{\code{trans.file}}{character}
 
 \item{\code{orfgff.file}}{character}
 
 \item{\code{orffaa.file}}{character}
 
 \item{\code{transorf.file}}{character}
-
-\item{\code{gff.file}}{character}
 
 \item{\code{nstring.file}}{character}
 }}

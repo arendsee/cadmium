@@ -274,44 +274,48 @@ gff_summary <- setClass(
 
 #' References to each of the RData files for a given species
 #'
-#' @slot aa.file       character
+#' @slot gff.file      character
 #' @slot dna.file      character
+#' @slot aa.file       character
+#' @slot trans.file    character
 #' @slot orfgff.file   character
 #' @slot orffaa.file   character
 #' @slot transorf.file character
-#' @slot gff.file      character
 #' @slot nstring.file  character
 species_data_files <- setClass(
   "species_data_files",
   representation(
-     aa.file       = "character",
+     gff.file      = "character",
      dna.file      = "character",
+     aa.file       = "character",
+     trans.file    = "character",
      orfgff.file   = "character",
      orffaa.file   = "character",
      transorf.file = "character",
-     gff.file      = "character",
      nstring.file  = "character"
    )
 )
 
 #' Summaries of the data stored for each species
 #'
-#' @slot aa.summary       faa_summary
+#' @slot gff.summary      gff_summary
 #' @slot dna.summary      dna_summary
+#' @slot aa.summary       faa_summary
+#' @slot trans.summary    dna_summary
 #' @slot orfgff.summary   gff_summary
 #' @slot orffaa.summary   faa_summary
 #' @slot transorf.summary dna_summary
-#' @slot gff.summary      gff_summary
 #' @slot nstring.summary  numeric_summary
 species_summaries <- setClass(
   "species_summaries",
   representation(
-    aa.summary       = "faa_summary",
+    gff.summary      = "gff_summary",
     dna.summary      = "dna_summary",
+    aa.summary       = "faa_summary",
+    trans.summary    = "dna_summary",
     orfgff.summary   = "gff_summary",
     orffaa.summary   = "faa_summary",
     transorf.summary = "dna_summary",
-    gff.summary      = "gff_summary",
     nstring.summary  = "numeric_summary"
   )
 )

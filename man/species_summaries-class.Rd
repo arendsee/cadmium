@@ -11,17 +11,19 @@ Summaries of the data stored for each species
 \section{Slots}{
 
 \describe{
-\item{\code{aa.summary}}{faa_summary}
+\item{\code{gff.summary}}{gff_summary}
 
 \item{\code{dna.summary}}{dna_summary}
+
+\item{\code{aa.summary}}{faa_summary}
+
+\item{\code{trans.summary}}{dna_summary}
 
 \item{\code{orfgff.summary}}{gff_summary}
 
 \item{\code{orffaa.summary}}{faa_summary}
 
 \item{\code{transorf.summary}}{dna_summary}
-
-\item{\code{gff.summary}}{gff_summary}
 
 \item{\code{nstring.summary}}{numeric_summary}
 }}

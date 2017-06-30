@@ -1,26 +1,151 @@
-# #' Load a nexus format tree
-# #'
-# #' @param treefile A filename for a nexus tree
-# #' @return a phylo object
-# #' @export
-# load_tree_io <- function(treefile){
-#   ape::read.tree(treefile)
-# }
-#
-# #' Get species from tree
-# #'
-# #' @param tree phylo object representing all under inspection
-# #' @return character vector of unique species
-# #' @export
-# get_species_from_tree <- function(tree){
-#   tree$tip.label
-# }
+#' Load a nexus format tree
+#'
+#' @param treefile A filename for a nexus tree
+#' @return a phylo object
+#' @export
+load_tree_io <- function(treefile){
+  ape::read.tree(treefile)
+}
 
-# write.species_data <- function(){
-#
-# }
-#
-# build_derived_inputs <- function(config){
-#   tree <- load_tree_io(config@input@tree)
-#   species <- get_species_from_tree(tree)
-# }
+#' Get species from tree
+#'
+#' @param tree phylo object representing all under inspection
+#' @return character vector of unique species
+#' @export
+get_species_from_tree <- function(tree){
+  tree$tip.label
+}
+
+read_queries <- function(filename){
+  readr::read_table(filename, col_names=FALSE, col_types="c", comment="#")
+}
+
+
+to_cache <- function(x, species_name, tag) { }
+load_dna <- function(filename) { }
+load_gff <- function(filename) { }
+load_synmap <- function(filename) { }
+
+get_genome_filename <- function(species_name, dir) { }
+get_gff_filename    <- function(species_name, dir) { }
+
+get_synmap_filename <- function(focal_name, target_name) {
+  paste0(focal_name, ".vs.", target_name, ".syn")
+}
+
+derive_nstring  <- function(dna)         { }
+derive_orfgff   <- function(orfgff)      { }
+derive_orffaa   <- function(orfgff, dna) { }
+derive_aa       <- function(gff, dna)    { }
+derive_trans    <- function(gff, dna)    { }
+derive_transorf <- function(trans)       { }
+
+summarize_gff     <- function (gff)      { }
+summarize_fna     <- function (dna)      { }
+summarize_faa     <- function (faa)      { }
+summarize_fna     <- function (trans)    { }
+summarize_gff     <- function (orfgff)   { }
+summarize_faa     <- function (orffaa)   { }
+summarize_fna     <- function (transorf) { }
+summarize_nstring <- function (nstring)  { }
+summarize_syn     <- function (syn)      { }
+
+to_cache <- function(x, species_name, tag) {}
+
+
+load_species <- function(species_name, input){
+  # Primary data - required inputs to Fagin
+  dna <- load_dna( get_genome_filename ( species_name, dir ))
+  gff <- load_gff( get_gff_filename    ( species_name, dir ))
+
+  # Gene model independent data, derived only from genome
+  nstring <- derive_nstring(dna)
+  orfgff  <- derive_orfgff(dna)
+  orffaa  <- derive_orffaa(orfgff, dna)
+
+  # Gene model derived data
+  aa       <- derive_aa(gff, dna)
+  trans    <- derive_trans(gff, dna)
+  transorf <- derive_transorf(trans)
+
+  specsum <- new("species_summaries",
+    gff.summary      = summarize_gff(gff),
+    dna.summary      = summarize_fna(dna),
+    aa.summary       = summarize_faa(aa),
+    trans.summary    = summarize_fna(trans),
+    orfgff.summary   = summarize_gff(orfgff),
+    orffaa.summary   = summarize_faa(orffaa),
+    transorf.summary = summarize_fna(transorf),
+    nstring.summary  = summarize_nstring(nstring)
+  )
+
+  specfile <- new("species_summaries",
+    gff.file      = to_cache( gff      , species_name , "gff"      ),
+    dna.file      = to_cache( dna      , species_name , "dna"      ),
+    aa.file       = to_cache( aa       , species_name , "aa"       ),
+    trans.file    = to_cache( trans    , species_name , "trans"    ),
+    orfgff.file   = to_cache( orfgff   , species_name , "orfgff"   ),
+    orffaa.file   = to_cache( orffaa   , species_name , "orffaa"   ),
+    transorf.file = to_cache( transorf , species_name , "transorf" ),
+    nstring.file  = to_cache( nstring  , species_name , "nstring"  )
+  )
+
+  new("species_meta", files = specfile, summaries = specsum)
+
+}
+
+load_synmaps <- function(target_species, focal_species, syndir){
+
+  # TODO: replace this hard-coded pattern
+  filename <- get_synmap_filename(focal_species, target_species)
+
+  synfile <- load_synmap(filename)
+
+  synsum <- summarize_syn(synfile)
+
+  new(
+    "synteny_meta",
+    synmap.file    = synfile,
+    synmap.summary = synsum
+  )
+}
+
+#' Derive secondary data from the minimal required inputs
+#'
+#' The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
+#' species tree, and the focal species name. This function derives all required
+#' secondary data, but does no analysis specific to the query intervals (e.g.
+#' the orphan genes candidates).
+#'
+#' This function does not handle the full data validation. All individual
+#' pieces are validated, but not the relationships between them. This is the
+#' role of the \code{validate_derived_inputs} function.
+#'
+#' @param config The config object that provides paths to required data
+#' @return derived_input object
+build_derived_inputs <- function(config){
+
+  # NOTE: may fail
+  tree <- load_tree_io(config@input@tree)
+
+  species <- get_species_from_tree(tree)
+
+  # NOTE: may fail
+  queries <- read_queries(config@input@queries)
+
+  # NOTE: may fail
+  species_meta_list <- lapply(species, load_species, config@input)
+
+  # NOTE: may fail
+  synmap_meta_list <- lapply(species, load_synmaps, config@input@focal_species, config@input@synmaps)
+
+  new(
+    "derived_input",
+    tree          = tree,
+    focal_species = config@input@focal_species,
+    queries       = queries,
+    species       = species_meta_list,
+    synmaps       = synmap_meta_list
+  )
+
+}

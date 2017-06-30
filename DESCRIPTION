@@ -13,6 +13,9 @@ Depends: R (>= 3.4.0)
 Imports:
     methods,
     magrittr,
+    Biostrings,
+    GenomicRanges,
+    ape,
     yaml
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
@@ -22,3 +25,4 @@ Suggests: testthat,
     rmarkdown
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
+BiocViews:

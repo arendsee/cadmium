@@ -33,12 +33,6 @@ read_queries <- function(filename){
 # 6. write report generator
 # 7. write vignette
 
-### TODO: fill in the following functions ###########################
-
-to_cache    <- function(x, species_name, tag) { }
-
-# *******************************************************************
-
 
 load_species <- function(species_name, input){
   # Primary data - required inputs to Fagin

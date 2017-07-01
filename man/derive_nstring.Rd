@@ -10,7 +10,7 @@ derive_nstring(dna)
 \item{dna}{DNAStringSet genome}
 }
 \value{
-GenomicRanges object
+GRanges object
 }
 \description{
 Derive N-interval table from a genome

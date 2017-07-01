@@ -1,9 +1,14 @@
 # NOTE: this can fail
 extract_tags <- function(attr, tags, get_naked=FALSE){
+
   pairs <- lapply(stringr::str_split(attr, ";"), stringr::str_split, "=")
 
   if(get_naked) {
     tags <- c(tags, "Untagged")
+  }
+
+  if(length(tags) == 0){
+    stop("Error in extract_tags: no tags selected for extraction")
   }
 
   # annotate untagged
@@ -18,19 +23,17 @@ extract_tags <- function(attr, tags, get_naked=FALSE){
 
   # assert that each attribute has only a single '='
   lapply(pairs, lapply, length) %>% unlist %>% unlist %>%
-    magrittr::equals(2) %>%
-    all(na.rm=TRUE)     %>%
-    magrittr::not       %>%
+    `>`(2) %>% any(na.rm=TRUE) %>%
     'if'(stop("GffError: Illegal second '=' in attribute"))
 
   # assert that all tags appear only once
   lapply(pairs, lapply, '[', 1) %>%
     lapply(unlist) %>%
-    sapply(duplicated) %>% any(na.rm=TRUE) %>%
+    lapply(duplicated) %>% unlist %>% any(na.rm=TRUE) %>%
     'if'(stop("GffError: Repeated tag in 9th column"))
 
   # assert extracted tags have no commas
-  sapply(pairs, sapply, grepl, pattern=",") %>%
+  lapply(pairs, lapply, grepl, pattern=",") %>% unlist %>% unlist %>%
     any(na.rm=TRUE) %>%
     'if'(stop("GffError: Illegal comma in 9th column"))
 
@@ -50,6 +53,12 @@ extract_tags <- function(attr, tags, get_naked=FALSE){
   }
 
   a <- do.call(cbind, lapply(tags, gettag)) %>% as.data.frame(stringsAsFactors=FALSE)
+
+  # Counter the autocasting horrors of R core
+  for(i in seq_len(ncol(a))){
+    a[[i]] <- as.character(a[[i]])
+  }
+
   names(a) <- tags
   a$.n_tags <- ntags
   a

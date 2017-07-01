@@ -37,13 +37,6 @@ read_queries <- function(filename){
 
 to_cache    <- function(x, species_name, tag) { }
 
-derive_nstring  <- function(dna)         { }
-derive_orfgff   <- function(dna)         { }
-derive_orffaa   <- function(orfgff, dna) { }
-derive_aa       <- function(gff, dna)    { }
-derive_trans    <- function(gff, dna)    { }
-derive_transorf <- function(trans)       { }
-
 # *******************************************************************
 
 
@@ -55,11 +48,11 @@ load_species <- function(species_name, input){
   # Gene model independent data, derived only from genome
   nstring <- derive_nstring(dna)
   orfgff  <- derive_orfgff(dna)
-  orffaa  <- derive_orffaa(orfgff, dna)
+  orffaa  <- derive_orffaa(dna, orfgff)
 
   # Gene model derived data
-  aa       <- derive_aa(gff, dna)
-  trans    <- derive_trans(gff, dna)
+  aa       <- derive_aa(dna, gff)
+  trans    <- derive_trans(dna, gff)
   transorf <- derive_transorf(trans)
 
   specsum <- new("species_summaries",

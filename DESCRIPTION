@@ -11,15 +11,20 @@ Description:
     syntenic filter.
 Depends: R (>= 3.4.0)
 Imports:
+    synder,
     methods,
     magrittr,
     Biostrings,
     GenomicRanges,
+    IRanges,
     ape,
     rlang,
     readr,
+    stringr,
     dplyr,
     yaml
+Remotes:
+    arendsee/synder
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

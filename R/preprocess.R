@@ -35,10 +35,6 @@ read_queries <- function(filename){
 
 ### TODO: fill in the following functions ###########################
 
-load_dna    <- function(filename) { }
-load_gff    <- function(filename) { }
-load_synmap <- function(filename) { }
-
 to_cache    <- function(x, species_name, tag) { }
 
 derive_nstring  <- function(dna)         { }

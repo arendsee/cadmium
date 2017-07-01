@@ -1,11 +1,16 @@
 # NOTE: this can fail
-extract_tags <- function(attr, tags, get_naked=FALSE){
+extract_tags <- function(attr, tags, get_naked=FALSE, infer_id=FALSE){
+
+  # add ID to tag list if we need to infer ID
+  if(infer_id && (! "ID" %in% tags)){
+    tags <- c("ID", tags)
+  }
+  if((get_naked || infer_id) && (! ".untagged" %in% tags)){
+    tags <- c(tags, ".untagged")
+  }
 
   pairs <- lapply(stringr::str_split(attr, ";"), stringr::str_split, "=")
 
-  if(get_naked) {
-    tags <- c(tags, "Untagged")
-  }
 
   if(length(tags) == 0){
     stop("Error in extract_tags: no tags selected for extraction")
@@ -14,7 +19,7 @@ extract_tags <- function(attr, tags, get_naked=FALSE){
   # annotate untagged
   pairs <- lapply(pairs,
     function(x) {
-      lapply(x, function(y) if(length(y) == 1) { c("Untagged", y) } else { y } )
+      lapply(x, function(y) if(length(y) == 1) { c(".untagged", y) } else { y } )
     }
   )
 
@@ -61,6 +66,24 @@ extract_tags <- function(attr, tags, get_naked=FALSE){
 
   names(a) <- tags
   a$.n_tags <- ntags
+
+
+  if(infer_id){
+    # handle the excrement of AUGUSTUS
+    #   * interpret Untagged as ID if no ID is given and if no other tags are present
+    a$ID <- ifelse(
+      is.na(a$ID)            &  # is this feature has no ID attribute
+        (!is.na(a$.untagged)) & # but it does have an attribute with no tag
+        a$.n_tags == 1,         # and if this untagged attribute is the only attribute
+      a$.untagged,  # if so, assign the untagged attribute to ID
+      a$ID          # if not, just use the current ID
+    )
+  }
+
+  if(!get_naked){
+    a$.untagged <- NULL
+  }
+
   a
 }
 
@@ -84,17 +107,7 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
 
 
 make_GI_with_parent_child_relations <- function(gff){
-  meta <- extract_tags(gff$attr, tags=c("ID", "Name", "Parent"), get_naked=TRUE)
-
-  # handle the excrement of AUGUSTUS
-  #   * interpret Untagged as ID if no ID is given and if no other tags are present
-  meta$ID <- ifelse(
-    is.na(meta$ID)            & # is this feature has no ID attribute
-      (!is.na(meta$Untagged)) & # but it does have an attribute with no tag
-      meta$.n_tags == 1,        # and if this untagged attribute is the only attribute
-    meta$Untagged,   # if so, assign the untagged attribute to ID
-    meta$ID          # if not, just use the current ID
-  )
+  meta <- extract_tags(gff$attr, tags=c("ID", "Name", "Parent"), infer_id=TRUE)
 
   meta <- dplyr::select(
     meta,

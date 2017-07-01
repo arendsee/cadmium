@@ -21,36 +21,34 @@ read_queries <- function(filename){
 }
 
 
-to_cache <- function(x, species_name, tag) { }
-load_dna <- function(filename) { }
-load_gff <- function(filename) { }
+### Full TODO:
+# -- required for release --------------------------------------
+# 1. implement the functions below (completes preprocessing)
+# 2. add in error handling using monadR
+# -- fairly mindless refactoring ---
+# 3. classify all tertiary results from the classify.R script
+# 4. tie all those pieces together
+# -- need to do eventually -------------------------------------
+# 5. write test suite
+# 6. write report generator
+# 7. write vignette
+
+### TODO: fill in the following functions ###########################
+
+load_dna    <- function(filename) { }
+load_gff    <- function(filename) { }
 load_synmap <- function(filename) { }
 
-get_genome_filename <- function(species_name, dir) { }
-get_gff_filename    <- function(species_name, dir) { }
-
-get_synmap_filename <- function(focal_name, target_name) {
-  paste0(focal_name, ".vs.", target_name, ".syn")
-}
+to_cache    <- function(x, species_name, tag) { }
 
 derive_nstring  <- function(dna)         { }
-derive_orfgff   <- function(orfgff)      { }
+derive_orfgff   <- function(dna)         { }
 derive_orffaa   <- function(orfgff, dna) { }
 derive_aa       <- function(gff, dna)    { }
 derive_trans    <- function(gff, dna)    { }
 derive_transorf <- function(trans)       { }
 
-summarize_gff     <- function (gff)      { }
-summarize_fna     <- function (dna)      { }
-summarize_faa     <- function (faa)      { }
-summarize_fna     <- function (trans)    { }
-summarize_gff     <- function (orfgff)   { }
-summarize_faa     <- function (orffaa)   { }
-summarize_fna     <- function (transorf) { }
-summarize_nstring <- function (nstring)  { }
-summarize_syn     <- function (syn)      { }
-
-to_cache <- function(x, species_name, tag) {}
+# *******************************************************************
 
 
 load_species <- function(species_name, input){

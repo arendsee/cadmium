@@ -23,7 +23,9 @@ References to each of the RData files for a given species
 
 \item{\code{orffaa.file}}{character}
 
-\item{\code{transorf.file}}{character}
+\item{\code{transorfgff.file}}{character}
+
+\item{\code{transorffaa.file}}{character}
 
 \item{\code{nstring.file}}{character}
 }}

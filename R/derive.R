@@ -67,6 +67,10 @@ derive_orfgff <- function(dna) {
 #' @return AAStringSet object
 derive_orffaa <- function(dna, orfgff) {
 
+  # TODO:
+  #  1. extract DNA sequences according to orfgff
+  #  2. translate them
+
 }
 
 #' Derive protein sequence from genome and gene model GFF
@@ -74,17 +78,52 @@ derive_orffaa <- function(dna, orfgff) {
 #' @param dna DNAStringSet genome
 #' @param gff GenomicRanges object annotated with \code{type} and \code{parent}
 #' @return AAStringSet object
-derive_aa <- function(gff, dna) { }
+derive_aa <- function(dna, gff) {
+
+  # TODO:
+  #  1. subset CDS
+  #  2. groupby Parent
+  #  3. extract DNA (preserving parent)
+  #  4. join by Parent
+  #  5. translate
+
+}
 
 #' Derive mRNA sequence from genome and gene model GFF
 #'
 #' @param dna DNAStringSet genome
 #' @param gff GenomicRanges object annotated with \code{type} and \code{parent}
 #' @return DNAStringSet object
-derive_trans <- function(gff, dna) { }
+derive_trans <- function(dna, gff) {
+
+  # TODO:
+  #  1. subset exon
+  #  2. groupby Parent
+  #  3. extract DNA
+  #  4. join by Parent
+
+}
 
 #' Derive ORF intervals from a transcriptome
 #'
 #' @param trans DNAStringSet genome
 #' @return GenomicRanges object
-derive_transorf <- function(trans) { }
+derive_transorfgff <- function(trans) {
+
+  # TODO:
+  #  1. run `derive_orfgff` on trans
+
+}
+
+#' Derive ORF intervals from a transcriptome
+#'
+#' @param trans DNAStringSet genome
+#' @param transorfgff GRanges locations of ORFs on mRNAs
+#' @return GenomicRanges object
+derive_transorffaa <- function(trans, transorfgff) {
+
+  # TODO:
+  #  1. extract DNA sequences from trans with transorfgff
+  #  2. translate them
+
+}

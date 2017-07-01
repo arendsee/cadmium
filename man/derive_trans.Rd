@@ -4,12 +4,12 @@
 \alias{derive_trans}
 \title{Derive mRNA sequence from genome and gene model GFF}
 \usage{
-derive_trans(gff, dna)
+derive_trans(dna, gff)
 }
 \arguments{
-\item{gff}{GenomicRanges object annotated with \code{type} and \code{parent}}
-
 \item{dna}{DNAStringSet genome}
+
+\item{gff}{GenomicRanges object annotated with \code{type} and \code{parent}}
 }
 \value{
 DNAStringSet object

@@ -4,12 +4,12 @@
 \alias{derive_aa}
 \title{Derive protein sequence from genome and gene model GFF}
 \usage{
-derive_aa(gff, dna)
+derive_aa(dna, gff)
 }
 \arguments{
-\item{gff}{GenomicRanges object annotated with \code{type} and \code{parent}}
-
 \item{dna}{DNAStringSet genome}
+
+\item{gff}{GenomicRanges object annotated with \code{type} and \code{parent}}
 }
 \value{
 AAStringSet object

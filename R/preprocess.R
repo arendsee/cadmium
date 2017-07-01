@@ -51,30 +51,33 @@ load_species <- function(species_name, input){
   orffaa  <- derive_orffaa(dna, orfgff)
 
   # Gene model derived data
-  aa       <- derive_aa(dna, gff)
-  trans    <- derive_trans(dna, gff)
-  transorf <- derive_transorf(trans)
+  aa          <- derive_aa(dna, gff)
+  trans       <- derive_trans(dna, gff)
+  transorfgff <- derive_transorfgff(trans)
+  transorffaa <- derive_transorffaa(trans)
 
   specsum <- new("species_summaries",
-    gff.summary      = summarize_gff(gff),
-    dna.summary      = summarize_fna(dna),
-    aa.summary       = summarize_faa(aa),
-    trans.summary    = summarize_fna(trans),
-    orfgff.summary   = summarize_gff(orfgff),
-    orffaa.summary   = summarize_faa(orffaa),
-    transorf.summary = summarize_fna(transorf),
-    nstring.summary  = summarize_nstring(nstring)
+    gff.summary         = summarize_gff(gff),
+    dna.summary         = summarize_fna(dna),
+    aa.summary          = summarize_faa(aa),
+    trans.summary       = summarize_fna(trans),
+    orfgff.summary      = summarize_gff(orfgff),
+    orffaa.summary      = summarize_faa(orffaa),
+    transorfgff.summary = summarize_gff(transorfgff),
+    transorffaa.summary = summarize_faa(transorffaa),
+    nstring.summary     = summarize_nstring(nstring)
   )
 
-  specfile <- new("species_summaries",
-    gff.file      = to_cache( gff      , species_name , "gff"      ),
-    dna.file      = to_cache( dna      , species_name , "dna"      ),
-    aa.file       = to_cache( aa       , species_name , "aa"       ),
-    trans.file    = to_cache( trans    , species_name , "trans"    ),
-    orfgff.file   = to_cache( orfgff   , species_name , "orfgff"   ),
-    orffaa.file   = to_cache( orffaa   , species_name , "orffaa"   ),
-    transorf.file = to_cache( transorf , species_name , "transorf" ),
-    nstring.file  = to_cache( nstring  , species_name , "nstring"  )
+  specfile <- new("species_data_file",
+    gff.file         = to_cache( gff         , species_name , "gff"         ),
+    dna.file         = to_cache( dna         , species_name , "dna"         ),
+    aa.file          = to_cache( aa          , species_name , "aa"          ),
+    trans.file       = to_cache( trans       , species_name , "trans"       ),
+    orfgff.file      = to_cache( orfgff      , species_name , "orfgff"      ),
+    orffaa.file      = to_cache( orffaa      , species_name , "orffaa"      ),
+    transorfgff.file = to_cache( transorfgff , species_name , "transorfgff" ),
+    transorffaa.file = to_cache( transorffaa , species_name , "transorffaa" ),
+    nstring.file     = to_cache( nstring     , species_name , "nstring"     )
   )
 
   new("species_meta", files = specfile, summaries = specsum)

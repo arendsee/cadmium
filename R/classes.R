@@ -278,25 +278,27 @@ gff_summary <- setClass(
 
 #' References to each of the RData files for a given species
 #'
-#' @slot gff.file      character
-#' @slot dna.file      character
-#' @slot aa.file       character
-#' @slot trans.file    character
-#' @slot orfgff.file   character
-#' @slot orffaa.file   character
-#' @slot transorf.file character
-#' @slot nstring.file  character
+#' @slot gff.file         character
+#' @slot dna.file         character
+#' @slot aa.file          character
+#' @slot trans.file       character
+#' @slot orfgff.file      character
+#' @slot orffaa.file      character
+#' @slot transorfgff.file character
+#' @slot transorffaa.file character
+#' @slot nstring.file     character
 species_data_files <- setClass(
   "species_data_files",
   representation(
-     gff.file      = "character",
-     dna.file      = "character",
-     aa.file       = "character",
-     trans.file    = "character",
-     orfgff.file   = "character",
-     orffaa.file   = "character",
-     transorf.file = "character",
-     nstring.file  = "character"
+     gff.file         = "character",
+     dna.file         = "character",
+     aa.file          = "character",
+     trans.file       = "character",
+     orfgff.file      = "character",
+     orffaa.file      = "character",
+     transorfgff.file = "character",
+     transorffaa.file = "character",
+     nstring.file     = "character"
    )
 )
 
@@ -313,14 +315,15 @@ species_data_files <- setClass(
 species_summaries <- setClass(
   "species_summaries",
   representation(
-    gff.summary      = "gff_summary",
-    dna.summary      = "dna_summary",
-    aa.summary       = "faa_summary",
-    trans.summary    = "dna_summary",
-    orfgff.summary   = "gff_summary",
-    orffaa.summary   = "faa_summary",
-    transorf.summary = "dna_summary",
-    nstring.summary  = "numeric_summary"
+    gff.summary         = "gff_summary",
+    dna.summary         = "dna_summary",
+    aa.summary          = "faa_summary",
+    trans.summary       = "dna_summary",
+    orfgff.summary      = "gff_summary",
+    orffaa.summary      = "faa_summary",
+    transorfgff.summary = "gff_summary",
+    transorffaa.summary = "faa_summary",
+    nstring.summary     = "numeric_summary"
   )
 )
 

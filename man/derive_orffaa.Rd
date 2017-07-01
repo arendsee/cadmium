@@ -4,12 +4,12 @@
 \alias{derive_orffaa}
 \title{Derive ORF protein sequences from genome and ORF ranges}
 \usage{
-derive_orffaa(orfgff, dna)
+derive_orffaa(dna, orfgff)
 }
 \arguments{
-\item{orfgff}{GenomicRanges object}
-
 \item{dna}{DNAStringSet genome}
+
+\item{orfgff}{GenomicRanges object}
 }
 \value{
 AAStringSet object

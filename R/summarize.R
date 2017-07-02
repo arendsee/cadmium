@@ -27,42 +27,32 @@ summarize_numeric <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_faa <- function(x){
-# TODO: fill in the stub values
   new(
     "faa_summary",
     class_composition = NA_real_,
     # inherited from seq_summary
-    seqids          = names(x),
-    sizes           = nchar(x),
+    seqids          = names(x) %>% unique,
+    sizes           = Biostrings::width(x),
     nseq            = length(x),
-    comp            = NA_real_,
-    comp_dist       = list(),
-    n_non_canonical = NA_integer_,
-    n_initial_start = NA_integer_,
-    n_terminal_stop = NA_integer_,
-    length_sum      = summarize_numeric(nchar(x))
+    comp            = Biostrings::alphabetFrequency(x),
+    n_initial_start = sapply(x, grepl, pattern="^M") %>% sum,
+    n_terminal_stop = sapply(x, grepl, pattern="*$") %>% sum
   )
 }
 
 #' @rdname fagin_summary
 #' @export
-summarize_fna <- function(x){
-# TODO: fill in the stub values
+summarize_dna <- function(x){
   new(
-    "fna_summary",
-    nd50             = NA_integer_,
-    n_triple         = NA_integer_,
-    codon_preference = list(),
+    "dna_summary",
+    n_triple         = (Biostrings::width(x) %% 3 == 0) %>% sum,
     # inherited from seq_summary
-    seqids          = names(x),
-    sizes           = nchar(x),
+    seqids          = names(x) %>% unique,
+    sizes           = Biostrings::width(x),
     nseq            = length(x),
-    comp            = NA_real_,
-    comp_dist       = list(),
-    n_non_canonical = NA_integer_,
-    n_initial_start = NA_integer_,
-    n_terminal_stop = NA_integer_,
-    length_sum      = summarize_numeric(nchar(x))
+    comp            = Biostrings::alphabetFrequency(x),
+    n_initial_start = sapply(x, grepl, pattern="^ATG") %>% sum,
+    n_terminal_stop = sapply(x, grepl, pattern="(TAA|TGA|TAG)$", perl=TRUE) %>% sum
   )
 }
 

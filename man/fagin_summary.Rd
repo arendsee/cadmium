@@ -4,7 +4,7 @@
 \alias{fagin_summary}
 \alias{summarize_numeric}
 \alias{summarize_faa}
-\alias{summarize_fna}
+\alias{summarize_dna}
 \alias{summarize_gff}
 \alias{summarize_nstring}
 \alias{summarize_syn}
@@ -14,7 +14,7 @@ summarize_numeric(x)
 
 summarize_faa(x)
 
-summarize_fna(x)
+summarize_dna(x)
 
 summarize_gff(x)
 

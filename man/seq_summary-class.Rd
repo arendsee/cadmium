@@ -17,7 +17,7 @@ This is a parent to both DNA and protien summary classes
 
 \item{\code{nseq}}{integer total number of sequences}
 
-\item{\code{comp}}{numeric base composition}
+\item{\code{comp}}{matrix base composition}
 
 \item{\code{comp_dist}}{list}
 

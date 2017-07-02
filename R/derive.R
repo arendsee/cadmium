@@ -17,19 +17,31 @@
 dnaregex <- function(x, pattern, strand=c('b'), ...){
   # TODO: add tests for this 
 
+  sinfo <- GenomeInfoDb::Seqinfo(seqnames=names(x), seqlengths=Biostrings::width(x))
+
   if(! strand %in% c('p', 'm', 'u', 'b')){
     stop("IllegalArgument: strand must be 'p', 'm', 'u', or 'b'")
   }
 
   if(strand %in% c('p', 'u', 'b')){
-    f <- .dnaregex_unstranded(x, pattern, ...)
+    f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, ...)
+    # f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, perl=TRUE)
     if(strand != 'u'){
       GenomicRanges::strand(f) <- '+'
     }
   }
 
   if(strand %in% c('m', 'b')){
-    r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, ...)
+    # r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, sinfo=sinfo, ...)
+    r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, sinfo=sinfo, perl=TRUE)
+    r <- GenomicRanges::GRanges(
+      seqnames = GenomeInfoDb::seqnames(r),
+      seqinfo  = sinfo,
+      ranges   = IRanges::IRanges(
+                  start = GenomeInfoDb::seqlengths(r)[as.character(GenomeInfoDb::seqnames(r))] - IRanges::end(r) + 1,
+                  width = IRanges::width(r)
+                 )
+    )
     GenomicRanges::strand(r) <- '-'
   }
 
@@ -41,7 +53,7 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
   )
   
 }
-.dnaregex_unstranded <- function(x, pattern, ...){
+.dnaregex_unstranded <- function(x, pattern, sinfo, ...){
   # gregexpr search for a pattern, returning the start and width on each given string
   lapply(x, function(s) gregexpr(pattern, as.character(s), ...)) %>%
   {
@@ -56,6 +68,7 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
   {
     GenomicRanges::GRanges(
       seqnames = .$names,
+      seqinfo  = sinfo, 
       ranges   = IRanges::IRanges(start=.$start, width=.$width)
     )
   }
@@ -85,7 +98,7 @@ derive_orfgff <- function(dna) {
   # BUG: This misses potentially longer ORFs that start within a previous ORF
   # TODO: replace with real ORF finder
 
-  orfpat <- "ATG(...)+?(TAA|TGA|TAG)"
+  orfpat <- "ATG([ATGC][ATGC][ATGC])*?(TAA|TGA|TAG)"
 
   dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE)
 
@@ -100,7 +113,10 @@ derive_orffaa <- function(dna, orfgff) {
 
   # TODO: get a real ORF finder and sync this accordingly
 
-  dna[orfgff] %>% Biostrings::translate()
+  append(
+    dna[orfgff[GenomicRanges::strand(orfgff) == '+']] %>% Biostrings::translate(),
+    dna[orfgff[GenomicRanges::strand(orfgff) == '-']] %>% Biostrings::reverseComplement() %>% Biostrings::translate()
+  )
 
 }
 

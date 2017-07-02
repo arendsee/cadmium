@@ -11,11 +11,12 @@ Description:
     syntenic filter.
 Depends: R (>= 3.4.0)
 Imports:
-    synder,
+    synder (>= 0.20.1),
     methods,
     magrittr,
     Biostrings,
     GenomicRanges,
+    GenomeInfoDb,
     IRanges,
     ape,
     rlang,

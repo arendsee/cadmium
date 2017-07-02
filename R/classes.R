@@ -208,7 +208,7 @@ synmap_summary <- setClass(
 #' @slot seqids          character the name of each entry
 #' @slot sizes           integer lengths of each sequence
 #' @slot nseq            integer total number of sequences
-#' @slot comp            numeric base composition
+#' @slot comp            matrix base composition
 #' @slot comp_dist       list 
 #' @slot n_non_canonical integer
 #' @slot n_initial_start integer
@@ -220,12 +220,10 @@ seq_summary <- setClass(
     seqids          = "character",
     sizes           = "integer",
     nseq            = "integer",
-    comp            = "numeric",
-    comp_dist       = "list",
-    n_non_canonical = "integer",
+    comp            = "matrix",
     n_initial_start = "integer",
     n_terminal_stop = "integer",
-    length_sum      = "numeric_summary"
+    lengths         = "integer"
   )
 )
 
@@ -237,9 +235,7 @@ seq_summary <- setClass(
 dna_summary <- setClass(
   "dna_summary",
   representation(
-    nd50             = "integer",
-    n_triple         = "integer",
-    codon_preference = "list"
+    n_triple = "integer"
   ),
   contains = "seq_summary"
 )

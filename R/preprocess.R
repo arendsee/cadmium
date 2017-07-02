@@ -16,9 +16,9 @@ load_species <- function(species_name, input){
 
   specsum <- new("species_summaries",
     gff.summary         = summarize_gff(gff),
-    dna.summary         = summarize_fna(dna),
+    dna.summary         = summarize_dna(dna),
     aa.summary          = summarize_faa(aa),
-    trans.summary       = summarize_fna(trans),
+    trans.summary       = summarize_dna(trans),
     orfgff.summary      = summarize_gff(orfgff),
     orffaa.summary      = summarize_faa(orffaa),
     transorfgff.summary = summarize_gff(transorfgff),

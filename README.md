@@ -1,5 +1,5 @@
-[![Travis-CI Build Status](https://travis-ci.org/arendsee/fagin.svg?branch=master)](https://travis-ci.org/arendsee/fagin)
-[![Coverage Status](https://img.shields.io/codecov/c/github/arendsee/fagin/master.svg)](https://codecov.io/github/arendsee/fagin?branch=master)
+[![Travis-CI Build Status](https://travis-ci.org/arendsee/fagin.svg?branch=dev)](https://travis-ci.org/arendsee/fagin)
+[![Coverage Status](https://img.shields.io/codecov/c/github/arendsee/fagin/master.svg)](https://codecov.io/github/arendsee/fagin?branch=dev)
 
 # Fagin
 

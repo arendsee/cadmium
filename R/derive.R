@@ -123,9 +123,15 @@ derive_orffaa <- function(dna, orfgff) {
 mergeSeqs <- function(fna, gff, tag){
   g <- gff[gff$type == tag]
 
+  # sort the elements by start
+  # this is required, since they will be concatenated by order
+  g <- g[order(GenomicRanges::start(g))]
+
   revpar <- g[GenomicRanges::strand(g) == '-']$parent %>% unique
 
   parents <- GenomicRanges::mcols(g)$parent
+
+  # TODO: assert no elements within a group overlap
 
   seqs <- fna[g]                %>%
     base::split(parents)        %>%

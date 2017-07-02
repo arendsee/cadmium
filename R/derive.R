@@ -9,7 +9,6 @@
 #'   \item 'b' search both strands
 #' }
 #'
-#'
 #' @param x       DNAStringSet
 #' @param pattern character regular expression
 #' @param strand  which strand to search (see details)
@@ -99,10 +98,24 @@ derive_orfgff <- function(dna) {
 #' @return AAStringSet object
 derive_orffaa <- function(dna, orfgff) {
 
-  # TODO:
-  #  1. extract DNA sequences according to orfgff
-  #  2. translate them
+  # TODO: get a real ORF finder and sync this accordingly
 
+  translate(dna[orfgff])
+
+}
+
+mergeSeqs <- function(fna, gff, tag){
+  g <- gff[gff$type == tag]
+  f <- .mergeSeqs_unstranded(fna, cdsgff[strand(g) == '+'])
+  r <- .mergeSeqs_unstranded(Biostrings::reverseComplement(fna), g[strand(g) == '-'])
+  append(f, r)
+}
+.mergeSeqs_unstranded <- function(fna, g){
+  fna[g]                              %>%
+    S4Vectors::split(mcols(g)$parent) %>%
+    lapply(paste0, collapse="")       %>%
+    unlist                            %>%
+    Biostrings::DNAStringSet
 }
 
 #' Derive protein sequence from genome and gene model GFF
@@ -112,12 +125,7 @@ derive_orffaa <- function(dna, orfgff) {
 #' @return AAStringSet object
 derive_aa <- function(dna, gff) {
 
-  # TODO:
-  #  1. subset CDS
-  #  2. groupby Parent
-  #  3. extract DNA (preserving parent)
-  #  4. join by Parent
-  #  5. translate
+  mergeSeqs(dna, gff, "CDS") %>% translate
 
 }
 
@@ -128,11 +136,7 @@ derive_aa <- function(dna, gff) {
 #' @return DNAStringSet object
 derive_trans <- function(dna, gff) {
 
-  # TODO:
-  #  1. subset exon
-  #  2. groupby Parent
-  #  3. extract DNA
-  #  4. join by Parent
+  mergeSeqs(dna, gff, "exon")
 
 }
 
@@ -142,8 +146,7 @@ derive_trans <- function(dna, gff) {
 #' @return GenomicRanges object
 derive_transorfgff <- function(trans) {
 
-  # TODO:
-  #  1. run `derive_orfgff` on trans
+  derive_orfgff(trans)
 
 }
 
@@ -154,8 +157,6 @@ derive_transorfgff <- function(trans) {
 #' @return GenomicRanges object
 derive_transorffaa <- function(trans, transorfgff) {
 
-  # TODO:
-  #  1. extract DNA sequences from trans with transorfgff
-  #  2. translate them
+  trans[transorfgff] %>% translate
 
 }

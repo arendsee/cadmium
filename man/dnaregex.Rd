@@ -4,12 +4,14 @@
 \alias{dnaregex}
 \title{Internal function for extracting intervals from pattern matches on DNA}
 \usage{
-dnaregex(x, pattern, ...)
+dnaregex(x, pattern, strand = c("b"), ...)
 }
 \arguments{
 \item{x}{DNAStringSet}
 
 \item{pattern}{character regular expression}
+
+\item{strand}{which strand to search (see details)}
 
 \item{...}{extra arguments for gregexpr}
 }
@@ -17,5 +19,13 @@ dnaregex(x, pattern, ...)
 GRanges object
 }
 \description{
-Internal function for extracting intervals from pattern matches on DNA
+The \code{strand} parameter can be
+}
+\details{
+\itemize{
+  \item 'p' search plus strand
+  \item 'm' search minus strand
+  \item 'u' search plus strand but report no strand
+  \item 'b' search both strands
+}
 }

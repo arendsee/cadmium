@@ -18,6 +18,12 @@ load_dna <- function(filename) {
 
 #' @rdname fagin_io
 #' @export
+load_queries <- function(filename){
+  readr::read_table(filename, col_names=FALSE, col_types="c", comment="#")
+}
+
+#' @rdname fagin_io
+#' @export
 load_gff <- function(filename) {
   # NOTE: this can fail
   # synder's gff loader will pick up basic errors in the gff format
@@ -32,4 +38,10 @@ load_gff <- function(filename) {
 #' @export
 load_synmap <- function(filename) {
   synder::read_synmap(filename)
+}
+
+#' @rdname fagin_io
+#' @export
+load_tree <- function(filename){
+  ape::read.tree(filename)
 }

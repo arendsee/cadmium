@@ -1,39 +1,3 @@
-#' Load a nexus format tree
-#'
-#' @param treefile A filename for a nexus tree
-#' @return a phylo object
-#' @export
-load_tree_io <- function(treefile){
-  ape::read.tree(treefile)
-}
-
-#' Get species from tree
-#'
-#' @param tree phylo object representing all under inspection
-#' @return character vector of unique species
-#' @export
-get_species_from_tree <- function(tree){
-  tree$tip.label
-}
-
-read_queries <- function(filename){
-  readr::read_table(filename, col_names=FALSE, col_types="c", comment="#")
-}
-
-
-### Full TODO:
-# -- required for release --------------------------------------
-# 1. implement the functions below (completes preprocessing)
-# 2. add in error handling using monadR
-# -- fairly mindless refactoring ---
-# 3. classify all tertiary results from the classify.R script
-# 4. tie all those pieces together
-# -- need to do eventually -------------------------------------
-# 5. write test suite
-# 6. write report generator
-# 7. write vignette
-
-
 load_species <- function(species_name, input){
   # Primary data - required inputs to Fagin
   dna <- load_dna( get_genome_filename ( species_name, dir ))
@@ -74,7 +38,11 @@ load_species <- function(species_name, input){
     nstring.file     = to_cache( nstring     , species_name , "nstring"     )
   )
 
-  new("species_meta", files = specfile, summaries = specsum)
+  new(
+    "species_meta",
+    files     = specfile,
+    summaries = specsum
+  )
 
 }
 
@@ -110,18 +78,23 @@ load_synmaps <- function(target_species, focal_species, syndir){
 build_derived_inputs <- function(config){
 
   # NOTE: may fail
-  tree <- load_tree_io(config@input@tree)
-
-  species <- get_species_from_tree(tree)
+  tree <- load_tree(config@input@tree)
 
   # NOTE: may fail
-  queries <- read_queries(config@input@queries)
+  queries <- load_queries(config@input@queries)
+
+  species_names <- tree$tip.label
 
   # NOTE: may fail
-  species_meta_list <- lapply(species, load_species, config@input)
+  species_meta_list <- lapply(species_names, load_species, config@input)
 
   # NOTE: may fail
-  synmap_meta_list <- lapply(species, load_synmaps, config@input@focal_species, config@input@synmaps)
+  synmap_meta_list <- lapply(
+    species_names,
+    load_synmaps,
+    taget_species = config@input@focal_species,
+    syndir        = config@input@synmaps
+  )
 
   new(
     "derived_input",

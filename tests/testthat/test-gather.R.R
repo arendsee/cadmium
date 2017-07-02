@@ -1,7 +1,7 @@
-context("preprocess.R")
+context("gather.R")
 
-dna <- load_dna("asdf/asdf.fna")
-gff <- load_gff("asdf/asdf.gff")
+dna <- load_dna("tiny/tiny.fna")
+gff <- load_gff("tiny/tiny.gff")
 
 test_that("load_dna works", {
   expect_true(all(Biostrings::width(dna)[1] == 60))
@@ -15,7 +15,7 @@ test_that("nstrings gets the right intervals", {
 })
 
 test_that("load tree works", {
-  expect_equal({ t <- load_tree("asdf/asdf.tree"); tail(t$tip.label, 1) }, "human")
+  expect_equal({ t <- load_tree("tiny/tiny.tree"); tail(t$tip.label, 1) }, "human")
 })
 
 test_that("protein models are correctly assembled", {

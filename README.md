@@ -5,9 +5,22 @@
 
 A pipeline for the classification of orphans into origin classes using a syntenic filter.
 
+# Installation
+
+```R
+devtools::install_github("arendsee/fagin")
+library(fagin)
+```
+
+# Dependencies
+
+Currently `fagin` has no dependencies outside of R. It makes heavy use of the
+core libraries of bioconductor (`Biostring` and `GenomicRanges`). The only
+really experimental (read unstable) dependency is `synder`.
+
 # Input
 
- The following is required
+The following is required
 
  - Phylogeny for all included species
  - Name of the focal species
@@ -16,14 +29,16 @@ A pipeline for the classification of orphans into origin classes using a synteni
    - GFF file (must at least include gene models)
    - Full genome (GFF reference)
 
-# Assumptions about the input
+# Configuration
 
- - The Parent tag in all GFFs for the CDS type maps uniquely to a protein. It
-   doesn't have to be a protein ID, it may be a model id or transcript id. If
-   multiple proteins have the same parent, the proteins will be merged
-   incorrectly into one protein.
- - As above, an exon Parent tag must map uniquely to a transcript. This is less
-   likely to be a problem.
+To run and configure `fagin`, you need to set paths to your data in
+a configuration object. The default configuration can be generated
+
+```R
+config()
+```
+
+and taylored to specific needs.
 
 # Pipeline
 
@@ -32,65 +47,23 @@ A pipeline for the classification of orphans into origin classes using a synteni
  - Search the query gene DNA against the search interval DNA sequences
  - Predict ancestor states
 
-# Output
-
-   A PDF file describing the results of the run.
-
- - The phylogenetic tree of all species in the pipeline
- - Genome summary for each species 
- - Overall statistics for classifications
- - Visualizations of overall statistics
- - Origin page for each orphan gene
-
-# Running Fagin
-
- 1. `./configure.sh` 
- 2. Fill in generated config scripts
- 3. `make load && make test && make run`
-
-## 1. Run configure script
-
-```
-./configure.sh
-```
-
-This script will
-  - check all dependencies, installing locally necessary
-  - check all required R libraries, and install if possible
-  - build basic config files
-
-## 2. Setup config files
-
-Fill in missing fields in `preconfig.sh` and `runconfig.R`. Details for each
-required field are in the config files.
-
-## 3. Run the analysis
-
-```
-make load && make test && make run
-```
-
 
 # TODO
 
 Content
- - [ ] generalize from 'orphan' to 'query'
+ - [x] generalize from 'orphan' to 'query'
  - [ ] prepare report for each query
  - [ ] create gene pages
  - [ ] add orthology statistics
- - [ ] print feature table
- - [ ] print label table
- - [ ] print all intermediate data
- - [ ] only run functions specified by the function tree
  - [ ] print classification tree in report
  - [ ] add RNA-seq input
- - [ ] implement non-quadratic alignment
+ - [ ] implement non-quadratic alignment (e.g. HMMER or BLAST)
 
 Implementation
- - [ ] Merge with R synder version
- - [ ] * ab initio refactor as pure R package
- - [ ] * replace all shellscripts
- - [ ] * full test coverage
+ - [x] Merge with R synder version
+ - [x] * ab initio refactor as pure R package
+ - [x] * replace all shellscripts
+ - [x] * add test suite
  - [ ] all data in RSQLite databases (constant memory)
  - [ ] parallelize everything (divide-analyze-recombine)
  - [ ] integrate BLAST orphan identification
@@ -100,10 +73,7 @@ Implementation
 
 Final Destination
  - [ ] Fagin will include everything needed for orphan analysis
- - [ ] Identification of initial orphans using BLAST
- - [ ] Manage blast results (not a trivial manner)
+ - [ ] Incorporate BLAST and manage its results (or something better than BLAST)
  - [ ] Phylostratigraphic contextualization using NCBI common tree
  - [ ] Syntenic map creation
- - [ ] Synder interface
- - [ ] Search within syntenic context
  - [ ] Visualize the results genewise with Trelliscope

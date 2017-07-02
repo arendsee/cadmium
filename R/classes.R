@@ -127,8 +127,8 @@ config_synder <- setClass(
 #' @slot input     Paths to inputs and the focal species name
 #' @slot synder    Parameters for synder
 #' @slot alignment Alignment configurations
-config <- setClass(
-  "config",
+fagin_config <- setClass(
+  "fagin_config",
   representation(
     input     = "config_input",
     synder    = "config_synder",
@@ -141,6 +141,12 @@ config <- setClass(
   )
 )
 
+#' Get a default configuration object
+#'
+#' @export
+config <- function(){
+  fagin_config()
+}
 
 
 # ================================================================= #

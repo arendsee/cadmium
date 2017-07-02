@@ -1,3 +1,4 @@
 INPUT
 ^\.travis\.yml$
 ^codecov\.yml$
+^.fagin_cache$

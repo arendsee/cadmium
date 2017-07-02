@@ -78,8 +78,9 @@ load_synmaps <- function(target_species, focal_species, syndir){
 #' pieces are validated, but not the relationships between them. This is the
 #' role of the \code{validate_derived_inputs} function.
 #'
-#' @param config The config object that provides paths to required data
+#' @param con The config object that provides paths to required data
 #' @return derived_input object
+#' @export
 load_data <- function(con){
 
   # NOTE: may fail

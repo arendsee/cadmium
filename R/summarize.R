@@ -62,7 +62,7 @@ summarize_gff <- function(x){
     seqid = x@seqnames,
     stop  = GenomicRanges::end(x),
     start = GenomicRanges::start(x),
-    type  = mcols(x)$type 
+    type  = GenomicRanges::mcols(x)$type 
   )
 
   seqstats <- dplyr::summarize(

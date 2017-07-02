@@ -27,10 +27,6 @@ Summary of a numeric vector
 
 \item{\code{n}}{integer  total number of elements}
 
-\item{\code{shapiro_norm}}{htest    result of shapiro test for normalcy}
-
-\item{\code{log_shapiro_norm}}{htest    result of shapiro test for log normalcy}
-
 \item{\code{density}}{density  kernel density}
 }}
 

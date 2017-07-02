@@ -162,24 +162,18 @@ setOldClass("phylo")
 #' @slot mean             numeric  mean
 #' @slot sd               numeric  standard deviation
 #' @slot n                integer  total number of elements
-#' @slot shapiro_norm     htest    result of shapiro test for normalcy
-#' @slot log_shapiro_norm htest    result of shapiro test for log normalcy
 #' @slot density          density  kernel density
 numeric_summary <- setClass(
   "numeric_summary",
   representation(
-    min    = "numeric",
-    q25    = "numeric",
-    median = "numeric",
-    q75    = "numeric",
-    max    = "numeric",
-    mean   = "numeric",
-    sd     = "numeric",
-    n      = "integer",
-    # NOTE: the following all fail length(x) < 3
-    shapiro_norm = "htest",
-    # NOTE: fails for negative values
-    log_shapiro_norm = "htest",
+    min     = "numeric",
+    q25     = "numeric",
+    median  = "numeric",
+    q75     = "numeric",
+    max     = "numeric",
+    mean    = "numeric",
+    sd      = "numeric",
+    n       = "integer",
     density = "density"
   )
 )

@@ -1,4 +1,5 @@
 #' @importFrom methods isClass new
+#' @importFrom graphics plot
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%"
 utils::globalVariables(c("%>%", "."))

@@ -18,8 +18,6 @@ summarize_numeric <- function(x){
     mean             = mean(x),
     sd               = stats::sd(x),
     n                = length(x),
-    shapiro_norm     = stats::shapiro.test(sample(x,      size=1000, replace = TRUE)),
-    log_shapiro_norm = stats::shapiro.test(sample(log(x), size=1000, replace = TRUE)),
     density          = stats::density(x, kernel="gaussian")
   )
 }

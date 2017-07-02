@@ -8,6 +8,7 @@
 \alias{print.config_input}
 \alias{print.config_synder}
 \alias{print.config}
+\alias{print.numeric_summary}
 \title{Special printers}
 \usage{
 \method{print}{config_alignment_thresholds}(x, ...)
@@ -21,6 +22,8 @@
 \method{print}{config_synder}(x, ...)
 
 \method{print}{config}(x, ...)
+
+\method{print}{numeric_summary}(x, ...)
 }
 \arguments{
 \item{x}{An object to print}

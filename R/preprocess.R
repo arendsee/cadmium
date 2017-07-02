@@ -27,15 +27,15 @@ load_species <- function(species_name, input){
   )
 
   specfile <- new("species_data_file",
-    gff.file         = to_cache( gff         , species_name , "gff"         ),
-    dna.file         = to_cache( dna         , species_name , "dna"         ),
-    aa.file          = to_cache( aa          , species_name , "aa"          ),
-    trans.file       = to_cache( trans       , species_name , "trans"       ),
-    orfgff.file      = to_cache( orfgff      , species_name , "orfgff"      ),
-    orffaa.file      = to_cache( orffaa      , species_name , "orffaa"      ),
-    transorfgff.file = to_cache( transorfgff , species_name , "transorfgff" ),
-    transorffaa.file = to_cache( transorffaa , species_name , "transorffaa" ),
-    nstring.file     = to_cache( nstring     , species_name , "nstring"     )
+    gff.file         = to_cache( gff         , label="gff"         , group=species_name ),
+    dna.file         = to_cache( dna         , label="dna"         , group=species_name ),
+    aa.file          = to_cache( aa          , label="aa"          , group=species_name ),
+    trans.file       = to_cache( trans       , label="trans"       , group=species_name ),
+    orfgff.file      = to_cache( orfgff      , label="orfgff"      , group=species_name ),
+    orffaa.file      = to_cache( orffaa      , label="orffaa"      , group=species_name ),
+    transorfgff.file = to_cache( transorfgff , label="transorfgff" , group=species_name ),
+    transorffaa.file = to_cache( transorffaa , label="transorffaa" , group=species_name ),
+    nstring.file     = to_cache( nstring     , label="nstring"     , group=species_name )
   )
 
   new(

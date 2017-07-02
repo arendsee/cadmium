@@ -6,16 +6,18 @@
 \alias{from_cache}
 \title{Store and retrieve data using groups and labels}
 \usage{
-to_cache(x, group, label)
+to_cache(x, label, group = NULL, cache_dir = ".fagin_cache")
 
-from_cache(group, label)
+from_cache(label, group = NULL, cache_dir = ".fagin_cache")
 }
 \arguments{
 \item{x}{Data to be cached}
 
-\item{group}{a caching group (e.g. a species name)}
+\item{label}{The base label under which to store the data}
 
-\item{label}{the base label under which to store the data}
+\item{group}{A caching group (e.g. a species name)}
+
+\item{cache_dir}{The directory in which to cache the results}
 }
 \description{
 Currently I am caching by saving the files in as RData objects in a local

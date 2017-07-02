@@ -100,22 +100,27 @@ derive_orffaa <- function(dna, orfgff) {
 
   # TODO: get a real ORF finder and sync this accordingly
 
-  translate(dna[orfgff])
+  dna[orfgff] %>% Biostrings::translate()
 
 }
 
 mergeSeqs <- function(fna, gff, tag){
   g <- gff[gff$type == tag]
-  f <- .mergeSeqs_unstranded(fna, cdsgff[strand(g) == '+'])
-  r <- .mergeSeqs_unstranded(Biostrings::reverseComplement(fna), g[strand(g) == '-'])
-  append(f, r)
-}
-.mergeSeqs_unstranded <- function(fna, g){
-  fna[g]                              %>%
-    S4Vectors::split(mcols(g)$parent) %>%
-    lapply(paste0, collapse="")       %>%
-    unlist                            %>%
-    Biostrings::DNAStringSet
+
+  revpar <- g[GenomicRanges::strand(g) == '-']$parent %>% unique
+
+  parents <- GenomicRanges::mcols(g)$parent
+
+  seqs <- fna[g]                %>%
+    base::split(parents)        %>%
+    lapply(paste0, collapse="") %>%
+    unlist                      %>%
+    Biostrings::DNAStringSet()
+
+  seqs[names(seqs) %in% revpar] <-
+    Biostrings::reverseComplement(seqs[names(seqs) %in% revpar])
+
+  seqs
 }
 
 #' Derive protein sequence from genome and gene model GFF
@@ -125,7 +130,7 @@ mergeSeqs <- function(fna, gff, tag){
 #' @return AAStringSet object
 derive_aa <- function(dna, gff) {
 
-  mergeSeqs(dna, gff, "CDS") %>% translate
+  mergeSeqs(dna, gff, "CDS") %>% Biostrings::translate()
 
 }
 
@@ -157,6 +162,6 @@ derive_transorfgff <- function(trans) {
 #' @return GenomicRanges object
 derive_transorffaa <- function(trans, transorfgff) {
 
-  trans[transorfgff] %>% translate
+  trans[transorfgff] %>% Biostrings::translate
 
 }

@@ -6,8 +6,9 @@
 *.fna
 *.fasta
 
-INPUT
+.fagin_cache
 
+INPUT
 log.Rout
 preconfig.sh
 runconfig.R

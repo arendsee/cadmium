@@ -25,7 +25,10 @@ NULL
     dir.create(cache_dir)
   }
   if(! is.null(group)){
-    dir.create(file.path(cache_dir, group))
+    grpdir <- file.path(cache_dir, group)
+    if(! dir.exists(grpdir)){
+      dir.create(grpdir)
+    }
   }
 }
 

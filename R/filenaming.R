@@ -22,20 +22,30 @@ make_filename <- function(x, dir=NULL, ext=NULL, spaceToUnderscore=TRUE){
   x
 }
 
+.check_name <- function(x){
+  if(is.na(x) || is.null(x) || x == ""){
+    stop("Expected a species name, found nothing")
+  }
+}
+
 #' @rdname fagin_naming
 #' @export
 get_genome_filename <- function(species_name, dir) {
+  .check_name(species_name)
   make_filename(species_name, dir=dir, ext="fna")
 }
 
 #' @rdname fagin_naming
 #' @export
 get_gff_filename <- function(species_name, dir) {
+  .check_name(species_name)
   make_filename(species_name, dir=dir, ext="gff3")
 }
 
 #' @rdname fagin_naming
 #' @export
 get_synmap_filename <- function(focal_name, target_name, dir) {
+  .check_name(focal_name)
+  .check_name(target_name)
   make_filename(paste0(focal_name, ".vs.", target_name), dir=dir, ext="syn")
 }

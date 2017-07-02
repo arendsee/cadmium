@@ -1,7 +1,12 @@
 load_species <- function(species_name, input){
   # Primary data - required inputs to Fagin
-  dna <- load_dna( get_genome_filename ( species_name, dir ))
-  gff <- load_gff( get_gff_filename    ( species_name, dir ))
+
+  # TODO: handle errors
+  dna <- load_dna( get_genome_filename ( species_name, input@fna_dir ))
+
+  # TODO: handle errors
+  # TODO: also, this is too slow, need to speed it up
+  gff <- load_gff( get_gff_filename    ( species_name, input@gff_dir ))
 
   # Gene model independent data, derived only from genome
   nstring <- derive_nstring(dna)
@@ -12,7 +17,7 @@ load_species <- function(species_name, input){
   aa          <- derive_aa(dna, gff)
   trans       <- derive_trans(dna, gff)
   transorfgff <- derive_transorfgff(trans)
-  transorffaa <- derive_transorffaa(trans)
+  transorffaa <- derive_transorffaa(trans, transorfgff)
 
   specsum <- new("species_summaries",
     gff.summary         = summarize_gff(gff),
@@ -26,7 +31,7 @@ load_species <- function(species_name, input){
     nstring.summary     = summarize_nstring(nstring)
   )
 
-  specfile <- new("species_data_file",
+  specfile <- new("species_data_files",
     gff.file         = to_cache( gff         , label="gff"         , group=species_name ),
     dna.file         = to_cache( dna         , label="dna"         , group=species_name ),
     aa.file          = to_cache( aa          , label="aa"          , group=species_name ),
@@ -49,7 +54,7 @@ load_species <- function(species_name, input){
 load_synmaps <- function(target_species, focal_species, syndir){
 
   # TODO: replace this hard-coded pattern
-  filename <- get_synmap_filename(focal_species, target_species)
+  filename <- get_synmap_filename(focal_species, target_species, syndir)
 
   synfile <- load_synmap(filename)
 
@@ -75,31 +80,31 @@ load_synmaps <- function(target_species, focal_species, syndir){
 #'
 #' @param config The config object that provides paths to required data
 #' @return derived_input object
-build_derived_inputs <- function(config){
+load_data <- function(con){
 
   # NOTE: may fail
-  tree <- load_tree(config@input@tree)
+  tree <- load_tree(con@input@tree)
 
   # NOTE: may fail
-  queries <- load_queries(config@input@queries)
+  queries <- load_queries(con@input@query_gene_list)
 
   species_names <- tree$tip.label
 
   # NOTE: may fail
-  species_meta_list <- lapply(species_names, load_species, config@input)
+  species_meta_list <- lapply(species_names, load_species, con@input)
 
   # NOTE: may fail
   synmap_meta_list <- lapply(
     species_names,
     load_synmaps,
-    taget_species = config@input@focal_species,
-    syndir        = config@input@synmaps
+    target_species = con@input@focal_species,
+    syndir         = con@input@synmaps
   )
 
   new(
     "derived_input",
     tree          = tree,
-    focal_species = config@input@focal_species,
+    focal_species = con@input@focal_species,
     queries       = queries,
     species       = species_meta_list,
     synmaps       = synmap_meta_list

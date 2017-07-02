@@ -1,0 +1,35 @@
+---
+title: "Vignette Title"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Fagin is a program for analyzing orphan genes. The first step of the analysis
+is gathering the required data. Inputs are organized into a `config` object, below are the default values:
+
+```{r}
+config()
+```
+
+There are many parameters that may be set, but the only ones we need to think
+about for now are those under the input header. The command `config()` creates a default config as an R S4 class. The values may be modified:
+
+```{r}
+myConfig <- config()
+myConfig@gff_dir = "foo/gff"
+```
+
+Once the config is loaded with paths to the input data, you can load the data
+into the Fagin analysis.
+
+```{r}
+load_data(myConfig)
+```
+
+This function parses and stores all the raw data required for the analysis and
+will (hopefully) pick up any erros before they become problems later.

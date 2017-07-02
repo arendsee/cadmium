@@ -104,6 +104,18 @@ derive_orfgff <- function(dna) {
 
 }
 
+#' Extract DNA intervals, reverse complementing them if they are minus sense
+#'
+#' @param dna DNA template
+#' @param gff Intervals to extract
+#' @return DNAStringSet
+extractWithComplements <- function(dna, gff){
+  append(
+      dna[gff[GenomicRanges::strand(gff) == '+']],
+      dna[gff[GenomicRanges::strand(gff) == '-']] %>% Biostrings::reverseComplement() 
+    )
+}
+
 #' Derive ORF protein sequences from genome and ORF ranges
 #'
 #' @param dna DNAStringSet genome
@@ -113,10 +125,7 @@ derive_orffaa <- function(dna, orfgff) {
 
   # TODO: get a real ORF finder and sync this accordingly
 
-  append(
-    dna[orfgff[GenomicRanges::strand(orfgff) == '+']] %>% Biostrings::translate(),
-    dna[orfgff[GenomicRanges::strand(orfgff) == '-']] %>% Biostrings::reverseComplement() %>% Biostrings::translate()
-  )
+  extractWithComplements(dna, orfgff) %>% Biostrings::translate()
 
 }
 
@@ -184,6 +193,6 @@ derive_transorfgff <- function(trans) {
 #' @return GenomicRanges object
 derive_transorffaa <- function(trans, transorfgff) {
 
-  trans[transorfgff] %>% Biostrings::translate
+  extractWithComplements(trans, transorfgff) %>% Biostrings::translate()
 
 }

@@ -19,7 +19,13 @@ load_dna <- function(filename) {
 #' @rdname fagin_io
 #' @export
 load_queries <- function(filename){
-  readr::read_table(filename, col_names=FALSE, col_types="c", comment="#")
+  readr::read_table(
+    filename,
+    col_names=FALSE,
+    col_types="c",
+
+    comment="#"
+  )[[1]]
 }
 
 #' @rdname fagin_io

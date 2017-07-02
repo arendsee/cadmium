@@ -58,20 +58,30 @@ summarize_dna <- function(x){
 #' @export
 summarize_gff <- function(x){
 
+  xdf <- data.frame(
+    seqid = x@seqnames,
+    stop  = GenomicRanges::end(x),
+    start = GenomicRanges::start(x),
+    type  = mcols(x)$type 
+  )
+
   seqstats <- dplyr::summarize(
-    dplyr::group_by(x, .data$seqid),
+    dplyr::group_by(xdf, .data$seqid),
     min   = min(.data$start),
     max   = max(.data$stop),
     mRNAs = sum(.data$type == "mRNA")
   )
 
-  lengths <- lapply(c("mRNA", "CDS", "exon"),
+  features <- c("mRNA", "CDS", "exon")
+
+  lengths <- lapply(features,
     function(s) {
-      d <- dplyr::filter(x, .data$type == s) %>%
+      d <- dplyr::filter(xdf, .data$type == s) %>%
            dplyr::transmute(length = .data$stop - .data$start + 1)
       summarize_numeric(d[[1]])
     }
   )
+  names(lengths) <- features
 
   new(
     "gff_summary",
@@ -85,8 +95,13 @@ summarize_gff <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_nstring <- function(x){
-  width <- x$stop - x$start + 1
-  summarize_numeric(width)
+  if(length(x) != 0 && nrow(x) > 3) {
+    width <- x$stop - x$start + 1
+    summarize_numeric(width)
+  } else {
+    # TODO: need a better means of dealing with N-less genomes
+    summary(x)
+  }
 }
 
 #' @rdname fagin_summary
@@ -97,8 +112,8 @@ summarize_syn <- function(x){
   new(
     "synmap_summary",
     nrow = nrow(x),
-    query_target_log2_ratio = summarize_numeric(log2 (qwidth / twidth) ),
-    width_summary           = summarize_numeric(qwidth),
-    score_summary           = summarize_numeric(x$score)
+    width                   = summarize_numeric(qwidth),
+    score                   = summarize_numeric(x$score),
+    query_target_log2_ratio = summarize_numeric(log2 (qwidth / twidth) )
   )
 }

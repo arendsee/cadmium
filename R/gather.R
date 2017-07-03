@@ -24,9 +24,9 @@ load_species <- function(species_name, input){
     dna.summary         = summarize_dna(dna),
     aa.summary          = summarize_faa(aa),
     trans.summary       = summarize_dna(trans),
-    orfgff.summary      = summarize_gff(orfgff),
+    orfgff.summary      = summarize_granges(orfgff),
     orffaa.summary      = summarize_faa(orffaa),
-    transorfgff.summary = summarize_gff(transorfgff),
+    transorfgff.summary = summarize_granges(transorfgff),
     transorffaa.summary = summarize_faa(transorffaa),
     nstring.summary     = summarize_nstring(nstring)
   )

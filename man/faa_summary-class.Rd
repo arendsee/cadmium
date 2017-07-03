@@ -11,6 +11,8 @@ Summary of a set of protein sequences
 \section{Slots}{
 
 \describe{
-\item{\code{class_composition}}{numeric}
+\item{\code{initial_residue}}{integer}
+
+\item{\code{final_residue}}{integer}
 }}
 

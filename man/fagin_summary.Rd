@@ -5,6 +5,7 @@
 \alias{summarize_numeric}
 \alias{summarize_faa}
 \alias{summarize_dna}
+\alias{summarize_granges}
 \alias{summarize_gff}
 \alias{summarize_nstring}
 \alias{summarize_syn}
@@ -15,6 +16,8 @@ summarize_numeric(x)
 summarize_faa(x)
 
 summarize_dna(x)
+
+summarize_granges(x)
 
 summarize_gff(x)
 

@@ -211,8 +211,6 @@ synmap_summary <- setClass(
 #' @slot comp            matrix base composition
 #' @slot comp_dist       list 
 #' @slot n_non_canonical integer
-#' @slot n_initial_start integer
-#' @slot n_terminal_stop integer
 #' @slot length_sum      numeric_summary
 seq_summary <- setClass(
   "seq_summary",
@@ -221,32 +219,34 @@ seq_summary <- setClass(
     sizes           = "integer",
     nseq            = "integer",
     comp            = "matrix",
-    n_initial_start = "integer",
-    n_terminal_stop = "integer",
     lengths         = "integer"
   )
 )
 
 #' Summary of a set of DNA sequences
 #'
-#' @slot nd50             integer
-#' @slot n_triple         integer
-#' @slot codon_preference list
+#' @slot n_triple        integer
+#' @slot initial_codon  integer
+#' @slot final_codon    integer
 dna_summary <- setClass(
   "dna_summary",
   representation(
-    n_triple = "integer"
+    n_triple       = "integer",
+    initial_codon = "integer",
+    final_codon   = "integer"
   ),
   contains = "seq_summary"
 )
 
 #' Summary of a set of protein sequences
 #'
-#' @slot class_composition  numeric
+#' @slot initial_residue   integer
+#' @slot final_residue     integer
 faa_summary <- setClass(
   "faa_summary",
   representation(
-    class_composition = "numeric"
+    initial_residue = "integer",
+    final_residue   = "integer"
   ),
   contains = "seq_summary"
 )
@@ -266,11 +266,18 @@ gff_summary <- setClass(
     exon_length = "numeric_summary"
   )
 )
-  # TODO: consider adding these:
-  # mRNA_per_model = "numeric_summary"
-  # exon_per_mRNA  = "numeric_summary"
-  # cds_per_mRNA   = "numeric_summary"
-  # exon_per_cds   = "numeric_summary"
+
+#' Summary of a IRanges or GRanges file (without the types of a GFF)
+#'
+#' @slot seqstats  data.frame
+#' @slot width     numeric_summary
+gff_summary <- setClass(
+  "granges_summary",
+  representation(
+    seqstats = "data.frame",
+    width    = "numeric_summary"
+  )
+)
 
 #' References to each of the RData files for a given species
 #'

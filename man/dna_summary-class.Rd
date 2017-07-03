@@ -11,10 +11,10 @@ Summary of a set of DNA sequences
 \section{Slots}{
 
 \describe{
-\item{\code{nd50}}{integer}
-
 \item{\code{n_triple}}{integer}
 
-\item{\code{codon_preference}}{list}
+\item{\code{initial_codon}}{integer}
+
+\item{\code{final_codon}}{integer}
 }}
 

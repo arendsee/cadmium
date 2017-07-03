@@ -34,7 +34,7 @@ Once the config is loaded with paths to the input data, you can load the data
 into the Fagin analysis.
 
 ```{r, eval=FALSE}
-load_data(myConfig)
+dat <- load_data(myConfig)
 ```
 
 This function parses and stores all the raw data required for the analysis and

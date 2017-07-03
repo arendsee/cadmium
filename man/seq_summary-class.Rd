@@ -23,10 +23,6 @@ This is a parent to both DNA and protien summary classes
 
 \item{\code{n_non_canonical}}{integer}
 
-\item{\code{n_initial_start}}{integer}
-
-\item{\code{n_terminal_stop}}{integer}
-
 \item{\code{length_sum}}{numeric_summary}
 }}
 

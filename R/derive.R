@@ -24,16 +24,15 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
   }
 
   if(strand %in% c('p', 'u', 'b')){
-    f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, ...)
-    # f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, perl=TRUE)
+    # f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, ...)
+    f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, perl=TRUE)
     if(strand != 'u'){
       GenomicRanges::strand(f) <- '+'
     }
   }
 
   if(strand %in% c('m', 'b')){
-    # r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, sinfo=sinfo, ...)
-    r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, sinfo=sinfo, perl=TRUE)
+    r <- .dnaregex_unstranded(Biostrings::reverseComplement(x), pattern, sinfo=sinfo, ...)
     r <- GenomicRanges::GRanges(
       seqnames = GenomeInfoDb::seqnames(r),
       seqinfo  = sinfo,
@@ -55,6 +54,7 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
 }
 .dnaregex_unstranded <- function(x, pattern, sinfo, ...){
   # gregexpr search for a pattern, returning the start and width on each given string
+
   lapply(x, function(s) gregexpr(pattern, as.character(s), ...)) %>%
   {
     data.frame(

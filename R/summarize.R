@@ -27,14 +27,15 @@ summarize_numeric <- function(x){
 summarize_faa <- function(x){
   new(
     "faa_summary",
-    class_composition = NA_real_,
+    initial_residue = Biostrings::subseq(x, start=1,  width=1) %>%
+                      as.character %>% as.factor %>% summary(maxsum=Inf),
+    final_residue   = Biostrings::subseq(x, start=-1, width=1) %>%
+                      as.character %>% as.factor %>% summary(maxsum=Inf),
     # inherited from seq_summary
     seqids          = names(x) %>% unique,
     sizes           = Biostrings::width(x),
     nseq            = length(x),
-    comp            = Biostrings::alphabetFrequency(x),
-    n_initial_start = sapply(x, grepl, pattern="^M") %>% sum,
-    n_terminal_stop = sapply(x, grepl, pattern="*$") %>% sum
+    comp            = Biostrings::alphabetFrequency(x)
   )
 }
 
@@ -43,14 +44,39 @@ summarize_faa <- function(x){
 summarize_dna <- function(x){
   new(
     "dna_summary",
-    n_triple         = (Biostrings::width(x) %% 3 == 0) %>% sum,
+    n_triple      = (Biostrings::width(x) %% 3 == 0) %>% sum,
+    initial_codon = Biostrings::subseq(x, start=1,  width=3) %>%
+                    as.character %>% as.factor %>% summary(maxsum=Inf),
+    final_codon   = Biostrings::subseq(x, start=-3,  width=3) %>%
+                    as.character %>% as.factor %>% summary(maxsum=Inf),
     # inherited from seq_summary
-    seqids          = names(x) %>% unique,
-    sizes           = Biostrings::width(x),
-    nseq            = length(x),
-    comp            = Biostrings::alphabetFrequency(x),
-    n_initial_start = sapply(x, grepl, pattern="^ATG") %>% sum,
-    n_terminal_stop = sapply(x, grepl, pattern="(TAA|TGA|TAG)$", perl=TRUE) %>% sum
+    seqids        = names(x) %>% unique,
+    sizes         = Biostrings::width(x),
+    nseq          = length(x),
+    comp          = Biostrings::alphabetFrequency(x)
+  )
+}
+
+#' @rdname fagin_summary
+#' @export
+summarize_granges <- function(x){
+
+  xdf <- data.frame(
+    seqid = x@seqnames,
+    stop  = GenomicRanges::end(x),
+    start = GenomicRanges::start(x)
+  )
+
+  seqstats <- dplyr::group_by(xdf, .data$seqid) %>% 
+    dplyr::summarize(
+      min   = min(.data$start),
+      max   = max(.data$stop)
+    )
+
+  new(
+    "granges_summary",
+    seqstats = seqstats,
+    width = summarize_numeric(GenomicRanges::width(x))
   )
 }
 

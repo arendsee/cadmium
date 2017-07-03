@@ -185,6 +185,7 @@ print.species_data_files <- function(x, ...){
   cat(sprintf("transorfgff: %s\n", x@transorfgff.file))
   cat(sprintf("transorffaa: %s\n", x@transorffaa.file))
   cat(sprintf("nstring:     %s\n", x@nstring.file))
+  cat(sprintf("specsum:     %s\n", x@specsum.file))
 }
 setMethod("show", "species_data_files",
   function(object) print(object)

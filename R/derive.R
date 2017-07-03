@@ -125,7 +125,8 @@ derive_orffaa <- function(dna, orfgff) {
 
   # TODO: get a real ORF finder and sync this accordingly
 
-  extractWithComplements(dna, orfgff) %>% Biostrings::translate()
+  extractWithComplements(dna, orfgff) %>%
+    Biostrings::translate(if.fuzzy.codon="solve")
 
 }
 
@@ -161,7 +162,8 @@ mergeSeqs <- function(fna, gff, tag){
 #' @return AAStringSet object
 derive_aa <- function(dna, gff) {
 
-  mergeSeqs(dna, gff, "CDS") %>% Biostrings::translate()
+  mergeSeqs(dna, gff, "CDS") %>%
+    Biostrings::translate(if.fuzzy.codon="solve")
 
 }
 
@@ -193,6 +195,7 @@ derive_transorfgff <- function(trans) {
 #' @return GenomicRanges object
 derive_transorffaa <- function(trans, transorfgff) {
 
-  extractWithComplements(trans, transorfgff) %>% Biostrings::translate()
+  extractWithComplements(trans, transorfgff) %>%
+    Biostrings::translate(if.fuzzy.codon="solve")
 
 }

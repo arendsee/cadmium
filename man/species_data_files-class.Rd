@@ -28,5 +28,7 @@ References to each of the RData files for a given species
 \item{\code{transorffaa.file}}{character}
 
 \item{\code{nstring.file}}{character}
+
+\item{\code{specsum.file}}{character}
 }}
 

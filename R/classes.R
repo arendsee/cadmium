@@ -282,6 +282,7 @@ granges_summary <- setClass(
 #' @slot transorfgff.file character
 #' @slot transorffaa.file character
 #' @slot nstring.file     character
+#' @slot specsum.file     character
 species_data_files <- setClass(
   "species_data_files",
   representation(
@@ -293,7 +294,8 @@ species_data_files <- setClass(
      orffaa.file      = "character",
      transorfgff.file = "character",
      transorffaa.file = "character",
-     nstring.file     = "character"
+     nstring.file     = "character",
+     specsum.file     = "character"
    )
 )
 

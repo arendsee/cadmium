@@ -146,12 +146,12 @@ summarize_gff <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_nstring <- function(x){
-  if(class(x) == "Granges"){
+  # TODO: should pass more info, need a new numeric summary class
+  if(class(x) == "GRanges"){
     x <- GenomicRanges::ranges(x)
   }
-  if(length(x) != 0 && nrow(x) > 3) {
-    width <- x$stop - x$start + 1
-    s <- summary(width)
+  if(length(x) > 0) {
+    s <- summary(IRanges::width(x))
   } else {
     s <- summary(NA_real_)
   }

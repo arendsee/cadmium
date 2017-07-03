@@ -89,7 +89,8 @@ load_species <- function(species_name, input){
     orffaa.file      = to_cache( orffaa      , label="orffaa"      , group=species_name ),
     transorfgff.file = to_cache( transorfgff , label="transorfgff" , group=species_name ),
     transorffaa.file = to_cache( transorffaa , label="transorffaa" , group=species_name ),
-    nstring.file     = to_cache( nstring     , label="nstring"     , group=species_name )
+    nstring.file     = to_cache( nstring     , label="nstring"     , group=species_name ),
+    specsum.file     = to_cache( specsum     , label="specsum"     , group=species_name )
   )
 
   new(

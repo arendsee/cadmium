@@ -10,8 +10,8 @@ test_that("load_dna works", {
 })
 
 test_that("nstrings gets the right intervals", {
-  expect_equal(derive_nstring(dna) %>% Biostrings::width(), 10)
-  expect_equal(derive_nstring(dna) %>% Biostrings::start(), 51)
+  expect_equal(derive_nstring(dna) %>% Biostrings::width(), c(10,1))
+  expect_equal(derive_nstring(dna) %>% Biostrings::start(), c(51,4))
 })
 
 test_that("load tree works", {
@@ -24,7 +24,8 @@ test_that("protein models are correctly assembled", {
     c(
       "MFGK*",     # sample two-exon plus-sense model
       "MFFFKPPP*", # reverse complement case
-      "MFFFKPPP*"  # as above, but with GFF order scrambled
+      "MFFFKPPP*", # as above, but with GFF order scrambled
+      "MXS*"       # ambiguous handling, NTT -> X, AGY -> S
      )
   ) 
 })

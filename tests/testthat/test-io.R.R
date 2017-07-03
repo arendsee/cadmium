@@ -16,9 +16,9 @@ test_that("Repeated tags trigger error", {
   expect_error  ( extract_tags("B=1;B=2", "B") )
 })
 
-test_that("Multiple equals trigger error", {
+test_that("Multiple equals or OK", {
   expect_silent ( extract_tags("B=2",   "B") )
-  expect_error  ( extract_tags("B=2=1", "B") )
+  expect_silent ( extract_tags("B=2=1", "B") )
 })
 
 test_that("Commas trigger errors", {
@@ -45,10 +45,10 @@ d_simple <- data.frame(
 )
 
 d_simple_u <- data.frame(
-  ID        = c("123", "234"),
-  Parent    = c(NA_character_, "123"),
-  .untagged = c(NA_character_, NA_character_),
-  .n_tags   = c(1,2),
+  ID      = c("123", "234"),
+  Parent  = c(NA_character_, "123"),
+  .U      = c(NA_character_, NA_character_),
+  .n_tags = c(1,2),
   stringsAsFactors=FALSE
 )
 

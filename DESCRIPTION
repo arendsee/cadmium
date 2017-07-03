@@ -21,6 +21,7 @@ Imports:
     ape,
     rlang,
     readr,
+    tidyr,
     stringr,
     dplyr,
     yaml

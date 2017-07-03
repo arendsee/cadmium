@@ -39,7 +39,14 @@ get_genome_filename <- function(species_name, dir) {
 #' @export
 get_gff_filename <- function(species_name, dir) {
   .check_name(species_name)
-  make_filename(species_name, dir=dir, ext="gff3")
+  # TODO: make this hack less repulsive
+  gff3_filename <- make_filename(species_name, dir=dir, ext="gff3")
+  gff_filename  <- make_filename(species_name, dir=dir, ext="gff")
+  if(file.exists(gff_filename)){
+    gff_filename
+  } else {
+    gff_filename3
+  }
 }
 
 #' @rdname fagin_naming

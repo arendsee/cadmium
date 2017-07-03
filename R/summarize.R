@@ -8,6 +8,9 @@ NULL
 #' @rdname fagin_summary
 #' @export
 summarize_numeric <- function(x){
+  if(length(x) == 0){
+    return(NULL)
+  }
   new(
     "numeric_summary",
     min              = min(x),
@@ -25,6 +28,9 @@ summarize_numeric <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_faa <- function(x){
+  if(length(x) == 0){
+    return(faa_summary())
+  }
   new(
     "faa_summary",
     initial_residue = Biostrings::subseq(x, start=1,  width=1) %>%
@@ -42,6 +48,9 @@ summarize_faa <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_dna <- function(x){
+  if(length(x) == 0){
+    return(dna_summary())
+  }
   new(
     "dna_summary",
     n_triple      = (Biostrings::width(x) %% 3 == 0) %>% sum,
@@ -60,6 +69,10 @@ summarize_dna <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_granges <- function(x){
+
+  if(length(x) == 0){
+    return(granges_summary())
+  }
 
   xdf <- data.frame(
     seqid = x@seqnames,
@@ -83,6 +96,10 @@ summarize_granges <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_gff <- function(x){
+
+  if(length(x) == 0){
+    return(gff_summary())
+  }
 
   xdf <- data.frame(
     seqid = x@seqnames,
@@ -121,6 +138,9 @@ summarize_gff <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_nstring <- function(x){
+  if(class(x) == "Granges"){
+    x <- GenomicRanges::ranges(x)
+  }
   if(length(x) != 0 && nrow(x) > 3) {
     width <- x$stop - x$start + 1
     s <- summary(width)
@@ -135,6 +155,9 @@ summarize_nstring <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_syn <- function(x){
+  if(length(x) == 0 || nrow(x) == 0){
+    return(synmap_summary())
+  }
   qwidth <- x$qstop - x$qstart + 1
   twidth <- x$tstop - x$tstart + 1
   new(

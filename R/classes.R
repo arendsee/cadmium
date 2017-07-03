@@ -271,7 +271,7 @@ gff_summary <- setClass(
 #'
 #' @slot seqstats  data.frame
 #' @slot width     numeric_summary
-gff_summary <- setClass(
+granges_summary <- setClass(
   "granges_summary",
   representation(
     seqstats = "data.frame",

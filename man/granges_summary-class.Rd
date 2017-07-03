@@ -3,26 +3,14 @@
 \docType{class}
 \name{granges_summary-class}
 \alias{granges_summary-class}
-\alias{gff_summary}
-\alias{granges_summary-class}
-\alias{gff_summary}
-\title{Summary of a GFF file}
+\alias{granges_summary}
+\title{Summary of a IRanges or GRanges file (without the types of a GFF)}
 \description{
-Summary of a GFF file
-
 Summary of a IRanges or GRanges file (without the types of a GFF)
 }
 \section{Slots}{
 
 \describe{
-\item{\code{seqstats}}{data.frame}
-
-\item{\code{mRNA_length}}{numeric_summary}
-
-\item{\code{CDS_length}}{numeric_summary}
-
-\item{\code{exon_length}}{numeric_summary}
-
 \item{\code{seqstats}}{data.frame}
 
 \item{\code{width}}{numeric_summary}

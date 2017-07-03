@@ -142,7 +142,7 @@ load_data <- function(con){
   species_names <- tree$tip.label
 
   # NOTE: may fail
-  species_meta_list <- lapply(species_names, load_species, con@input)
+  species_meta_list <- BiocParallel::bplapply(species_names, load_species, con@input)
 
   focal_species <- gsub(" ", "_", con@input@focal_species)
 

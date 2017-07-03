@@ -227,8 +227,8 @@ setMethod("show", "species_summaries",
 
 print.species_meta <- function(x, ...){
   cat('Container for all data related to a species\n')
-  cat('"@files" contains a list of stored data')
-  cat('"@summaries" contains a summary of every record')
+  cat('"@files" contains a list of stored data\n')
+  cat('"@summaries" contains a summary of every record\n')
 }
 setMethod("show", "species_meta",
   function(object) print(object)

@@ -17,6 +17,7 @@ Imports:
     Biostrings,
     GenomicRanges,
     GenomeInfoDb,
+    BiocParallel,
     IRanges,
     ape,
     rlang,

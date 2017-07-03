@@ -205,21 +205,13 @@ synmap_summary <- setClass(
 #'
 #' This is a parent to both DNA and protien summary classes
 #'
-#' @slot seqids          character the name of each entry
-#' @slot sizes           integer lengths of each sequence
-#' @slot nseq            integer total number of sequences
-#' @slot comp            matrix base composition
-#' @slot comp_dist       list 
-#' @slot n_non_canonical integer
-#' @slot length_sum      numeric_summary
+#' @slot table data.frame of sequence names and lengths
+#' @slot comp  matrix base composition
 seq_summary <- setClass(
   "seq_summary",
   representation(
-    seqids          = "character",
-    sizes           = "integer",
-    nseq            = "integer",
-    comp            = "matrix",
-    lengths         = "integer"
+    table = "data.frame",
+    comp  = "matrix"
   )
 )
 
@@ -231,7 +223,7 @@ seq_summary <- setClass(
 dna_summary <- setClass(
   "dna_summary",
   representation(
-    n_triple       = "integer",
+    n_triple      = "integer",
     initial_codon = "integer",
     final_codon   = "integer"
   ),

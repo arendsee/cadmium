@@ -2,6 +2,7 @@
 #' @importFrom graphics plot
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%"
+#' @importFrom utils head tail
 utils::globalVariables(c("%>%", "."))
 NULL
 

@@ -11,18 +11,8 @@ This is a parent to both DNA and protien summary classes
 \section{Slots}{
 
 \describe{
-\item{\code{seqids}}{character the name of each entry}
-
-\item{\code{sizes}}{integer lengths of each sequence}
-
-\item{\code{nseq}}{integer total number of sequences}
+\item{\code{table}}{data.frame of sequence names and lengths}
 
 \item{\code{comp}}{matrix base composition}
-
-\item{\code{comp_dist}}{list}
-
-\item{\code{n_non_canonical}}{integer}
-
-\item{\code{length_sum}}{numeric_summary}
 }}
 

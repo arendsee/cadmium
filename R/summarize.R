@@ -31,6 +31,12 @@ summarize_faa <- function(x){
   if(length(x) == 0){
     return(faa_summary())
   }
+
+  table <- data.frame(
+    seqids = names(x),
+    length = Biostrings::width(x)
+  )
+
   new(
     "faa_summary",
     initial_residue = Biostrings::subseq(x, start=1,  width=1) %>%
@@ -38,9 +44,7 @@ summarize_faa <- function(x){
     final_residue   = Biostrings::subseq(x, start=-1, width=1) %>%
                       as.character %>% as.factor %>% summary(maxsum=Inf),
     # inherited from seq_summary
-    seqids          = names(x) %>% unique,
-    sizes           = Biostrings::width(x),
-    nseq            = length(x),
+    table           = table,
     comp            = Biostrings::alphabetFrequency(x)
   )
 }
@@ -51,6 +55,12 @@ summarize_dna <- function(x){
   if(length(x) == 0){
     return(dna_summary())
   }
+
+  table <- data.frame(
+    seqids = names(x),
+    length = Biostrings::width(x)
+  )
+
   new(
     "dna_summary",
     n_triple      = (Biostrings::width(x) %% 3 == 0) %>% sum,
@@ -59,9 +69,7 @@ summarize_dna <- function(x){
     final_codon   = Biostrings::subseq(x, start=-3,  width=3) %>%
                     as.character %>% as.factor %>% summary(maxsum=Inf),
     # inherited from seq_summary
-    seqids        = names(x) %>% unique,
-    sizes         = Biostrings::width(x),
-    nseq          = length(x),
+    table         = table,
     comp          = Biostrings::alphabetFrequency(x)
   )
 }

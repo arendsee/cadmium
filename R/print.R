@@ -11,6 +11,26 @@ prettyCat <- function(tag, value, indent){
   cat(sprintf("%s%s = %s\n", space, tag, value))
 }
 
+# a function for avoiding giant dumps of tabular things
+prettyTable <- function(x){
+  if(nrow(x) < 40){
+    print(x)
+  } else {
+    print(head(x, 5))
+    cat("...\n")
+    print(tail(x, 5))
+  }
+}
+prettyVector <- function(x){
+  if(length(x) < 400){
+    print(x)
+  } else {
+    print(head(x, 50))
+    cat("...\n")
+    print(tail(x, 50))
+  }
+}
+
 #' @rdname fagin_printer
 #' @export 
 print.config_alignment_thresholds <- function(x, ...){
@@ -97,80 +117,130 @@ setMethod("show", "synmap_summary",
   function(object) print(object)
 )
 
-# print.seq_summary <- function(x, ...){
-#     # seqids           "character",
-#     # sizes            "integer",
-#     # nseq             "integer",
-#     # comp             "matrix",
-#     # n_initial_start  "integer",
-#     # n_terminal_stop  "integer",
-#     # lengths          "integer"
-# }
-#
-# print.dna_summary <- function(x, ...){
-#     # n_triple = "integer"
-#     # seq
-# }
-#
-# print.faa_summary <- function(x, ...){
-#   cat("faa_summary\n")
-#     # class_composition  # "numeric"
-#   # contains = "seq_summary"
-# }
-#
-# print.gff_summary <- function(x, ...){
-#   cat("gff_summary\n")
-#     # seqstats     # "data.frame",
-#     # mRNA_length  # "numeric_summary",
-#     # CDS_length   # "numeric_summary",
-#     # exon_length  # "numeric_summary"
-# }
-#
-# print.species_data_files <- function(x, ...){
-#   cat("species_data_files\n")
-#      # gff.file          # "character",
-#      # dna.file          # "character",
-#      # aa.file           # "character",
-#      # trans.file        # "character",
-#      # orfgff.file       # "character",
-#      # orffaa.file       # "character",
-#      # transorfgff.file  # "character",
-#      # transorffaa.file  # "character",
-#      # nstring.file      # "character"
-# }
-#
-# print.species_summaries <- function(x, ...){
-#   cat("species_summaries\n")
-#     # gff.summary          # "gff_summary",
-#     # dna.summary          # "dna_summary",
-#     # aa.summary           # "faa_summary",
-#     # trans.summary        # "dna_summary",
-#     # orfgff.summary       # "gff_summary",
-#     # orffaa.summary       # "faa_summary",
-#     # transorfgff.summary  # "gff_summary",
-#     # transorffaa.summary  # "faa_summary",
-#     # nstring.summary      # "numeric_summary"
-# }
-#
-# print.species_meta <- function(x, ...){
-#   cat("species_meta\n")
-#     # files      # "species_data_files",
-#     # summaries  # "species_summaries"
-# }
-#
-#
-# print.synteny_meta <- function(x, ...){
-#   cat("synteny_meta\n")
-#     # synmap.file     # "character",
-#     # synmap.summary  # "synmap_summary"
-# }
-#
-#
-# print.derived_input <- function(x, ...){
-#   cat("derived_input\n")
-#     # tree           # "phylo",
-#     # focal_species  # "character",
-#     # queries        # "character",
-#     # species        # "list",
-#     # synmaps        # "list"
-# }
+print.seq_summary <- function(x, ...){
+  cat('Slot "table":\n')
+  prettyTable(x@table)
+  cat('Slot "comp":\n')
+  prettyTable(x@comp)
+}
+setMethod("show", "seq_summary",
+  function(object) print(object)
+)
+
+print.dna_summary <- function(x, ...){
+  cat('Summary of DNA set with', nrow(x@table) , 'sequence\n')
+  cat('Slot "n_triple"\n')
+    print(x@n_triple)
+  cat('Slot "initial_codon"\n')
+    print(x@initial_codon)
+  cat('Slot "final_codon"\n')
+    print(x@final_codon)
+  cat('Slot "table":\n')
+    prettyTable(x@table)
+  cat('Slot "comp" (%):\n')
+    print((100 *colSums(x@comp) / sum(colSums(x@comp))) %>% signif(5))
+}
+setMethod("show", "dna_summary",
+  function(object) print(object)
+)
+
+print.faa_summary <- function(x, ...){
+  cat('Summary of AA set with', nrow(x@table) , 'sequence\n')
+  cat('Slot "initial_residue"\n')
+    print(x@initial_residue)
+  cat('Slot "initial_residue"\n')
+    print(x@final_residue)
+  cat('Slot "final_residue"\n')
+    prettyTable(x@table)
+  cat('Slot "comp"  (%):\n')
+    print((100 * colSums(x@comp) / sum(colSums(x@comp))) %>% signif(5))
+}
+setMethod("show", "faa_summary",
+  function(object) print(object)
+)
+
+print.gff_summary <- function(x, ...){
+  cat('Summary of a "gff_summary" object\n')
+  cat('Slot "seqstats"\n')
+  prettyTable(x@seqstats)
+  cat('Slot "mRNA_length"\n')
+  print(x@mRNA_length)
+  cat('Slot "CDS_length"\n')
+  print(x@CDS_length)
+  cat('Slot "exon_length"\n')
+  print(x@exon_length)
+}
+setMethod("show", "gff_summary",
+  function(object) print(object)
+)
+
+print.species_data_files <- function(x, ...){
+  cat('Cached files in "species_data_files" object\n')
+  cat(sprintf("gff:         %s\n", x@gff.file))
+  cat(sprintf("dna:         %s\n", x@dna.file))
+  cat(sprintf("aa:          %s\n", x@aa.file))
+  cat(sprintf("trans:       %s\n", x@trans.file))
+  cat(sprintf("orfgff:      %s\n", x@orfgff.file))
+  cat(sprintf("orffaa:      %s\n", x@orffaa.file))
+  cat(sprintf("transorfgff: %s\n", x@transorfgff.file))
+  cat(sprintf("transorffaa: %s\n", x@transorffaa.file))
+  cat(sprintf("nstring:     %s\n", x@nstring.file))
+}
+setMethod("show", "species_data_files",
+  function(object) print(object)
+)
+
+print.species_summaries <- function(x, ...){
+  cat('Collection of data summaries\n')
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of gene model GFF\n\n')
+  print(x@gff.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of genome\n\n')
+  print(x@dna.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of proteins derived from gene model GFF\n\n')
+  print(x@aa.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of mRNA transcripts derived from gene model GFF\n\n')
+  print(x@trans.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of ORFs extracted (naively) from the genome\n\n')
+  print(x@orfgff.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of the translated products of the ORFs\n\n')
+  print(x@orffaa.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of ORFs extracted (naively) from mRNA transcripts\n\n')
+  print(x@transorfgff.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of translated products of the mRNA ORFs\n\n')
+  print(x@transorffaa.summary)
+  cat('\n-------------------------------------------------------------\n')
+  cat('Summary of the strings of Ns in the genome\n\n')
+  print(x@nstring.summary)
+}
+setMethod("show", "species_summaries",
+  function(object) print(object)
+)
+
+print.species_meta <- function(x, ...){
+  cat('Container for all data related to a species\n')
+  cat('"@files" contains a list of stored data')
+  cat('"@summaries" contains a summary of every record')
+}
+setMethod("show", "species_meta",
+  function(object) print(object)
+)
+
+print.derived_input <- function(x, ...){
+  cat('Container for all data for all species in this analysis\n')
+  cat('Focal species: ', x@focal_species, '\n')
+  cat('@tree - phylogenetic tree for all species\n')
+  cat('@queries - list of query ids\n')
+  cat('@species - list of full data for each species\n')
+  cat('@synmaps - list of synteny maps between focal and target species\n')
+}
+setMethod("show", "derived_input",
+  function(object) print(object)
+)

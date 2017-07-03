@@ -1,13 +1,13 @@
 load_species <- function(species_name, input){
   # Primary data - required inputs to Fagin
 
-  cat(sprintf("Preprocessing data for %s ...\n", species_name))
-  cat(sprintf(" - loading genome\n", species_name))
+  message(sprintf("Preprocessing data for %s ...\n", species_name))
+  message(sprintf(" - loading genome\n", species_name))
 
   # TODO: handle errors
   dna <- load_dna( get_genome_filename ( species_name, input@fna_dir ))
 
-  cat(" - loading GFF\n")
+  message(" - loading GFF\n")
 
   # TODO: handle errors
   # TODO: also, this is too slow, need to speed it up
@@ -15,55 +15,55 @@ load_species <- function(species_name, input){
 
 
   # Gene model independent data, derived only from genome
-  cat(" - finding N-strings\n")
+  message(" - finding N-strings\n")
   nstring <- derive_nstring(dna)
 
-  cat(" - finding finding genomic ORFs\n")
+  message(" - finding finding genomic ORFs\n")
   orfgff <- derive_orfgff(dna)
 
-  cat(" - assembling proteins from genomic ORFs\n")
+  message(" - assembling proteins from genomic ORFs\n")
   orffaa <- derive_orffaa(dna, orfgff)
 
   # Gene model derived data
-  cat(" - assembling proteins from genome and GFF\n")
+  message(" - assembling proteins from genome and GFF\n")
   aa <- derive_aa(dna, gff)
 
-  cat(" - assembling mRNA transcripts\n")
+  message(" - assembling mRNA transcripts\n")
   trans <- derive_trans(dna, gff)
 
-  cat(" - finding ORFs on transcripts\n")
+  message(" - finding ORFs on transcripts\n")
   transorfgff <- derive_transorfgff(trans)
 
-  cat(" - translating transcript ORFs\n")
+  message(" - translating transcript ORFs\n")
   transorffaa <- derive_transorffaa(trans, transorfgff)
 
-  cat(" - summarizing data\n")
+  message(" - summarizing data\n")
 
-  cat("   - gff.summary\n")
+  message("   - gff.summary\n")
   gff.summary = summarize_gff(gff)
 
-  cat("   - dna.summary\n")
+  message("   - dna.summary\n")
   dna.summary = summarize_dna(dna)
 
-  cat("   - aa.summary\n")
+  message("   - aa.summary\n")
   aa.summary = summarize_faa(aa)
 
-  cat("   - trans.summary\n")
+  message("   - trans.summary\n")
   trans.summary = summarize_dna(trans)
 
-  cat("   - orfgff.summary\n")
+  message("   - orfgff.summary\n")
   orfgff.summary = summarize_granges(orfgff)
 
-  cat("   - orffaa.summary\n")
+  message("   - orffaa.summary\n")
   orffaa.summary = summarize_faa(orffaa)
 
-  cat("   - transorfgff.summary\n")
+  message("   - transorfgff.summary\n")
   transorfgff.summary = summarize_granges(transorfgff)
 
-  cat("   - transorffaa.summary\n")
+  message("   - transorffaa.summary\n")
   transorffaa.summary = summarize_faa(transorffaa)
 
-  cat("   - nstring.summary\n")
+  message("   - nstring.summary\n")
   nstring.summary = summarize_nstring(nstring)
 
   specsum <- new("species_summaries",
@@ -78,7 +78,7 @@ load_species <- function(species_name, input){
     nstring.summary     = nstring.summary
   )
 
-  cat(" - caching data\n")
+  message(" - caching data\n")
 
   specfile <- new("species_data_files",
     gff.file         = to_cache( gff         , label="gff"         , group=species_name ),
@@ -112,7 +112,7 @@ load_synmaps <- function(target_species, focal_species, syndir){
 
   new(
     "synteny_meta",
-    synmap.file    = synfile,
+    synmap.file    = to_cache(synfile, label="synmap", group=target_species),
     synmap.summary = synsum
   )
 }
@@ -144,18 +144,20 @@ load_data <- function(con){
   # NOTE: may fail
   species_meta_list <- lapply(species_names, load_species, con@input)
 
+  focal_species <- gsub(" ", "_", con@input@focal_species)
+
   # NOTE: may fail
   synmap_meta_list <- lapply(
-    species_names,
+    setdiff(species_names, focal_species),
     load_synmaps,
-    target_species = con@input@focal_species,
-    syndir         = con@input@synmaps
+    focal_species = con@input@focal_species,
+    syndir        = con@input@syn_dir
   )
 
   new(
     "derived_input",
     tree          = tree,
-    focal_species = con@input@focal_species,
+    focal_species = focal_species,
     queries       = queries,
     species       = species_meta_list,
     synmaps       = synmap_meta_list

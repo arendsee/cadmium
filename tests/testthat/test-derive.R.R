@@ -25,8 +25,27 @@ faa <- c("MGP*", "MPG*") %>%
   Biostrings::AAStringSet() %>%
   magrittr::set_names(c("bob", "pan"))
 
-
 test_that("mergeSeqs correctly merges", {
   expect_true(all( mergeSeqs(fna, gff, "CDS") == cds))
   expect_true(all( derive_aa(fna, gff) == faa))
+})
+
+test_that("dnaregex gracefully handles no matches", {
+  expect_silent(dnaregex(fna, "GANDALF"))
+  expect_true( length(fna[dnaregex(fna, "GANDALF")]) == 0 )
+})
+
+test_that("dnaregex works on all strand variants", {
+  expect_equal(
+    fna[dnaregex(fna, "ATG", strand='b')] %>% as.character %>% as.vector,
+    c("ATG", "CAT")
+  )
+  expect_equal(
+    fna[dnaregex(fna, "ATG", strand='p')] %>% as.character %>% as.vector,
+    "ATG"
+  )
+  expect_equal(
+    fna[dnaregex(fna, "ATG", strand='m')] %>% as.character %>% as.vector,
+    "CAT"
+  )
 })

@@ -24,8 +24,7 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
   }
 
   if(strand %in% c('p', 'u', 'b')){
-    # f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, ...)
-    f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, perl=TRUE)
+    f <- .dnaregex_unstranded(x, pattern, sinfo=sinfo, ...)
     if(strand != 'u'){
       GenomicRanges::strand(f) <- '+'
     }
@@ -55,12 +54,13 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
 .dnaregex_unstranded <- function(x, pattern, sinfo, ...){
   # gregexpr search for a pattern, returning the start and width on each given string
 
-  lapply(x, function(s) gregexpr(pattern, as.character(s), ...)) %>%
+  gregexpr(pattern, as.character(x), ...) %>%
+  magrittr::set_names(names(x)) %>%
   {
     data.frame(
-      names = lapply(., '[[', 1) %>% lapply(length) %>% rep.int(names(.), times=.),
+      names = lapply(., length) %>% rep.int(names(.), times=.),
       start = unlist(.) %>% as.vector,
-      width = lapply(., '[[', 1) %>% lapply(attr, "match.length") %>% unlist %>% as.vector
+      width = lapply(., attr, "match.length") %>% unlist %>% as.vector
     )
   } %>%
   # gregexpr stores absence of a match as -1 in both start and width
@@ -98,7 +98,7 @@ derive_orfgff <- function(dna) {
   # BUG: This misses potentially longer ORFs that start within a previous ORF
   # TODO: replace with real ORF finder
 
-  orfpat <- "ATG([ATGC][ATGC][ATGC])*?(TAA|TGA|TAG)"
+  orfpat <- "ATG(AAA|AAC|AAG|AAT|ACA|ACC|ACG|ACT|AGA|AGC|AGG|AGT|ATA|ATC|ATG|ATT|CAA|CAC|CAG|CAT|CCA|CCC|CCG|CCT|CGA|CGC|CGG|CGT|CTA|CTC|CTG|CTT|GAA|GAC|GAG|GAT|GCA|GCC|GCG|GCT|GGA|GGC|GGG|GGT|GTA|GTC|GTG|GTT|TAC|TAT|TCA|TCC|TCG|TCT|TGC|TGG|TGT|TTA|TTC|TTG|TTT){49,}(TAA|TGA|TAG)"
 
   dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE)
 

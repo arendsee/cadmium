@@ -1,35 +1,84 @@
 load_species <- function(species_name, input){
   # Primary data - required inputs to Fagin
 
+  cat(sprintf("Preprocessing data for %s ...\n", species_name))
+  cat(sprintf(" - loading genome\n", species_name))
+
   # TODO: handle errors
   dna <- load_dna( get_genome_filename ( species_name, input@fna_dir ))
+
+  cat(" - loading GFF\n")
 
   # TODO: handle errors
   # TODO: also, this is too slow, need to speed it up
   gff <- load_gff( get_gff_filename    ( species_name, input@gff_dir ))
 
+
   # Gene model independent data, derived only from genome
+  cat(" - finding N-strings\n")
   nstring <- derive_nstring(dna)
-  orfgff  <- derive_orfgff(dna)
-  orffaa  <- derive_orffaa(dna, orfgff)
+
+  cat(" - finding finding genomic ORFs\n")
+  orfgff <- derive_orfgff(dna)
+
+  cat(" - assembling proteins from genomic ORFs\n")
+  orffaa <- derive_orffaa(dna, orfgff)
 
   # Gene model derived data
-  aa          <- derive_aa(dna, gff)
-  trans       <- derive_trans(dna, gff)
+  cat(" - assembling proteins from genome and GFF\n")
+  aa <- derive_aa(dna, gff)
+
+  cat(" - assembling mRNA transcripts\n")
+  trans <- derive_trans(dna, gff)
+
+  cat(" - finding ORFs on transcripts\n")
   transorfgff <- derive_transorfgff(trans)
+
+  cat(" - translating transcript ORFs\n")
   transorffaa <- derive_transorffaa(trans, transorfgff)
 
+  cat(" - summarizing data\n")
+
+  cat("   - gff.summary\n")
+  gff.summary = summarize_gff(gff)
+
+  cat("   - dna.summary\n")
+  dna.summary = summarize_dna(dna)
+
+  cat("   - aa.summary\n")
+  aa.summary = summarize_faa(aa)
+
+  cat("   - trans.summary\n")
+  trans.summary = summarize_dna(trans)
+
+  cat("   - orfgff.summary\n")
+  orfgff.summary = summarize_granges(orfgff)
+
+  cat("   - orffaa.summary\n")
+  orffaa.summary = summarize_faa(orffaa)
+
+  cat("   - transorfgff.summary\n")
+  transorfgff.summary = summarize_granges(transorfgff)
+
+  cat("   - transorffaa.summary\n")
+  transorffaa.summary = summarize_faa(transorffaa)
+
+  cat("   - nstring.summary\n")
+  nstring.summary = summarize_nstring(nstring)
+
   specsum <- new("species_summaries",
-    gff.summary         = summarize_gff(gff),
-    dna.summary         = summarize_dna(dna),
-    aa.summary          = summarize_faa(aa),
-    trans.summary       = summarize_dna(trans),
-    orfgff.summary      = summarize_granges(orfgff),
-    orffaa.summary      = summarize_faa(orffaa),
-    transorfgff.summary = summarize_granges(transorfgff),
-    transorffaa.summary = summarize_faa(transorffaa),
-    nstring.summary     = summarize_nstring(nstring)
+    gff.summary         = gff.summary,
+    dna.summary         = dna.summary,
+    aa.summary          = aa.summary,
+    trans.summary       = trans.summary,
+    orfgff.summary      = orfgff.summary,
+    orffaa.summary      = orffaa.summary,
+    transorfgff.summary = transorfgff.summary,
+    transorffaa.summary = transorffaa.summary,
+    nstring.summary     = nstring.summary
   )
+
+  cat(" - caching data\n")
 
   specfile <- new("species_data_files",
     gff.file         = to_cache( gff         , label="gff"         , group=species_name ),

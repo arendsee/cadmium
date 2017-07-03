@@ -45,7 +45,7 @@ get_gff_filename <- function(species_name, dir) {
   if(file.exists(gff_filename)){
     gff_filename
   } else {
-    gff_filename3
+    gff3_filename
   }
 }
 

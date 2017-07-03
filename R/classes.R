@@ -322,11 +322,11 @@ species_summaries <- setClass(
     dna.summary         = "dna_summary",
     aa.summary          = "faa_summary",
     trans.summary       = "dna_summary",
-    orfgff.summary      = "gff_summary",
+    orfgff.summary      = "granges_summary",
     orffaa.summary      = "faa_summary",
-    transorfgff.summary = "gff_summary",
+    transorfgff.summary = "granges_summary",
     transorffaa.summary = "faa_summary",
-    nstring.summary     = "numeric_summary"
+    nstring.summary     = "numeric"
   )
 )
 

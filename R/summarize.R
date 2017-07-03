@@ -123,11 +123,13 @@ summarize_gff <- function(x){
 summarize_nstring <- function(x){
   if(length(x) != 0 && nrow(x) > 3) {
     width <- x$stop - x$start + 1
-    summarize_numeric(width)
+    s <- summary(width)
   } else {
-    # TODO: need a better means of dealing with N-less genomes
-    summary(x)
+    s <- summary(NA_real_)
   }
+  ss <- as.vector(s)
+  names(ss) <- names(s)
+  ss
 }
 
 #' @rdname fagin_summary

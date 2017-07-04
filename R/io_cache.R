@@ -53,10 +53,18 @@ to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
 #' @export
 from_cache <- function(label, group=NULL, cache_dir=".fagin_cache") {
 
-  # TODO: handle failure
-  load(.get_cached_filename(cache_dir, group, label))
+  cachefile <- .get_cached_filename(cache_dir, group, label)
 
-  # TODO: handle failure
-  base::get("x")
+  # Return x or NULL
+  if(file.exists(cachefile)){
+    load(cachefile)
+    if(exists("x")){
+      base::get("x")
+    } else {
+      NULL
+    }
+  } else {
+    NULL
+  }
 
 }

@@ -11,7 +11,8 @@ Description:
     syntenic filter.
 Depends: R (>= 3.4.0)
 Imports:
-    synder (>= 0.20.1),
+    synder (>= 0.20.2),
+    rmonad (>= 0.2.0.9004),
     methods,
     magrittr,
     Biostrings,
@@ -28,6 +29,7 @@ Imports:
     yaml
 Remotes:
     arendsee/synder
+    arendsee/rmonad@dev
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

@@ -1,105 +1,59 @@
 load_species <- function(species_name, input){
-  # Primary data - required inputs to Fagin
 
-  message(sprintf("Preprocessing data for %s ...", species_name))
-  message(sprintf(" - loading genome", species_name))
-
-  # TODO: handle errors
-  dna_filename <- get_genome_filename ( species_name, input@fna_dir )
-  dna <- load_dna(dna_filename)
-
-  message(" - loading GFF")
-
-  # TODO: handle errors
-  # TODO: also, this is too slow, need to speed it up
-  gff_filename <- get_gff_filename(species_name, input@gff_dir)
-  gff <- load_gff(gff_filename)
-
-
-  # Gene model independent data, derived only from genome
-  message(" - finding N-strings")
-  nstring <- derive_nstring(dna)
-
-  message(" - finding finding genomic ORFs")
-  orfgff <- derive_orfgff(dna)
-
-  message(" - assembling proteins from genomic ORFs")
-  orffaa <- derive_orffaa(dna, orfgff)
-
-  # Gene model derived data
-  message(" - assembling proteins from genome and GFF")
-  aa <- derive_aa(dna, gff)
-
-  message(" - assembling mRNA transcripts")
-  trans <- derive_trans(dna, gff)
-
-  message(" - finding ORFs on transcripts")
-  transorfgff <- derive_transorfgff(trans)
-
-  message(" - translating transcript ORFs")
-  transorffaa <- derive_transorffaa(trans, transorfgff)
-
-  message(" - summarizing data")
-
-  message("   - gff.summary")
-  gff.summary = summarize_gff(gff)
-
-  message("   - dna.summary")
-  dna.summary = summarize_dna(dna)
-
-  message("   - aa.summary")
-  aa.summary = summarize_faa(aa)
-
-  message("   - trans.summary")
-  trans.summary = summarize_dna(trans)
-
-  message("   - orfgff.summary")
-  orfgff.summary = summarize_granges(orfgff)
-
-  message("   - orffaa.summary")
-  orffaa.summary = summarize_faa(orffaa)
-
-  message("   - transorfgff.summary")
-  transorfgff.summary = summarize_granges(transorfgff)
-
-  message("   - transorffaa.summary")
-  transorffaa.summary = summarize_faa(transorffaa)
-
-  message("   - nstring.summary")
-  nstring.summary = summarize_nstring(nstring)
-
-  specsum <- new("species_summaries",
-    gff.summary         = gff.summary,
-    dna.summary         = dna.summary,
-    aa.summary          = aa.summary,
-    trans.summary       = trans.summary,
-    orfgff.summary      = orfgff.summary,
-    orffaa.summary      = orffaa.summary,
-    transorfgff.summary = transorfgff.summary,
-    transorffaa.summary = transorffaa.summary,
-    nstring.summary     = nstring.summary
+  inputs_ <- funnel(
+    spec=species_name,
+    conf=input
   )
 
-  message(" - caching data")
+  dna_ <- inputs_ %*>%
+    (function(s,i){
+       gene_genome_filename(s, i@fna_dir)
+    }) %>>% load_dna
 
-  specfile <- new("species_data_files",
-    gff.file         = to_cache( gff         , label="gff"         , group=species_name ),
-    dna.file         = to_cache( dna         , label="dna"         , group=species_name ),
-    aa.file          = to_cache( aa          , label="aa"          , group=species_name ),
-    trans.file       = to_cache( trans       , label="trans"       , group=species_name ),
-    orfgff.file      = to_cache( orfgff      , label="orfgff"      , group=species_name ),
-    orffaa.file      = to_cache( orffaa      , label="orffaa"      , group=species_name ),
-    transorfgff.file = to_cache( transorfgff , label="transorfgff" , group=species_name ),
-    transorffaa.file = to_cache( transorffaa , label="transorffaa" , group=species_name ),
-    nstring.file     = to_cache( nstring     , label="nstring"     , group=species_name ),
-    specsum.file     = to_cache( specsum     , label="specsum"     , group=species_name )
-  )
+  gff_ <- inputs_ %*>%
+    (function(s,i){
+       get_gff_filename(s, i@gff_dir)
+    }) %>>% load_gff
 
-  new(
-    "species_meta",
-    files     = specfile,
-    summaries = specsum
-  )
+  nstrings_    <- dna_ %>>% derive_nstring
+  orfgff_      <- dna_ %>>% derive_orfgff
+  orffaa_      <- list(dna_, orfgff_) %*>% derive_orffaa
+  aa_          <- list(dna_, gff_) %*>% derive_aa
+  trans_       <- list(dna_, gff_) %*>% derive_trans
+  transorfgff_ <- trans_ %>>% derive_transorfgff
+  transorffaa_ <- list(trans_, transorfgff_) %>>% derive_transorffaa
+
+  specsum_ <- funnel(
+    gff.summary         = gff_         %>>% summarize_gff,
+    dna.summary         = dna_         %>>% summarize_dna,
+    aa.summary          = aa_          %>>% summarize_faa,
+    trans.summary       = trans_       %>>% summarize_dna,
+    orfgff.summary      = orfgff_      %>>% summarize_granges,
+    orffaa.summary      = orffaa_      %>>% summarize_faa,
+    transorfgff.summary = transorfgff_ %>>% summarize_granges,
+    transorffaa.summary = transorffaa_ %>>% summarize_faa,
+    nstring.summary     = nstring_     %>>% summarize_nstring
+  ) %*>%
+    new("species_summaries")
+
+  specfile_ <- funnel(
+    gff.file         = gff_         %>>% to_cache( label="gff"         , group=species_name ),
+    dna.file         = dna_         %>>% to_cache( label="dna"         , group=species_name ),
+    aa.file          = aa_          %>>% to_cache( label="aa"          , group=species_name ),
+    trans.file       = trans_       %>>% to_cache( label="trans"       , group=species_name ),
+    orfgff.file      = orfgff_      %>>% to_cache( label="orfgff"      , group=species_name ),
+    orffaa.file      = orffaa_      %>>% to_cache( label="orffaa"      , group=species_name ),
+    transorfgff.file = transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name ),
+    transorffaa.file = transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name ),
+    nstring.file     = nstring_     %>>% to_cache( label="nstring"     , group=species_name )
+  ) %*>%
+    new("species_data_files")
+
+  funnel(
+    files = specfile_,
+    summaries = specsum_
+  ) %*>%
+    new("species_meta")
 
 }
 
@@ -116,19 +70,18 @@ load_species_with_cache <- function(species_name, ...){
 
 
 load_synmaps <- function(target_species, focal_species, syndir){
-
-  # TODO: replace this hard-coded pattern
-  filename <- get_synmap_filename(focal_species, target_species, syndir)
-
-  synfile <- load_synmap(filename)
-
-  synsum <- summarize_syn(synfile)
-
-  new(
-    "synteny_meta",
-    synmap.file    = to_cache(synfile, label="synmap", group=target_species),
-    synmap.summary = synsum
-  )
+  funnel(
+    target_species,
+    focal_species,
+    syndir
+  ) %*>%
+    get_synmap_filename %>>%
+    load_synmap %>%
+    funnel(
+      synmap.file = . %>>% to_cache(label="synmap", group=target_species),
+      synmap.summary = . %>>% summarize_syn
+    ) %*>%
+      new("synteny_meta")
 }
 
 
@@ -148,36 +101,61 @@ load_synmaps <- function(target_species, focal_species, syndir){
 #' @export
 load_data <- function(con){
 
-  # NOTE: may fail
-  tree <- load_tree(con@input@tree)
+  con_ <- as_monad(con)
 
-  # NOTE: may fail
-  queries <- load_queries(con@input@query_gene_list)
+  tree_ <- con_ %>>% load_tree(.@input@tree)
 
-  species_names <- tree$tip.label
+  species_names_ <- tree_ %>>% {
+    
+    "Extract species list from the species tree. The tree, rather than the
+    input files, determines which species are used in the analysis."
 
-  # NOTE: may fail
-  species_meta_list <- BiocParallel::bplapply(species_names, load_species_with_cache, con@input)
-  names(species_meta_list) <- species_names
+    .$tip.label
+  }
 
-  focal_species <- gsub(" ", "_", con@input@focal_species)
+  focal_species_ = con_ %>>% {
 
-  # NOTE: may fail
-  synmap_meta_list <- lapply(
-    setdiff(species_names, focal_species),
-    load_synmaps,
-    focal_species = con@input@focal_species,
-    syndir        = con@input@syn_dir
-  )
-  names(synmap_meta_list) <- setdiff(species_names, focal_species)
+    "The input focal species may have gaps, but for the internal one, we remove
+    gaps."
+    
+    gsub(" ", "_", .@input@focal_species)
+                            
+  }
 
-  new(
-    "derived_input",
-    tree          = tree,
-    focal_species = focal_species,
-    queries       = queries,
-    species       = species_meta_list,
-    synmaps       = synmap_meta_list
-  )
+  species_meta_list_ <- funnel(con=con_, specs=species_names_) %*>%
+    function(con, specs){
+
+      "For each species, collect and cache all required data"
+
+      ss <- BiocParallel::bplapply(specs, load_species_with_cache, con@input)
+      names(ss) <- specs
+      ss
+    }
+
+  synmap_meta_list_ <- funnel(con=con_, specs=species_names_, focal=focal_species_) %*>%
+    function(con, specs, focal){
+
+      "Load synteny map for focal species against each target species"
+
+      ss <- lapply(
+        setdiff(specs, focal_species),
+        load_synmaps,
+        focal_species = focal,
+        syndir        = con@input@syn_dir
+      )
+      names(ss) <- setdiff(specs, focal)
+      ss
+    }
+
+  queries_ <- con_ %>>% { load_queries(.@input@query_gene_list) }
+
+  funnel(
+    tree = tree_,
+    focal_species = focal_species_, 
+    queries = queries_,
+    species = species_meta_list_, 
+    synnaps = synmap_meta_list_
+  ) %*>%
+    new("derived_input")
 
 }

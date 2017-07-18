@@ -1,84 +1,3 @@
-# attr <- read.table("z", stringsAsFactors=FALSE)[[1]]
-
-# NOTE: this can fail
-extract_tags <- function(attr, tags, get_naked=FALSE, infer_id=FALSE){
-
-  # add ID to tag list if we need to infer ID
-  if(infer_id && (! "ID" %in% tags)){
-    tags <- c("ID", tags)
-  }
-  if((get_naked || infer_id) && (! ".U" %in% tags)){
-    tags <- c(tags, ".U")
-  }
-
-  if(length(tags) == 0){
-    stop("Error in extract_tags: no tags selected for extraction")
-  }
-
-  # temporary ids,just needed for grouping upon
-  input_order = 1:length(attr)
-
-  d <- stringr::str_split(attr, ";")
-
-  # This is will appended to the final output table
-  ntags <- sapply(d, length)
-
-  d <- data.frame(
-    id = rep.int(input_order, times=ntags),
-    # fields with no tag are given the default tag ".U", e.g. "foo" -> ".U=foo"
-    fields = unlist(d) %>% {ifelse(grepl("=", .), ., paste0(".U=", .))} ,
-    stringsAsFactors=FALSE
-  ) %>%
-    tidyr::separate_(
-      col   = "fields",
-      into  = c("tag", "value"),
-      sep   = "=",
-      extra = "merge"
-    ) %>%
-    dplyr::filter(.data$tag %in% tags)
-
-  if(any(grepl(",", d$value))){
-    stop("GFFError: commas not supported in attribute tags")
-  }
-
-  if(nrow(d) > 0){
-    d <- tidyr::spread(d, key="tag", value="value")
-  } else {
-    d$tag = NULL
-    d$value = NULL
-  }
-
-  # fills in empty rows for empty for features with no remaining tags
-  d <- merge(d, data.frame(id=input_order), all=TRUE)
-
-  # All tags should be present in the output table, even those that are not
-  # represented in the attribute column. Here I set such tags to columns of NA.
-  for(missing_tag in setdiff(tags, names(d))){
-    d[[missing_tag]] = NA_character_
-  }
-
-  d$.n_tags <- ntags
-
-  if(infer_id && ".U" %in% names(d)){
-    # handle the excrement of AUGUSTUS
-    #   * interpret .U as ID if no ID is given and if no other tags are present
-    d$ID <- ifelse(
-      is.na(d$ID)       & # is this feature has no ID attribute
-        (!is.na(d$.U))  & # but it does have an attribute with no tag
-        d$.n_tags == 1,   # and if this untagged attribute is the only attribute
-      d$.U,         # if so, assign the untagged attribute to ID
-      d$ID          # if not, just use the current ID
-    )
-  }
-
-  if(!get_naked){
-    d$.U <- NULL
-  }
-  d$id <- NULL
-
-  d
-}
-
 MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinfo=NULL){
   if(is.null(strands)){
     strands=rep("*", length(starts))
@@ -97,29 +16,264 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
   g
 }
 
+load_gene_models <- function(filename){
+  load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE)
+}
 
-make_GI_with_parent_child_relations <- function(gff){
-  meta <- extract_tags(gff$attr, tags=c("ID", "Name", "Parent"), infer_id=TRUE)
+load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
-  meta <- dplyr::select(
-    meta,
-    id     = .data$ID,
-    name   = .data$Name,
-    parent = .data$Parent
-  )
+  raw_gff_ <-
+    {
 
-  meta$type <- gff$type
+      "
+      Rmonad supports docstrings. If an block begins with a string, this
+      string is extracted and stored. Python has something similar, where the
+      first string in a function is cast as documentation.
+      
+      The `as_monad` function takes an expression and wraps its result into a
+      context. It also handles the extraction of this docstring. The result
+      here is used at more than one place in the pipeline. Rather than
+      accessing it later as a global, it will be funneled bach in.
+      "
 
-  # TODO: assert all mRNA and gene entries have an ID
-  # TODO: assert all CDS and exon entries have a parent
-  # TODO: assert all mRNAs have a parent IFF gene features are present
+      readr::read_tsv(
+        file,
+        col_names = c(
+          "seqid",
+          "source",
+          "type",
+          "start",
+          "stop",
+          "score",
+          "strand",
+          "phase",
+          "attr"
+        ),
+        na        = ".",
+        comment   = "#",
+        col_types = "ccciidcic"
+      )
 
-  # TODO: pass seqinfo, holds sequence lengths and species name
-  MakeGI(
-    starts    = gff$start,
-    stops     = gff$stop,
-    scaffolds = gff$seqid,
-    strands   = gff$strand,
-    metadata  = meta
-  ) 
+    } %>_% {
+
+      for(col in c("seqid", "type", "start", "stop")){
+        if(any(is.na(.[[col]])))
+          stop("GFFError: Column '", col, "' may not have missing values")
+      }
+
+  } %>>% {
+
+    "
+    Unify all type synonyms
+    "
+
+    gene_synonyms <- 'SO:0000704'
+    mRNA_synonyms <- c('messenger_RNA', 'messenger RNA', 'SO:0000234')
+    CDS_synonyms  <- c('coding_sequence', 'coding sequence', 'SO:0000316')
+    exon_synonyms <- 'SO:0000147'
+
+    .$type <- ifelse(.$type %in% gene_synonyms, 'gene', .$type)
+    .$type <- ifelse(.$type %in% mRNA_synonyms, 'mRNA', .$type)
+    .$type <- ifelse(.$type %in% CDS_synonyms,  'CDS',  .$type)
+    .$type <- ifelse(.$type %in% exon_synonyms, 'exon', .$type)
+
+    .
+
+  } %>>% {
+
+    "
+    Replace transcript and coding_exon (and their synonyms) with mRNA and exon,
+    respectively. This is not formally correct, but is probably the right thing
+    to do. Since this is questionable, a warning is emitted if any replacements
+    are made.
+    "
+
+    mRNA_near_synonyms <- c('transcript', 'SO:0000673')
+    exon_near_synonyms <- c('SO:0000147', 'coding_exon', 'coding exon', 'SO:0000195')
+
+    if(any(.$type %in% mRNA_near_synonyms)){
+        .$type <- ifelse(.$type %in% mRNA_near_synonyms, 'mRNA', .$type)
+        warning("Substituting transcript types for mRNA types, this is probably OK")
+    }
+
+    if(any(.$type %in% exon_near_synonyms)){
+        .$type <- ifelse(.$type %in% exon_near_synonyms, 'exon', .$type)
+        warning("Substituting transcript types for exon types, this is probably OK")
+    }
+
+    .
+
+  }
+
+
+  tags_ <- tags %v>%
+  {
+
+    "
+    Internal. Setup and check tag list.
+    
+    1) ad ID to tag list if we need to infer ID
+    2) sets a temporary tag for untagged entry
+    3) assert at least on tag is pressent (otherwise nothing would be done)
+    "
+
+    if(infer_id && (! "ID" %in% .)){
+      . <- c("ID", .)
+    }
+    if((get_naked || infer_id) && (! ".U" %in% .)){
+      . <- c(., ".U")
+    }
+
+    if(length(.) == 0){
+      stop("No tags selected for extraction")
+    }
+
+    .
+
+  }
+
+  raw_gff_ %>>% {
+
+    "Extract the attribute column"
+                
+    .[[9]]
+                
+  } %>>% {
+
+    "Split attribute column into individual fields; expressed as a dataframe
+    with columns [order | ntags | tag | value]. `order` records the original
+    ordering of the GFF file (which will be lost). `ntags` is a count of the
+    total number of tags for a GFF row; it is a temporary column. Untagged
+    values are given the temporary tag '.U', e.g. 'gene01' -> '.U=gene01'."
+
+    data_frame(
+      attr  = stringr::str_split(., ";"),
+      order = 1:nrow(.)
+    ) %>%
+      dplyr::mutate(ntags = sapply(attr, length)) %>%
+      tidyr::unnest(attr) %>%
+      dplyr::mutate(attr = ifelse(grepl('=', attr), attr, paste(".U", attr, sep="="))) %>%
+      tidyr::separate_(
+        col   = "attr",
+        into  = c("tag", "value"),
+        sep   = "=",
+        extra = "merge"
+      )
+
+  } %>>% funnel(tags=tags_) %*>% {
+
+    "Ignore any tags other than the specified ones"
+
+    dplyr::filter(., tag %in% tags)
+
+  } %>_% {
+
+    "Assert there are no commas in the extracted attribute values. These are
+    legal according to the GFF spec, but I do not yet support them."
+
+    if(any(grepl(",", .$value))){
+      stop("GFFError: commas not supported in attribute tags")
+    }
+
+  } %>>% funnel(tags=tags_) %*>% {
+
+    "Give each tag its own column"
+
+    if(nrow(.) > 0){
+      . <- tidyr::spread(., key="tag", value="value")
+      for(tag in tags){
+        if(!tag %in% names(.)){
+          .[[tag]] <- NA_character_
+        }
+      }
+      .
+    } else {
+      .$tag   = NULL
+      .$value = NULL
+      for(tag in tags){
+        .[[tag]] <- character(0)
+      }
+      .
+    }
+
+  } %>>% {
+
+    "Consider features with the parent '-' to be missing"
+
+    if("Parent" %in% names(.)){
+      .$Parent <- ifelse(.$Parent == "-", NA, .$Parent)
+    }
+    .
+
+  } %>>% funnel(infer_id=infer_id) %*>% {
+
+    "If no ID is given, but there is one untagged field, and if there are no
+    other fields, then cast the untagged field as an ID. This is needed to
+    accomadate the irresponsible output of AUGUSTUS."
+
+    if(infer_id && ".U" %in% names(.)){
+      # handle the excrement of AUGUSTUS
+      #   * interpret .U as ID if no ID is given and if no other tags are present
+      .$ID <- ifelse(
+        is.na(.$ID)       & # is this feature has no ID attribute
+          (!is.na(.$.U))  & # but it does have an attribute with no tag
+          .$.n_tags == 1,   # and if this untagged attribute is the only attribute
+        .$.U,         # if so, assign the untagged attribute to ID
+        .$ID          # if not, just use the current ID
+      )
+    }
+
+    .
+
+  } %>>% funnel(gff=gff_raw_) %*>% {
+
+    "Merge the attribute columns back into the GFF, remove temporary columns."
+
+    gff$order <- seq_len(nrow(gff))
+
+    merge(., gff, all=TRUE) %>%
+      dplyr::arrange(order) %>%
+      dplyr::select(-.U, -order, -ntags, -attr)
+
+  } %>_% {
+
+    "
+    Assert the parent/child relations are correct
+    "
+
+    if(all(c("ID", "Parent") %in% names(.))){
+      parents <- subset(., type %in% c("CDS", "exon"))$Parent
+      parent_types <- subset(., ID %in% parents)$type
+
+      if(any(parent_types == "gene"))
+        warning("Found CDS or exon directly inheriting from a gene, this may be fine.")
+
+      if(! all(parent_types %in% c("gene", "mRNA")))
+        stop("Found CDS or exon with illegal parent")
+
+      if( any(is.na(parents)) )
+        stop("Found CDS or exon with no parent")
+
+      if(! any(duplicated(.$ID, incomparables=NA)))
+        warning("IDs are not unique, this is probably bad")
+    }
+
+  } %>>% {
+
+    "Load GFF into a GenomicRanges object"
+
+    gi <- MakeGI(
+      starts    = .$start,
+      stops     = .$stop,
+      scaffolds = .$seqid,
+      strands   = .$strand,
+      metadata  = .[,c('ID','Name','Parent')]
+    ) 
+
+    meta(gi)$type <- .$type
+
+    gi
+
+  }
+
 }

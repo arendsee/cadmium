@@ -1,19 +1,12 @@
 load_species <- function(species_name, input){
 
-  inputs_ <- funnel(
-    spec=species_name,
-    conf=input
-  )
+  dna <- funnel(species_name, dir=i@fna_dir) %*>%
+    gene_genome_filename %>>%
+    load_dna
 
-  dna_ <- inputs_ %*>%
-    (function(s,i){
-       gene_genome_filename(s, i@fna_dir)
-    }) %>>% load_dna
-
-  gff_ <- inputs_ %*>%
-    (function(s,i){
-       get_gff_filename(s, i@gff_dir)
-    }) %>>% load_gff
+  gff_ <- funnel(species_name, dir=i@gff_dir) %*>%
+    get_gff_filename %>>%
+    load_gff
 
   nstrings_    <- dna_ %>>% derive_nstring
   orfgff_      <- dna_ %>>% derive_orfgff
@@ -101,12 +94,13 @@ load_synmaps <- function(target_species, focal_species, syndir){
 #' @export
 load_data <- function(con){
 
+  # set as monad here, so other functions will uniquely map to it
   con_ <- as_monad(con)
 
   tree_ <- con_ %>>% load_tree(.@input@tree)
 
   species_names_ <- tree_ %>>% {
-    
+
     "Extract species list from the species tree. The tree, rather than the
     input files, determines which species are used in the analysis."
 
@@ -117,7 +111,7 @@ load_data <- function(con){
 
     "The input focal species may have gaps, but for the internal one, we remove
     gaps."
-    
+
     gsub(" ", "_", .@input@focal_species)
                             
   }
@@ -132,7 +126,7 @@ load_data <- function(con){
       ss
     }
 
-  synmap_meta_list_ <- funnel(con=con_, specs=species_names_, focal=focal_species_) %*>%
+  synmap_meta_list_ <- funnel(syndir=, specs=species_names_, focal=focal_species_) %*>%
     function(con, specs, focal){
 
       "Load synteny map for focal species against each target species"

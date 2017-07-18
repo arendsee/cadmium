@@ -4,7 +4,6 @@
 \alias{fagin_io}
 \alias{load_dna}
 \alias{load_queries}
-\alias{load_gff}
 \alias{load_synmap}
 \alias{load_tree}
 \title{Input and output}
@@ -12,8 +11,6 @@
 load_dna(filename)
 
 load_queries(filename)
-
-load_gff(filename)
 
 load_synmap(filename)
 

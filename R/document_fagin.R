@@ -2,8 +2,9 @@
 #' @importFrom graphics plot
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%"
+#' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%v__%" "%||%" "%|>%" "%>_%"
 #' @importFrom utils head tail
-utils::globalVariables(c("%>%", "."))
+utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%v__%", "%||%", "%|>%", "%>_%"))
 NULL
 
 #' fagin: Trace the origins of orphan genes

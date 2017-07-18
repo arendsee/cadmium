@@ -6,7 +6,7 @@ load_species <- function(species_name, input){
 
   gff_ <- funnel(species_name, dir=i@gff_dir) %*>%
     get_gff_filename %>>%
-    load_gff
+    load_gene_models
 
   nstrings_    <- dna_ %>>% derive_nstring
   orfgff_      <- dna_ %>>% derive_orfgff

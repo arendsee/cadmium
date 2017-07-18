@@ -146,21 +146,23 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     total number of tags for a GFF row; it is a temporary column. Untagged
     values are given the temporary tag '.U', e.g. 'gene01' -> '.U=gene01'."
 
-    data_frame(
+    tibble::data_frame(
       attr  = stringr::str_split(., ";"),
-      order = 1:nrow(.)
-    ) %>%
-      dplyr::mutate(ntags = sapply(attr, length)) %>%
-      tidyr::unnest(attr) %>%
-      dplyr::mutate(attr = ifelse(grepl('=', attr), attr, paste(".U", attr, sep="="))) %>%
+      order = seq_len(length(.))
+    )
+
+  } %>>%
+      dplyr::mutate(ntags = sapply(attr, length)) %>>%
+      tidyr::unnest(attr) %>>%
+      dplyr::mutate(attr = ifelse(grepl('=', attr), attr, paste(".U", attr, sep="="))) %>>%
       tidyr::separate_(
         col   = "attr",
         into  = c("tag", "value"),
         sep   = "=",
         extra = "merge"
-      )
+      ) %>>%
 
-  } %>>% funnel(tags=tags_) %*>% {
+  rmonad::funnel(tags=tags_) %*>% {
 
     "Ignore any tags other than the specified ones"
 
@@ -175,7 +177,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       stop("GFFError: commas not supported in attribute tags")
     }
 
-  } %>>% funnel(tags=tags_) %*>% {
+  } %>>% rmonad::funnel(tags=tags_) %*>% {
 
     "Give each tag its own column"
 
@@ -205,7 +207,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     }
     .
 
-  } %>>% funnel(infer_id=infer_id) %*>% {
+  } %>>% rmonad::funnel(infer_id=infer_id) %*>% {
 
     "If no ID is given, but there is one untagged field, and if there are no
     other fields, then cast the untagged field as an ID. This is needed to
@@ -217,7 +219,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       .$ID <- ifelse(
         is.na(.$ID)       & # is this feature has no ID attribute
           (!is.na(.$.U))  & # but it does have an attribute with no tag
-          .$.n_tags == 1,   # and if this untagged attribute is the only attribute
+          .$ntags == 1,     # and if this untagged attribute is the only attribute
         .$.U,         # if so, assign the untagged attribute to ID
         .$ID          # if not, just use the current ID
       )
@@ -225,7 +227,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
     .
 
-  } %>>% funnel(gff=gff_raw_) %*>% {
+  } %>>% rmonad::funnel(gff=raw_gff_) %*>% {
 
     "Merge the attribute columns back into the GFF, remove temporary columns."
 
@@ -268,9 +270,9 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       scaffolds = .$seqid,
       strands   = .$strand,
       metadata  = .[,c('ID','Name','Parent')]
-    ) 
+    )
 
-    meta(gi)$type <- .$type
+    mcols(gi)$type <- .$type
 
     gi
 

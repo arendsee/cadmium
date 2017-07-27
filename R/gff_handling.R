@@ -29,7 +29,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       Rmonad supports docstrings. If an block begins with a string, this
       string is extracted and stored. Python has something similar, where the
       first string in a function is cast as documentation.
-      
+
       The `as_monad` function takes an expression and wraps its result into a
       context. It also handles the extraction of this docstring. The result
       here is used at more than one place in the pipeline. Rather than
@@ -111,7 +111,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
     "
     Internal. Setup and check tag list.
-    
+
     1) ad ID to tag list if we need to infer ID
     2) sets a temporary tag for untagged entry
     3) assert at least on tag is pressent (otherwise nothing would be done)
@@ -135,9 +135,9 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
   raw_gff_ %>>% {
 
     "Extract the attribute column"
-                
+
     .[[9]]
-                
+
   } %>>% {
 
     "Split attribute column into individual fields; expressed as a dataframe

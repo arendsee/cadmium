@@ -1,10 +1,10 @@
 load_species <- function(species_name, input){
 
-  dna <- funnel(species_name, dir=i@fna_dir) %*>%
+  dna_ <- rmonad::funnel(species_name, dir=i@fna_dir) %*>%
     gene_genome_filename %>>%
     load_dna
 
-  gff_ <- funnel(species_name, dir=i@gff_dir) %*>%
+  gff_ <- rmonad::funnel(species_name, dir=i@gff_dir) %*>%
     get_gff_filename %>>%
     load_gene_models
 
@@ -14,9 +14,14 @@ load_species <- function(species_name, input){
   aa_          <- list(dna_, gff_) %*>% derive_aa
   trans_       <- list(dna_, gff_) %*>% derive_trans
   transorfgff_ <- trans_ %>>% derive_transorfgff
-  transorffaa_ <- list(trans_, transorfgff_) %>>% derive_transorffaa
 
-  specsum_ <- funnel(
+  transorffaa_ <-
+    list(
+      trans       = trans_,
+      transorfgff = transorfgff_
+  ) %>>% derive_transorffaa
+
+  specsum_ <- rmonad::funnel(
     gff.summary         = gff_         %>>% summarize_gff,
     dna.summary         = dna_         %>>% summarize_dna,
     aa.summary          = aa_          %>>% summarize_faa,
@@ -25,11 +30,11 @@ load_species <- function(species_name, input){
     orffaa.summary      = orffaa_      %>>% summarize_faa,
     transorfgff.summary = transorfgff_ %>>% summarize_granges,
     transorffaa.summary = transorffaa_ %>>% summarize_faa,
-    nstring.summary     = nstring_     %>>% summarize_nstring
+    nstring.summary     = nstrings_    %>>% summarize_nstring
   ) %*>%
-    new("species_summaries")
+    new(Class="species_summaries")
 
-  specfile_ <- funnel(
+  specfile_ <- rmonad::funnel(
     gff.file         = gff_         %>>% to_cache( label="gff"         , group=species_name ),
     dna.file         = dna_         %>>% to_cache( label="dna"         , group=species_name ),
     aa.file          = aa_          %>>% to_cache( label="aa"          , group=species_name ),
@@ -38,43 +43,45 @@ load_species <- function(species_name, input){
     orffaa.file      = orffaa_      %>>% to_cache( label="orffaa"      , group=species_name ),
     transorfgff.file = transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name ),
     transorffaa.file = transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name ),
-    nstring.file     = nstring_     %>>% to_cache( label="nstring"     , group=species_name )
+    nstring.file     = nstrings_    %>>% to_cache( label="nstring"     , group=species_name )
   ) %*>%
-    new("species_data_files")
+    new(Class="species_data_files")
 
-  funnel(
+  rmonad::funnel(
     files = specfile_,
     summaries = specsum_
   ) %*>%
-    new("species_meta")
+    new(Class="species_meta")
 
 }
 
 
 load_species_with_cache <- function(species_name, ...){
-  # Retrieve the cached data if present
-  result <- from_cache(species_name, "species_meta")  
-  if(is.null(result)){
-    result <- load_species(species_name, ...) 
-    to_cache(result, species_name, "species_meta")  
-  }
-  result
+  # # Retrieve the cached data if present
+  # result <- from_cache(species_name, "species_meta")
+  # if(is.null(result)){
+  #   result <- load_species(species_name, ...)
+  #   to_cache(result, species_name, "species_meta")
+  # }
+  # result
+
+  load_species(species_name, ...)
 }
 
 
 load_synmaps <- function(target_species, focal_species, syndir){
-  funnel(
-    target_species,
-    focal_species,
-    syndir
+  rmonad::funnel(
+    focal_name  = focal_species,
+    target_name = target_species,
+    dir         = syndir
   ) %*>%
-    get_synmap_filename %>>%
+    get_synmap_filename %v>%
     load_synmap %>%
-    funnel(
+    rmonad::funnel(
       synmap.file = . %>>% to_cache(label="synmap", group=target_species),
       synmap.summary = . %>>% summarize_syn
     ) %*>%
-      new("synteny_meta")
+      new(Class="synteny_meta")
 }
 
 
@@ -95,9 +102,9 @@ load_synmaps <- function(target_species, focal_species, syndir){
 load_data <- function(con){
 
   # set as monad here, so other functions will uniquely map to it
-  con_ <- as_monad(con)
+  con_ <- rmonad::as_monad(con)
 
-  tree_ <- con_ %>>% load_tree(.@input@tree)
+  tree_ <- con_ %>>% { load_tree(.@input@tree) }
 
   species_names_ <- tree_ %>>% {
 
@@ -107,49 +114,70 @@ load_data <- function(con){
     .$tip.label
   }
 
-  focal_species_ = con_ %>>% {
+  focal_species_ = con_ %>>% { .@input@focal_species } %>>% {
 
     "The input focal species may have gaps, but for the internal one, we remove
     gaps."
 
-    gsub(" ", "_", .@input@focal_species)
+    gsub(" ", "_", .)
                             
+  } %>% rmonad::funnel(specs=species_names_) %*>% {
+    
+    "Assert that the focal species is in the phylogenetic tree"
+
+    if(! (. %in% specs)){
+      msg <- "Focal species '%s' is not in the species tree [%s]"
+      stop(sprintf(msg, ., paste(specs, collapse=", ")))
+    }
+
+    .
+
   }
 
-  species_meta_list_ <- funnel(con=con_, specs=species_names_) %*>%
-    function(con, specs){
+  species_meta_list_ <- con_ %>>% { con@input } %>%
+    rmonad::funnel(specs=species_names_) %*>%
+    {
 
       "For each species, collect and cache all required data"
 
-      ss <- BiocParallel::bplapply(specs, load_species_with_cache, con@input)
+      ss <- BiocParallel::bplapply(specs, load_species_with_cache, .)
       names(ss) <- specs
-      ss
+
+      rmonad::combine(ss)
+
     }
 
-  synmap_meta_list_ <- funnel(syndir=, specs=species_names_, focal=focal_species_) %*>%
-    function(con, specs, focal){
+  synmap_meta_list_ <- con_ %>>%
+    { .@input@syn_dir } %>%
+    rmonad::funnel(specs=species_names_, focal=focal_species_) %*>%
+    {
 
       "Load synteny map for focal species against each target species"
 
       ss <- lapply(
-        setdiff(specs, focal_species),
-        load_synmaps,
-        focal_species = focal,
-        syndir        = con@input@syn_dir
+        setdiff(specs, focal),
+        function(x) {
+          load_synmaps(
+            target_species = x,
+            focal_species = focal,
+            syndir = .
+          )
+        }
       )
       names(ss) <- setdiff(specs, focal)
-      ss
+
+      rmonad::combine(ss)
     }
 
   queries_ <- con_ %>>% { load_queries(.@input@query_gene_list) }
 
-  funnel(
-    tree = tree_,
-    focal_species = focal_species_, 
-    queries = queries_,
-    species = species_meta_list_, 
-    synnaps = synmap_meta_list_
+  rmonad::funnel(
+    tree          = tree_,
+    focal_species = focal_species_,
+    queries       = queries_,
+    species       = species_meta_list_,
+    synmaps       = synmap_meta_list_
   ) %*>%
-    new("derived_input")
+    new(Class="derived_input")
 
 }

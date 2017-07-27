@@ -6,6 +6,8 @@
 *.fna
 *.fasta
 
+test.R
+
 .fagin_cache
 
 INPUT

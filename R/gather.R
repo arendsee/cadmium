@@ -1,10 +1,10 @@
 load_species <- function(species_name, input){
 
-  dna_ <- rmonad::funnel(species_name, dir=i@fna_dir) %*>%
-    gene_genome_filename %>>%
+  dna_ <- rmonad::funnel(species_name, dir=input@fna_dir) %*>%
+    get_genome_filename %>>%
     load_dna
 
-  gff_ <- rmonad::funnel(species_name, dir=i@gff_dir) %*>%
+  gff_ <- rmonad::funnel(species_name, dir=input@gff_dir) %*>%
     get_gff_filename %>>%
     load_gene_models
 
@@ -16,10 +16,10 @@ load_species <- function(species_name, input){
   transorfgff_ <- trans_ %>>% derive_transorfgff
 
   transorffaa_ <-
-    list(
-      trans       = trans_,
-      transorfgff = transorfgff_
-  ) %>>% derive_transorffaa
+  list(
+    trans       = trans_,
+    transorfgff = transorfgff_
+  ) %*>% derive_transorffaa
 
   specsum_ <- rmonad::funnel(
     gff.summary         = gff_         %>>% summarize_gff,
@@ -77,10 +77,12 @@ load_synmaps <- function(target_species, focal_species, syndir){
   ) %*>%
     get_synmap_filename %v>%
     load_synmap %>%
-    rmonad::funnel(
-      synmap.file = . %>>% to_cache(label="synmap", group=target_species),
-      synmap.summary = . %>>% summarize_syn
-    ) %*>%
+    {
+      rmonad::funnel(
+        synmap.file = . %>>% to_cache(label="synmap", group=target_species),
+        synmap.summary = . %>>% summarize_syn
+      )
+    } %*>%
       new(Class="synteny_meta")
 }
 

@@ -36,7 +36,6 @@ NULL
 #' @export
 to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
 
-  # TODO: handle failure
   .setup_cache_folders(group, cache_dir)
 
   # TODO: handle failure

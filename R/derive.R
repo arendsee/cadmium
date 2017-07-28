@@ -137,9 +137,9 @@ mergeSeqs <- function(fna, gff, tag){
   # this is required, since they will be concatenated by order
   g <- g[order(GenomicRanges::start(g))]
 
-  revpar <- g[GenomicRanges::strand(g) == '-']$parent %>% unique
+  revpar <- g[GenomicRanges::strand(g) == '-']$Parent %>% unique
 
-  parents <- GenomicRanges::mcols(g)$parent
+  parents <- GenomicRanges::mcols(g)$Parent
 
   # TODO: assert no elements within a group overlap
 
@@ -174,7 +174,7 @@ derive_aa <- function(dna, gff) {
 #' @return DNAStringSet object
 derive_trans <- function(dna, gff) {
 
-  mergeSeqs(dna, gff, "exon")
+  mergeSeqs(fna=dna, gff=gff, tag="exon")
 
 }
 

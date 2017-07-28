@@ -25,16 +25,8 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
   raw_gff_ <-
     {
 
-      "
-      Rmonad supports docstrings. If an block begins with a string, this
-      string is extracted and stored. Python has something similar, where the
-      first string in a function is cast as documentation.
-
-      The `as_monad` function takes an expression and wraps its result into a
-      context. It also handles the extraction of this docstring. The result
-      here is used at more than one place in the pipeline. Rather than
-      accessing it later as a global, it will be funneled bach in.
-      "
+      "Load the raw GFF file. Raise warnings if columns have incorrect types.
+      Allow comments ('#') and use '.' to indicate missing data."
 
       readr::read_tsv(
         file,
@@ -160,7 +152,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
         into  = c("tag", "value"),
         sep   = "=",
         extra = "merge"
-      ) %>>%
+      ) %>%
 
   rmonad::funnel(tags=tags_) %*>% {
 
@@ -177,7 +169,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       stop("GFFError: commas not supported in attribute tags")
     }
 
-  } %>>% rmonad::funnel(tags=tags_) %*>% {
+  } %>% rmonad::funnel(tags=tags_) %*>% {
 
     "Give each tag its own column"
 
@@ -207,7 +199,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     }
     .
 
-  } %>>% rmonad::funnel(infer_id=infer_id) %*>% {
+  } %>% rmonad::funnel(infer_id=infer_id) %*>% {
 
     "If no ID is given, but there is one untagged field, and if there are no
     other fields, then cast the untagged field as an ID. This is needed to
@@ -227,7 +219,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
     .
 
-  } %>>% rmonad::funnel(gff=raw_gff_) %*>% {
+  } %>% rmonad::funnel(gff=raw_gff_) %*>% {
 
     "Merge the attribute columns back into the GFF, remove temporary columns."
 
@@ -272,7 +264,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       metadata  = .[,c('ID','Name','Parent')]
     )
 
-    mcols(gi)$type <- .$type
+    GenomicRanges::mcols(gi)$type <- .$type
 
     gi
 

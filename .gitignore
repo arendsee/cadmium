@@ -6,6 +6,8 @@
 *.fna
 *.fasta
 
+tags
+
 test.R
 
 .fagin_cache

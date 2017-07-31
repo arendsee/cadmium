@@ -13,7 +13,5 @@ derive_orfgff(dna)
 GenomicRanges object
 }
 \description{
-Note, here I am doing the stupidest thing possible: just finding all
-'<START>(...)+<STOP>' intervals. I should replace this with a real ORF
-finder.
+Derive mono-exonic ORF intervals from a genome
 }

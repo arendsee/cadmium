@@ -13,13 +13,5 @@ load_data(con)
 derived_input object
 }
 \description{
-The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
-species tree, and the focal species name. This function derives all required
-secondary data, but does no analysis specific to the query intervals (e.g.
-the orphan genes candidates).
-}
-\details{
-This function does not handle the full data validation. All individual
-pieces are validated, but not the relationships between them. This is the
-role of the \code{validate_derived_inputs} function.
+Derive secondary data from the minimal required inputs
 }

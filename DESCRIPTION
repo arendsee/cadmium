@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.20.2),
-    rmonad (>= 0.2.0.9013),
+    rmonad (>= 0.2.0.9015),
     methods,
     magrittr,
     Biostrings,

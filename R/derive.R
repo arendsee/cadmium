@@ -15,7 +15,6 @@
 #' @param ...     extra arguments for gregexpr
 #' @return GRanges object
 dnaregex <- function(x, pattern, strand=c('b'), ...){
-  # TODO: add tests for this 
 
   sinfo <- GenomeInfoDb::Seqinfo(seqnames=names(x), seqlengths=Biostrings::width(x))
 
@@ -81,22 +80,28 @@ dnaregex <- function(x, pattern, strand=c('b'), ...){
 #' @export
 derive_nstring <- function(dna) {
 
+  "Given a genome, find all sequences of N (unknown nucleotides)"
+
   dnaregex(dna, "N+", strand='u', ignore.case=TRUE)
 
 } 
 
 #' Derive mono-exonic ORF intervals from a genome
 #'
-#' Note, here I am doing the stupidest thing possible: just finding all
-#' '<START>(...)+<STOP>' intervals. I should replace this with a real ORF
-#' finder.
-#'
 #' @param dna DNAStringSet genome
 #' @return GenomicRanges object
 derive_orfgff <- function(dna) {
 
-  # BUG: This misses potentially longer ORFs that start within a previous ORF
-  # TODO: replace with real ORF finder
+  "
+  Given a genome, find the locations of ORFs on both strands.
+
+  Note, here I am doing the stupidest thing possible: just finding all
+  '<START>(...)+<STOP>' intervals. I should replace this with a real ORF
+  finder.
+
+  BUG: This misses potentially longer ORFs that start within a previous ORF.
+  TODO: replace with real ORF finder.
+  "
 
   orfpat <- "ATG(AAA|AAC|AAG|AAT|ACA|ACC|ACG|ACT|AGA|AGC|AGG|AGT|ATA|ATC|ATG|ATT|CAA|CAC|CAG|CAT|CCA|CCC|CCG|CCT|CGA|CGC|CGG|CGT|CTA|CTC|CTG|CTT|GAA|GAC|GAG|GAT|GCA|GCC|GCG|GCT|GGA|GGC|GGG|GGT|GTA|GTC|GTG|GTT|TAC|TAT|TCA|TCC|TCG|TCT|TGC|TGG|TGT|TTA|TTC|TTG|TTT){49,}(TAA|TGA|TAG)"
 
@@ -110,27 +115,27 @@ derive_orfgff <- function(dna) {
 #' @param gff Intervals to extract
 #' @return DNAStringSet
 extractWithComplements <- function(dna, gff){
-  append(
-      dna[gff[GenomicRanges::strand(gff) == '+']],
-      dna[gff[GenomicRanges::strand(gff) == '-']] %>% Biostrings::reverseComplement() 
-    )
+
+  "
+  Extract a set of sequences from a genome given a GFF. Assumptions:
+  
+  1) All scaffolds named in the GFF are present in genome file
+
+  2) All end positions in the GFF are less than or equal to the length of their
+     respective scaffold (not currently tested).
+  "
+
+  if(! all(as.character(GenomicRanges::seqnames(gff)) %in% names(dna)) )
+    stop("All scaffold name in GFF missing in genomic file")
+
+  orf <- dna[gff]
+  orf[ GenomicRanges::strand(gff) == '-' ] <-
+    Biostrings::reverseComplement(orf[ GenomicRanges::strand(gff) == '-' ])
+
+  orf
 }
 
-#' Derive ORF protein sequences from genome and ORF ranges
-#'
-#' @param dna DNAStringSet genome
-#' @param orfgff GenomicRanges object
-#' @return AAStringSet object
-derive_orffaa <- function(dna, orfgff) {
-
-  # TODO: get a real ORF finder and sync this accordingly
-
-  extractWithComplements(dna, orfgff) %>%
-    Biostrings::translate(if.fuzzy.codon="solve")
-
-}
-
-mergeSeqs <- function(fna, gff, tag){
+mergeSeqs <- function(dna, gff, tag){
   g <- gff[gff$type == tag]
 
   # sort the elements by start
@@ -143,7 +148,7 @@ mergeSeqs <- function(fna, gff, tag){
 
   # TODO: assert no elements within a group overlap
 
-  seqs <- fna[g]                %>%
+  seqs <- dna[g]                %>%
     base::split(parents)        %>%
     lapply(paste0, collapse="") %>%
     unlist                      %>%
@@ -153,49 +158,4 @@ mergeSeqs <- function(fna, gff, tag){
     Biostrings::reverseComplement(seqs[names(seqs) %in% revpar])
 
   seqs
-}
-
-#' Derive protein sequence from genome and gene model GFF
-#'
-#' @param dna DNAStringSet genome
-#' @param gff GenomicRanges object annotated with \code{type} and \code{parent}
-#' @return AAStringSet object
-derive_aa <- function(dna, gff) {
-
-  mergeSeqs(dna, gff, "CDS") %>%
-    Biostrings::translate(if.fuzzy.codon="solve")
-
-}
-
-#' Derive mRNA sequence from genome and gene model GFF
-#'
-#' @param dna DNAStringSet genome
-#' @param gff GenomicRanges object annotated with \code{type} and \code{parent}
-#' @return DNAStringSet object
-derive_trans <- function(dna, gff) {
-
-  mergeSeqs(fna=dna, gff=gff, tag="exon")
-
-}
-
-#' Derive ORF intervals from a transcriptome
-#'
-#' @param trans DNAStringSet genome
-#' @return GenomicRanges object
-derive_transorfgff <- function(trans) {
-
-  derive_orfgff(trans)
-
-}
-
-#' Derive ORF intervals from a transcriptome
-#'
-#' @param trans DNAStringSet genome
-#' @param transorfgff GRanges locations of ORFs on mRNAs
-#' @return GenomicRanges object
-derive_transorffaa <- function(trans, transorfgff) {
-
-  extractWithComplements(trans, transorfgff) %>%
-    Biostrings::translate(if.fuzzy.codon="solve")
-
 }

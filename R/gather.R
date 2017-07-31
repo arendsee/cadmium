@@ -1,25 +1,52 @@
 load_species <- function(species_name, input){
 
-  dna_ <- rmonad::funnel(species_name, dir=input@fna_dir) %*>%
-    get_genome_filename %>>%
+  "Generate, summarize and merge all derived data for one species. The only
+  inputs are a genome and a GFF file of gene models."
+
+  dna_ <-
+    get_genome_filename(species_name, dir=input@fna_dir) %>>%
     load_dna
 
-  gff_ <- rmonad::funnel(species_name, dir=input@gff_dir) %*>%
-    get_gff_filename %>>%
+  gff_ <-
+    get_gff_filename(species_name, dir=input@gff_dir) %>>%
     load_gene_models
 
-  nstrings_    <- dna_ %>>% derive_nstring
-  orfgff_      <- dna_ %>>% derive_orfgff
-  orffaa_      <- list(dna_, orfgff_) %*>% derive_orffaa
-  aa_          <- list(dna_, gff_) %*>% derive_aa
-  trans_       <- list(dna_, gff_) %*>% derive_trans
-  transorfgff_ <- trans_ %>>% derive_transorfgff
+  nstrings_ <- dna_ %>>% derive_nstring
+
+  orfgff_ <- dna_ %>>% derive_orfgff
+
+  orffaa_ <-
+    rmonad::funnel(
+      dna = dna_,
+      gff = orfgff_
+    ) %*>%
+    extractWithComplements %>>%
+    Biostrings::translate(if.fuzzy.codon="solve")
+
+  aa_ <-
+    rmonad::funnel(
+      dna = dna_,
+      gff = gff_
+    ) %*>%
+    mergeSeqs(tag="CDS") %>>%
+    Biostrings::translate(if.fuzzy.codon="solve")
+
+  trans_ <-
+    rmonad::funnel(
+      dna = dna_,
+      gff = gff_
+    ) %*>%
+    mergeSeqs(tag="exon")
+
+  transorfgff_ <- trans_ %>>% derive_orfgff
 
   transorffaa_ <-
-  list(
-    trans       = trans_,
-    transorfgff = transorfgff_
-  ) %*>% derive_transorffaa
+    rmonad::funnel(
+      dna = trans_,
+      gff = transorfgff_
+    ) %*>%
+    extractWithComplements %>>%
+    Biostrings::translate(if.fuzzy.codon="solve")
 
   specsum_ <- rmonad::funnel(
     gff.summary         = gff_         %>>% summarize_gff,
@@ -48,7 +75,7 @@ load_species <- function(species_name, input){
     new(Class="species_data_files")
 
   rmonad::funnel(
-    files = specfile_,
+    files     = specfile_,
     summaries = specsum_
   ) %*>%
     new(Class="species_meta")
@@ -56,20 +83,12 @@ load_species <- function(species_name, input){
 }
 
 
-load_species_with_cache <- function(species_name, ...){
-  # # Retrieve the cached data if present
-  # result <- from_cache(species_name, "species_meta")
-  # if(is.null(result)){
-  #   result <- load_species(species_name, ...)
-  #   to_cache(result, species_name, "species_meta")
-  # }
-  # result
-
-  load_species(species_name, ...)
-}
-
-
 load_synmaps <- function(target_species, focal_species, syndir){
+
+  "Load the synteny map for the given focal and target species. Then cache the
+  synteny map and return the cached filename and a summary of the map as a
+  `synteny_meta` object."
+
   rmonad::funnel(
     focal_name  = focal_species,
     target_name = target_species,
@@ -89,19 +108,23 @@ load_synmaps <- function(target_species, focal_species, syndir){
 
 #' Derive secondary data from the minimal required inputs
 #'
-#' The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
-#' species tree, and the focal species name. This function derives all required
-#' secondary data, but does no analysis specific to the query intervals (e.g.
-#' the orphan genes candidates).
-#'
-#' This function does not handle the full data validation. All individual
-#' pieces are validated, but not the relationships between them. This is the
-#' role of the \code{validate_derived_inputs} function.
-#'
 #' @param con The config object that provides paths to required data
 #' @return derived_input object
 #' @export
 load_data <- function(con){
+
+  "
+  Derive secondary data from the minimal required inputs
+  
+  The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
+  species tree, and the focal species name. This function derives all required
+  secondary data, but does no analysis specific to the query intervals (e.g.
+  the orphan genes candidates).
+  
+  This function does not handle the full data validation. All individual
+  pieces are validated, but not the relationships between them. This is the
+  role of the `validate_derived_inputs` function.
+  "
 
   # set as monad here, so other functions will uniquely map to it
   con_ <- rmonad::as_monad(con)
@@ -142,7 +165,7 @@ load_data <- function(con){
 
       "For each species, collect and cache all required data"
 
-      ss <- BiocParallel::bplapply(specs, load_species_with_cache, .)
+      ss <- BiocParallel::bplapply(specs, load_species, .)
       names(ss) <- specs
 
       rmonad::combine(ss)

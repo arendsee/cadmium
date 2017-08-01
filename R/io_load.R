@@ -10,10 +10,22 @@ NULL
 #' @rdname fagin_io
 #' @export
 load_dna <- function(filename) {
-  d <- Biostrings::readDNAStringSet(filename)
-  # strip metadata from FASTA headers
-  names(d) <- gsub(" .*", "", names(d))
-  d
+
+  {
+
+    "Build an indexed fasta file if one does not exist"
+
+    Rsamtools::indexFa(filename)
+
+  } %__% {
+
+    "Open a connection to the indexed fasta file, this will not slurp the whole
+    thing into memory."
+
+    Rsamtools::FaFile(filename)
+
+  }
+
 }
 
 #' @rdname fagin_io

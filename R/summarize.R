@@ -52,9 +52,12 @@ summarize_faa <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_dna <- function(x){
-  if(length(x) == 0){
+
+  if(class(x) == 'FaFile')
+    x <- Rsamtools::scanFa(x)
+
+  if(length(x) == 0)
     return(dna_summary())
-  }
 
   table <- data.frame(
     seqids = names(x),
@@ -105,41 +108,25 @@ summarize_granges <- function(x){
 #' @export
 summarize_gff <- function(x){
 
-  if(length(x) == 0){
-    return(gff_summary())
-  }
+  feat_trans <- GenomicFeatures::transcripts(x)
+  feat_cds <- GenomicFeatures::cds(x)
+  feat_exons <- GenomicFeatures::exons(x)
 
-  xdf <- data.frame(
-    seqid = x@seqnames,
-    stop  = GenomicRanges::end(x),
-    start = GenomicRanges::start(x),
-    type  = GenomicRanges::mcols(x)$type 
-  )
-
-  seqstats <- dplyr::summarize(
-    dplyr::group_by(xdf, .data$seqid),
-    min   = min(.data$start),
-    max   = max(.data$stop),
-    mRNAs = sum(.data$type == "mRNA")
-  )
-
-  features <- c("mRNA", "CDS", "exon")
-
-  lengths <- lapply(features,
-    function(s) {
-      d <- dplyr::filter(xdf, .data$type == s) %>%
-           dplyr::transmute(length = .data$stop - .data$start + 1)
-      summarize_numeric(d[[1]])
-    }
-  )
-  names(lengths) <- features
+  seqstats <-
+    as.data.frame(feat_trans) %>%
+    dplyr::group_by(.data$seqnames) %>%
+    dplyr::summarize(
+      min   = min(.data$start),
+      max   = max(.data$end),
+      mRNAs = length(.data$start)
+    )
 
   new(
     "gff_summary",
     seqstats    = seqstats,
-    mRNA_length = lengths$mRNA,
-    CDS_length  = lengths$CDS,
-    exon_length = lengths$exon
+    mRNA_length = summarize_numeric(feat_trans %>% IRanges::width),
+    CDS_length  = summarize_numeric(feat_exons %>% IRanges::width),
+    exon_length = summarize_numeric(feat_cds   %>% IRanges::width)
   )
 }
 

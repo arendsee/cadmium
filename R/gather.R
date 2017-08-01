@@ -3,17 +3,20 @@ load_species <- function(species_name, input){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
+  txdb_ <-
+    get_gff_filename(species_name, dir=input@gff_dir) %v>%
+    {
+      specname <- gsub(pattern='_', replacement=' ', x=species_name)
+      GenomicFeatures::makeTxDbFromGFF(., organism=specname)
+    }
+
   dna_ <-
     get_genome_filename(species_name, dir=input@fna_dir) %>>%
     load_dna
 
-  gff_ <-
-    get_gff_filename(species_name, dir=input@gff_dir) %>>%
-    load_gene_models
+  nstrings_ <- dna_ %>>% Rsamtools::scanFa %>>% derive_nstring
 
-  nstrings_ <- dna_ %>>% derive_nstring
-
-  orfgff_ <- dna_ %>>% derive_orfgff
+  orfgff_ <- dna_ %>>% Rsamtools::scanFa %>>% derive_orfgff
 
   orffaa_ <-
     rmonad::funnel(
@@ -25,20 +28,26 @@ load_species <- function(species_name, input){
 
   aa_ <-
     rmonad::funnel(
-      dna = dna_,
-      gff = gff_
+      x = dna_,
+      transcripts = txdb_ %>>% GenomicFeatures::cdsBy
     ) %*>%
-    mergeSeqs(tag="CDS") %>>%
+    GenomicFeatures::extractTranscriptSeqs %>>%
     Biostrings::translate(if.fuzzy.codon="solve")
 
   trans_ <-
     rmonad::funnel(
-      dna = dna_,
-      gff = gff_
+      x = dna_,
+      transcripts = txdb_ %>>% GenomicFeatures::exonsBy
     ) %*>%
-    mergeSeqs(tag="exon")
+    GenomicFeatures::extractTranscriptSeqs %>>%
+    {
+      filepath <- paste0(".", species_name, "_trans.fna")
+      Biostrings::writeXStringSet(., filepath=filepath)   
+      Rsamtools::indexFa(filepath)
+      Rsamtools::FaFile(filepath)
+    }
 
-  transorfgff_ <- trans_ %>>% derive_orfgff
+  transorfgff_ <- trans_ %>>% Rsamtools::scanFa %>>% derive_orfgff
 
   transorffaa_ <-
     rmonad::funnel(
@@ -62,15 +71,15 @@ load_species <- function(species_name, input){
     new(Class="species_summaries")
 
   specfile_ <- rmonad::funnel(
-    gff.file         = gff_         %>>% to_cache( label="gff"         , group=species_name ),
-    dna.file         = dna_         %>>% to_cache( label="dna"         , group=species_name ),
-    aa.file          = aa_          %>>% to_cache( label="aa"          , group=species_name ),
-    trans.file       = trans_       %>>% to_cache( label="trans"       , group=species_name ),
-    orfgff.file      = orfgff_      %>>% to_cache( label="orfgff"      , group=species_name ),
-    orffaa.file      = orffaa_      %>>% to_cache( label="orffaa"      , group=species_name ),
-    transorfgff.file = transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name ),
-    transorffaa.file = transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name ),
-    nstring.file     = nstrings_    %>>% to_cache( label="nstring"     , group=species_name )
+    gff.file         = 'dev/null',
+    dna.file         = 'dev/null',
+    aa.file          = 'dev/null',
+    trans.file       = 'dev/null',
+    orfgff.file      = 'dev/null',
+    orffaa.file      = 'dev/null',
+    transorfgff.file = 'dev/null',
+    transorffaa.file = 'dev/null',
+    nstring.file     = 'dev/null'
   ) %*>%
     new(Class="species_data_files")
 
@@ -165,7 +174,7 @@ load_data <- function(con){
 
       "For each species, collect and cache all required data"
 
-      ss <- BiocParallel::bplapply(specs, load_species, .)
+      ss <- lapply(specs, load_species, .)
       names(ss) <- specs
 
       rmonad::combine(ss)

@@ -125,14 +125,8 @@ extractWithComplements <- function(dna, gff){
      respective scaffold (not currently tested).
   "
 
-  if(! all(as.character(GenomicRanges::seqnames(gff)) %in% names(dna)) )
-    stop("All scaffold name in GFF missing in genomic file")
+  getSeq(dna, gff)
 
-  orf <- dna[gff]
-  orf[ GenomicRanges::strand(gff) == '-' ] <-
-    Biostrings::reverseComplement(orf[ GenomicRanges::strand(gff) == '-' ])
-
-  orf
 }
 
 mergeSeqs <- function(dna, gff, tag){

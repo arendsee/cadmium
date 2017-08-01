@@ -96,7 +96,7 @@ derive_orfgff <- function(dna) {
   Given a genome, find the locations of ORFs on both strands.
 
   Note, here I am doing the stupidest thing possible: just finding all
-  '<START>(...)+<STOP>' intervals. I should replace this with a real ORF
+  `<START>(...)+<STOP>` intervals. I should replace this with a real ORF
   finder.
 
   BUG: This misses potentially longer ORFs that start within a previous ORF.
@@ -136,26 +136,69 @@ extractWithComplements <- function(dna, gff){
 }
 
 mergeSeqs <- function(dna, gff, tag){
-  g <- gff[gff$type == tag]
 
-  # sort the elements by start
-  # this is required, since they will be concatenated by order
-  g <- g[order(GenomicRanges::start(g))]
+  "Extract all entries from `gff` that have type `tag` (for example, CDS or
+  exon). Then extract these matching intervals from `dna`. All extracted
+  sequences that share a common parent, are then merged. If they are on the
+  negative strang, the reverse complement is taken."
 
-  revpar <- g[GenomicRanges::strand(g) == '-']$Parent %>% unique
+  g <- {
 
-  parents <- GenomicRanges::mcols(g)$Parent
+    "Extract elements of type `tag` from the `gff`"
+
+    gff[gff$type == tag]
+
+  } %>>% {
+
+    "Sort the elements by start this is required, since they will be
+    concatenated by order"
+
+    .[order(GenomicRanges::start(.))]
+
+  }
+
+  revpar_ <- g %>>% {
+
+    "Get all unique parents on the reverse strand"
+
+    .[GenomicRanges::strand(.) == '-']$Parent %>% unique
+
+  }
+
+  forpar_ <- g %>>% { GenomicRanges::mcols(.)$Parent }
 
   # TODO: assert no elements within a group overlap
 
-  seqs <- dna[g]                %>%
-    base::split(parents)        %>%
-    lapply(paste0, collapse="") %>%
-    unlist                      %>%
-    Biostrings::DNAStringSet()
+  g %>>% {
 
-  seqs[names(seqs) %in% revpar] <-
-    Biostrings::reverseComplement(seqs[names(seqs) %in% revpar])
+    "Extract DNA sequences based on the GFF"
 
-  seqs
+    # this is slow -- 5s
+    dna[.]
+
+  } %>% rmonad::funnel(forpar=forpar_) %*>% {
+
+    "Collapse the sequences together, aggregating on the Parent"
+
+    q <- .
+    base::split(seq_len(length(forpar)), forpar) %>%
+    sapply(function(ids) paste(q[ids], collapse=""))
+
+  } %>>% {
+
+    "Convert list of strings back into a DNAStringSet object"
+
+    Biostrings::DNAStringSet(.)
+
+  } %>% rmonad::funnel(revpar=revpar_) %*>% {
+
+    "Take the reverse complement of all elements on the reverse strand"
+
+    .[names(.) %in% revpar] <-
+      Biostrings::reverseComplement(.[names(.) %in% revpar])
+
+    .
+
+  }
+
 }

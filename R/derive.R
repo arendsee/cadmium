@@ -125,7 +125,7 @@ extractWithComplements <- function(dna, gff){
      respective scaffold (not currently tested).
   "
 
-  getSeq(dna, gff)
+  Rsamtools::getSeq(dna, gff)
 
 }
 

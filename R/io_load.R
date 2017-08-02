@@ -35,7 +35,6 @@ load_queries <- function(filename){
     filename,
     col_names=FALSE,
     col_types="c",
-
     comment="#"
   )[[1]]
 }

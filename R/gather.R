@@ -1,3 +1,17 @@
+# A wrapper for scanFa that sets the seqname to the first word in the header
+# This is probably the behaviour the function should have, since this is done
+# when subsetting a sequence using a GRanges object.
+scanFa_trw <- function(x, ...){
+
+  "Load an XStringSet object from an indexed FASTA file. Use the first word in
+  the header as the sequence name"
+
+  seq <- Rsamtools::scanFa(x, ...)
+  names(seq) <- sub(' .*', '', names(seq)) 
+  seq
+}
+
+
 load_species <- function(species_name, input){
 
   "Generate, summarize and merge all derived data for one species. The only
@@ -11,12 +25,12 @@ load_species <- function(species_name, input){
     }
 
   dna_ <-
-    get_genome_filename(species_name, dir=input@fna_dir) %>>%
+    get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
 
-  nstrings_ <- dna_ %>>% Rsamtools::scanFa %>>% derive_nstring
+  nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
-  orfgff_ <- dna_ %>>% Rsamtools::scanFa %>>% derive_orfgff
+  orfgff_ <- dna_ %>>% scanFa_trw %>>% derive_orfgff
 
   orffaa_ <-
     rmonad::funnel(
@@ -47,7 +61,7 @@ load_species <- function(species_name, input){
       Rsamtools::FaFile(filepath)
     }
 
-  transorfgff_ <- trans_ %>>% Rsamtools::scanFa %>>% derive_orfgff
+  transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff
 
   transorffaa_ <-
     rmonad::funnel(
@@ -58,7 +72,7 @@ load_species <- function(species_name, input){
     Biostrings::translate(if.fuzzy.codon="solve")
 
   specsum_ <- rmonad::funnel(
-    gff.summary         = gff_         %>>% summarize_gff,
+    gff.summary         = txdb_        %>>% summarize_gff,
     dna.summary         = dna_         %>>% summarize_dna,
     aa.summary          = aa_          %>>% summarize_faa,
     trans.summary       = trans_       %>>% summarize_dna,

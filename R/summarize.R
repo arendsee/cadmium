@@ -113,7 +113,7 @@ summarize_gff <- function(x){
   feat_exons <- GenomicFeatures::exons(x)
 
   seqstats <-
-    as.data.frame(feat_trans) %>%
+    GenomicRanges::as.data.frame(feat_trans) %>%
     dplyr::group_by(.data$seqnames) %>%
     dplyr::summarize(
       min   = min(.data$start),
@@ -124,9 +124,9 @@ summarize_gff <- function(x){
   new(
     "gff_summary",
     seqstats    = seqstats,
-    mRNA_length = summarize_numeric(feat_trans %>% IRanges::width),
-    CDS_length  = summarize_numeric(feat_exons %>% IRanges::width),
-    exon_length = summarize_numeric(feat_cds   %>% IRanges::width)
+    mRNA_length = summarize_numeric(feat_trans %>% IRanges::width()),
+    CDS_length  = summarize_numeric(feat_exons %>% IRanges::width()),
+    exon_length = summarize_numeric(feat_cds   %>% IRanges::width())
   )
 }
 

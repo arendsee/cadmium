@@ -12,11 +12,11 @@
 #' @name fagin_cache
 NULL
 
-.get_cached_filename <- function(cache_dir, group, label){
+.get_cached_filename <- function(cache_dir, group, label, ext){
   if(is.null(group)){
-    file.path(cache_dir, paste0(label, ".RData", collapse=""))
+    file.path(cache_dir, paste0(label, ext, collapse="."))
   } else {
-    file.path(cache_dir, group, paste0(label, ".RData", collapse=""))
+    file.path(cache_dir, group, paste0(label, ext, collapse="."))
   }
 }
 
@@ -38,11 +38,17 @@ to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
 
   .setup_cache_folders(group, cache_dir)
 
-  # TODO: handle failure
-  cached_filename <- .get_cached_filename(cache_dir, group, label)
+  if(class(x) == 'TxDb'){
 
-  # TODO: handle failure
-  save(x, file=cached_filename)
+    cached_filename <- .get_cached_filename(cache_dir, group, label, ext="sqlite")
+    AnnotationDbi::saveDb(x, file=cached_filename)
+
+  } else {
+
+    cached_filename <- .get_cached_filename(cache_dir, group, label, ext="RData")
+    save(x, file=cached_filename)
+
+  }
 
   cached_filename
 
@@ -50,17 +56,21 @@ to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
 
 #' @rdname fagin_cache
 #' @export
-from_cache <- function(label, group=NULL, cache_dir=".fagin_cache") {
+from_cache <- function(label, group=NULL, ext="RData", cache_dir=".fagin_cache") {
 
   cachefile <- .get_cached_filename(cache_dir, group, label)
 
-  # Return x or NULL
   if(file.exists(cachefile)){
-    load(cachefile)
-    if(exists("x")){
-      base::get("x")
+    if(ext == 'sqlite'){
+      AnnotationDbi::loadDb(cachefile)
     } else {
-      NULL
+      # Return x or NULL
+      load(cachefile)
+      if(exists("x")){
+        base::get("x")
+      } else {
+        NULL
+      }
     }
   } else {
     NULL

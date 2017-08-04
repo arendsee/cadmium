@@ -107,7 +107,7 @@ load_species <- function(species_name, input){
     aaids <- .@aa.summary@table$seqids
     trids <- .@trans.summary@table$seqids
 
-    if(! setequal(aaids, trids))
+    if(! setequal(aaids, trids)){
 
       not_in_tr <- setdiff(aaids, trids)
       not_in_aa <- setdiff(trids, aaids)
@@ -124,19 +124,20 @@ load_species <- function(species_name, input){
         paste(not_in_aa, collapse=", "),
         paste(not_in_tr, collapse=", ")
       ))
+    }
 
   }
 
   specfile_ <- rmonad::funnel(
-    gff.file         = 'dev/null',
-    dna.file         = 'dev/null',
-    aa.file          = 'dev/null',
-    trans.file       = 'dev/null',
-    orfgff.file      = 'dev/null',
-    orffaa.file      = 'dev/null',
-    transorfgff.file = 'dev/null',
-    transorffaa.file = 'dev/null',
-    nstring.file     = 'dev/null'
+    gff.file         = txdb_        %>>% to_cache( label="gff"         , group=species_name ),
+    dna.file         = dna_         %>>% to_cache( label="dna"         , group=species_name ),
+    aa.file          = aa_          %>>% to_cache( label="aa"          , group=species_name ),
+    trans.file       = trans_       %>>% to_cache( label="trans"       , group=species_name ),
+    orfgff.file      = orfgff_      %>>% to_cache( label="orfgff"      , group=species_name ),
+    orffaa.file      = orffaa_      %>>% to_cache( label="orffaa"      , group=species_name ),
+    transorfgff.file = transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name ),
+    transorffaa.file = transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name ),
+    nstring.file     = nstrings_    %>>% to_cache( label="nstring"     , group=species_name )
   ) %*>%
     new(Class="species_data_files")
 

@@ -43,7 +43,8 @@ load_species <- function(species_name, input){
   aa_ <-
     rmonad::funnel(
       x = dna_,
-      transcripts = txdb_ %>>% GenomicFeatures::cdsBy
+      transcripts =
+        txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     Biostrings::translate(if.fuzzy.codon="solve")
@@ -51,7 +52,7 @@ load_species <- function(species_name, input){
   trans_ <-
     rmonad::funnel(
       x = dna_,
-      transcripts = txdb_ %>>% GenomicFeatures::exonsBy
+      transcripts = txdb_ %>>% GenomicFeatures::exonsBy(by="tx", use.names=TRUE)
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
@@ -82,7 +83,49 @@ load_species <- function(species_name, input){
     transorffaa.summary = transorffaa_ %>>% summarize_faa,
     nstring.summary     = nstrings_    %>>% summarize_nstring
   ) %*>%
-    new(Class="species_summaries")
+    new(Class="species_summaries") %>_%
+  {
+
+    "Warn if any proteins have internal stop codons"
+
+    stops <- .@aa.summary@has_internal_stop
+    tab <- .@aa.summary@table
+
+    if(any(stops)){
+      n <- sum(stops)
+      total <- length(stops)
+      offenders <- tab[stops, ]$seqids %>% as.character %>%
+        paste0(collapse=", ")
+      msg <- "%s of %s proteins have internal stops, offending genes: %s"
+      warning(sprintf(msg, n, total, offenders))
+    }
+
+  } %>_% {
+
+    "Warn if names used in the protein file do not match those of the transcripts"
+
+    aaids <- .@aa.summary@table$seqids
+    trids <- .@trans.summary@table$seqids
+
+    if(! setequal(aaids, trids))
+
+      not_in_tr <- setdiff(aaids, trids)
+      not_in_aa <- setdiff(trids, aaids)
+
+      msg <- paste(
+        "Protein and transcript names do not match:",
+        "transcript ids missing in proteins: %s",
+        "protein ids missing in transcript: %s",
+        sep="\n"
+      )
+
+      warning(sprintf(
+        msg,
+        paste(not_in_aa, collapse=", "),
+        paste(not_in_tr, collapse=", ")
+      ))
+
+  }
 
   specfile_ <- rmonad::funnel(
     gff.file         = 'dev/null',

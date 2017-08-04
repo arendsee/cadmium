@@ -41,13 +41,18 @@ summarize_faa <- function(x){
     "faa_summary",
     initial_residue = Biostrings::subseq(x, start=1,  width=1) %>%
                       as.character %>% as.factor %>% summary(maxsum=Inf),
-    final_residue   = Biostrings::subseq(x, start=-1, width=1) %>%
-                      as.character %>% as.factor %>% summary(maxsum=Inf),
+    final_residue = Biostrings::subseq(x, start=-1, width=1) %>%
+                    as.character %>% as.factor %>% summary(maxsum=Inf),
+    has_internal_stop = Biostrings::subseq(x, start=1, end=-2) %>%
+                        Biostrings::vcountPattern(pattern='*') %>%
+                        magrittr::is_greater_than(0),
     # inherited from seq_summary
-    table           = table,
-    comp            = Biostrings::alphabetFrequency(x)
+    table = table,
+    comp = Biostrings::alphabetFrequency(x)
   )
 }
+
+
 
 #' @rdname fagin_summary
 #' @export

@@ -238,6 +238,7 @@ faa_summary <- setClass(
   "faa_summary",
   representation(
     initial_residue = "integer",
+    has_internal_stop = "logical",
     final_residue   = "integer"
   ),
   contains = "seq_summary"

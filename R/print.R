@@ -150,6 +150,8 @@ print.faa_summary <- function(x, ...){
     print(x@initial_residue)
   cat('Slot "final_residue"\n')
     print(x@final_residue)
+  cat('Slot "has_internal_stop" (number of TRUE values)\n')
+    print(x@has_internal_stop %>% sum)
   cat('Slot "table"\n')
     prettyTable(x@table)
   cat('Slot "comp"  (%):\n')

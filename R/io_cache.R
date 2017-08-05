@@ -14,9 +14,9 @@ NULL
 
 .get_cached_filename <- function(cache_dir, group, label, ext){
   if(is.null(group)){
-    file.path(cache_dir, paste0(label, ext, collapse="."))
+    file.path(cache_dir, paste(label, ext, sep="."))
   } else {
-    file.path(cache_dir, group, paste0(label, ext, collapse="."))
+    file.path(cache_dir, group, paste(label, ext, sep="."))
   }
 }
 
@@ -56,16 +56,14 @@ to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
 
 #' @rdname fagin_cache
 #' @export
-from_cache <- function(label, group=NULL, ext="RData", cache_dir=".fagin_cache") {
+from_cache <- function(file, type='Rdata') {
 
-  cachefile <- .get_cached_filename(cache_dir, group, label)
-
-  if(file.exists(cachefile)){
-    if(ext == 'sqlite'){
-      AnnotationDbi::loadDb(cachefile)
+  if(file.exists(file)){
+    if(type == 'sqlite'){
+      AnnotationDbi::loadDb(file)
     } else {
       # Return x or NULL
-      load(cachefile)
+      load(file)
       if(exists("x")){
         base::get("x")
       } else {

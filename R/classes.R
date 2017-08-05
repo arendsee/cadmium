@@ -97,7 +97,7 @@ config_input <- setClass(
     fna_dir         = "INPUT/fna",
     syn_dir         = "INPUT/syn",
     tree            = "INPUT/tree",
-    focal_species   = "Saccharomyces cerevisiae",
+    focal_species   = "Saccharomyces_cerevisiae",
     query_gene_list = "INPUT/orphan-list.txt"
   )
 )
@@ -111,12 +111,16 @@ config_input <- setClass(
 config_synder <- setClass(
   "config_synder",
   representation(
-    offsets = "character",
-    k       = "integer"
+    offsets = "integer",
+    k       = "integer",
+    r       = "numeric",
+    trans   = "character"
   ),
   prototype(
-    offsets = "0111",
-    k       = 10L
+    offsets = c(1L,1L,1L,1L,1L,1L),
+    k       = 0L,
+    r       = 0,
+    trans   = "i"
   )
 )
 
@@ -145,7 +149,9 @@ fagin_config <- setClass(
 #'
 #' @export
 config <- function(){
-  fagin_config()
+  con <- fagin_config()
+  con@input@focal_species <- gsub(" ", "_", con@input@focal_species)
+  con
 }
 
 

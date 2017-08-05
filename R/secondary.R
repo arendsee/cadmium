@@ -1,10 +1,11 @@
 compare_target_to_focal <- function(
   species,
+  qgff,
   f_primary,
   t_primary,
   synmap,
   queries,
-  config
+  con
 ){
 
   "
@@ -13,68 +14,118 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
-  # # - run synder
-  # synder_ <-
+  synmap_ <- as_monad( from_cache(synmap@synmap.file) )
+
+  si_ <- synmap_ %>>% {
+    rmonad::funnel(
+      syn =
+        rmonad::funnel(
+          first=GenomicRanges::GRanges(
+            seqnames = .$qseqid,
+            ranges   = IRanges(.$qstart, .$qstop),
+            strand   = '+',
+            seqinfo  = f_primary@seqinfo
+          ),
+          second=GenomicRanges::GRanges(
+            seqnames = .$tseqid,
+            ranges   = IRanges(.$tstart, .$tstop),
+            strand   = .$strand,
+            seqinfo  = t_primary@seqinfo
+          )
+        ) %*>% CNEr::GRangePairs,
+      gff = qgff
+    )
+  } %*>%
+  synder::search(
+    trans   = con@synder@trans,
+    k       = con@synder@k,
+    r       = con@synder@r,
+    offsets = con@synder@offsets
+  )
+
+
+  # synder_flags_summary_ <- si_ %>>% summarize_synder_flags,
   #
-  #   rmonad::funnel(
-  #     syn= synmap
-  #     gff=
-  #     tcl=
-  #     qcl=
-  #     trans=
-  #     k=
-  #     r=
-  #     offsets=
-  #   ) %*>%
-  #   synder::search
+  # scrambled_ <- si_ %>>% find_scrambled,
+  #
+  # unassembled_ <- si_ %>>% find_unassembled,
+  #
+  # indels_ <- funnel(si_, t_primary) %*>% find_indels,
+  #
+  # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped,
+  #
+  # # - find target CDS and mRNA that are in SI for each query
+  #
+  # # - align query protein against target genes in the SI
+  #
+  # # - align query protein against ORFs in transcripts in the SI
+  #
+  # # - align query protein against ORFs in genomic intervals in SI
+  #
+  # # - align query DNA sequence against the SI
 
-  # - summarize synder flags
-
-  # - identify scrambled intervals
-
-  # - identify unassembled intervals
-
-  # - find indels
-
-  # - map intervals to N-string gaps
-
-  # - find target CDS and mRNA that are in SI for each query
-
-  # - align query protein against target genes in the SI
-
-  # - align query protein against ORFs in transcripts in the SI
-
-  # - align query protein against ORFs in genomic intervals in SI
-
-  # - align query DNA sequence against the SI
-
-  as_monad(species)
+  si_
 
 }
 
-secondary_data <- function(primary_input, config){
+secondary_data <- function(primary_input, con){
 
   "
   Loop over all target species, produce the secondary data needed to classify
   orphans. This step will take a long time (many CPU hours).
   "
 
-  primary_input@species %>>% {
+  qgff_ <- {
+    primary_input@species[[con@input@focal_species]] %>%
+      {from_cache(.@files@gff.file, type='sqlite')}
+  } %>_% {
 
-    focal_species <- config@input@focal_species
+    "Assert query ids match the names in the GFF file"
 
-    ss <- setdiff(., focal_species) %>% lapply(
-      function(spec){
-        compare_target_to_focal(
-          species   = spec,
-          f_primary = primary_input@species[[focal_species]],
-          t_primary = primary_input@species[[spec]],
-          synmap    = primary_input@synmaps[[spec]],
-          queries   = primary_input@queries,
-          config    = config
-        )
-      }
-    )
+    queries <- primary_input@queries
+    txnames <- GenomicRanges::mcols(GenomicFeatures::transcripts(.))$tx_name
+    matches <- queries %in% txnames
+
+    if(!all(matches)){
+      msg <- "%s of %s query ids are missing in the GFF. Here is the head: [%s]"
+      stop(sprintf(
+        msg,
+        sum(!matches),
+        length(queries),
+        paste(head(queries[!matches]), collapse=", ")
+      ))
+    }
+
+  } %>>% {
+
+    queries <- primary_input@queries
+    GenomicFeatures::transcripts(., filter=list(tx_name=queries))
+
+  } %>>%
+  synder::as_gff(id_tag="tx_name")
+
+  rmonad::funnel(
+    prim = primary_input,
+    qgff = qgff_
+  ) %*>% {
+
+    focal_species <- con@input@focal_species
+    species <- prim@species
+
+    ss <- setdiff(species, focal_species) %>%
+      lapply(
+        function(spec){
+          compare_target_to_focal(
+            species   = spec,
+            qgff      = qgff,
+            f_primary = prim@species[[focal_species]],
+            t_primary = prim@species[[spec]],
+            synmap    = prim@synmaps[[spec]],
+            queries   = prim@queries,
+            con       = con
+          )
+        }
+      )
 
     names(ss) <- .
     rmonad::combine(ss)

@@ -8,7 +8,7 @@
 \usage{
 to_cache(x, label, group = NULL, cache_dir = ".fagin_cache")
 
-from_cache(label, group = NULL, ext = "RData", cache_dir = ".fagin_cache")
+from_cache(file, type = "Rdata")
 }
 \arguments{
 \item{x}{Data to be cached}

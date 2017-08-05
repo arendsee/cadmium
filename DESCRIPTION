@@ -15,6 +15,7 @@ Imports:
     rmonad (>= 0.2.0.9015),
     methods,
     magrittr,
+    CNEr,
     Biostrings,
     GenomicRanges,
     GenomeInfoDb,

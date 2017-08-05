@@ -229,16 +229,17 @@ primary_data <- function(...) {
     input files, determines which species are used in the analysis."
 
     .$tip.label
-  }
 
-  focal_species_ = con_ %>>% { .@input@focal_species } %>>% {
+  } %>>% {
 
-    "The input focal species may have gaps, but for the internal one, we remove
-    gaps."
+    "Remove spaces in the species names."
 
     gsub(" ", "_", .)
-                            
-  } %>% rmonad::funnel(specs=species_names_) %*>% {
+
+  }
+
+  focal_species_ = con_ %>>% { .@input@focal_species } %>%
+  rmonad::funnel(specs=species_names_) %*>% {
     
     "Assert that the focal species is in the phylogenetic tree"
 

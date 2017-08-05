@@ -28,6 +28,14 @@ load_species <- function(species_name, input){
     get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
 
+  seqinfo_ <- dna_ %>>% scanFa_trw %>>% {funnel(
+    seqnames   = names(.),
+    seqlengths = IRanges::width(.),
+    isCircular = NA,
+    genome     = species_name
+  )} %*>% GenomeInfoDb::Seqinfo
+
+
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
   orfgff_ <- dna_ %>>% scanFa_trw %>>% derive_orfgff
@@ -143,7 +151,8 @@ load_species <- function(species_name, input){
 
   rmonad::funnel(
     files     = specfile_,
-    summaries = specsum_
+    summaries = specsum_,
+    seqinfo   = seqinfo_
   ) %*>%
     new(Class="species_meta")
 
@@ -178,7 +187,23 @@ load_synmaps <- function(target_species, focal_species, syndir){
 #' @param con The config object that provides paths to required data
 #' @return derived_input object
 #' @export
-load_data <- function(con){
+primary_data <- function(...) {
+
+  # TODO: this is a temporary caching function, repeal and replace.
+
+  if(file.exists('d.Rda')){
+    load('d.Rda')
+  } else {
+    d <- .primary_data(...)
+  }
+
+  save(d, file='d.Rda')
+
+  d
+
+}
+
+.primary_data <- function(con){
 
   "
   Derive secondary data from the minimal required inputs

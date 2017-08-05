@@ -333,7 +333,8 @@ species_meta <- setClass(
   "species_meta",
   representation(
     files     = "species_data_files",
-    summaries = "species_summaries"
+    summaries = "species_summaries",
+    seqinfo   = "Seqinfo"
   )
 )
 

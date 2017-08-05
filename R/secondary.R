@@ -30,7 +30,8 @@ compare_target_to_focal <- function(
             seqnames = .$tseqid,
             ranges   = IRanges(.$tstart, .$tstop),
             strand   = .$strand,
-            seqinfo  = t_primary@seqinfo
+            seqinfo  = t_primary@seqinfo,
+            score    = .$score
           )
         ) %*>% CNEr::GRangePairs,
       gff = qgff
@@ -110,9 +111,10 @@ secondary_data <- function(primary_input, con){
   ) %*>% {
 
     focal_species <- con@input@focal_species
-    species <- prim@species
+    species <- names(prim@species)
+    target_species <- setdiff(species, focal_species)
 
-    ss <- setdiff(species, focal_species) %>%
+    ss <- target_species %>%
       lapply(
         function(spec){
           compare_target_to_focal(
@@ -127,7 +129,7 @@ secondary_data <- function(primary_input, con){
         }
       )
 
-    names(ss) <- .
+    names(ss) <- target_species
     rmonad::combine(ss)
 
   }

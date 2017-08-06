@@ -1,6 +1,6 @@
 compare_target_to_focal <- function(
   species,
-  qgff,
+  gff,
   f_primary,
   t_primary,
   synmap,
@@ -34,7 +34,7 @@ compare_target_to_focal <- function(
             score    = .$score
           )
         ) %*>% CNEr::GRangePairs,
-      gff = qgff
+      gff = gff
     )
   } %*>%
   synder::search(
@@ -44,26 +44,23 @@ compare_target_to_focal <- function(
     offsets = con@synder@offsets
   )
 
-
   # synder_flags_summary_ <- si_ %>>% summarize_synder_flags,
-  #
-  # scrambled_ <- si_ %>>% find_scrambled,
   #
   # unassembled_ <- si_ %>>% find_unassembled,
   #
   # indels_ <- funnel(si_, t_primary) %*>% find_indels,
   #
   # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped,
-  #
-  # # - find target CDS and mRNA that are in SI for each query
-  #
-  # # - align query protein against target genes in the SI
-  #
-  # # - align query protein against ORFs in transcripts in the SI
-  #
-  # # - align query protein against ORFs in genomic intervals in SI
-  #
-  # # - align query DNA sequence against the SI
+
+  # - find target CDS and mRNA that are in SI for each query
+
+  # - align query protein against target genes in the SI
+
+  # - align query protein against ORFs in transcripts in the SI
+
+  # - align query protein against ORFs in genomic intervals in SI
+
+  # - align query DNA sequence against the SI
 
   si_
 
@@ -76,7 +73,7 @@ secondary_data <- function(primary_input, con){
   orphans. This step will take a long time (many CPU hours).
   "
 
-  qgff_ <- {
+  gff_ <- {
     primary_input@species[[con@input@focal_species]] %>%
       {from_cache(.@files@gff.file, type='sqlite')}
   } %>_% {
@@ -97,17 +94,13 @@ secondary_data <- function(primary_input, con){
       ))
     }
 
-  } %>>% {
-
-    queries <- primary_input@queries
-    GenomicFeatures::transcripts(., filter=list(tx_name=queries))
-
   } %>>%
-  synder::as_gff(id_tag="tx_name")
+    GenomicFeatures::transcripts %>>%
+    synder::as_gff(id_tag="tx_name")
 
   rmonad::funnel(
     prim = primary_input,
-    qgff = qgff_
+    gff = gff_
   ) %*>% {
 
     focal_species <- con@input@focal_species
@@ -119,7 +112,7 @@ secondary_data <- function(primary_input, con){
         function(spec){
           compare_target_to_focal(
             species   = spec,
-            qgff      = qgff,
+            gff       = gff,
             f_primary = prim@species[[focal_species]],
             t_primary = prim@species[[spec]],
             synmap    = prim@synmaps[[spec]],

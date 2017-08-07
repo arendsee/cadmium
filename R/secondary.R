@@ -44,10 +44,16 @@ compare_target_to_focal <- function(
     offsets = con@synder@offsets
   )
 
-  # synder_flags_summary_ <- si_ %>>% summarize_synder_flags,
-  #
-  # unassembled_ <- si_ %>>% find_unassembled,
-  #
+  synder_flags_summary_ <-
+    rmonad::funnel(
+      si      = si_,
+      queries = queries
+    ) %*>% summarize_syntenic_flags
+
+  unassembled_ <- si_ %>>% find_unassembled
+
+  scrambled_ <- si_ %>>% find_scrambled
+
   # indels_ <- funnel(si_, t_primary) %*>% find_indels,
   #
   # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped,
@@ -62,7 +68,7 @@ compare_target_to_focal <- function(
 
   # - align query DNA sequence against the SI
 
-  si_
+  rmonad::funnel(si=si_, unassembled=unassembled_, scrambled=scrambled_)
 
 }
 

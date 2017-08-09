@@ -17,10 +17,7 @@ compare_target_to_focal <- function(
   synmap_ <- as_monad( from_cache(synmap@synmap.file) )
 
   si_ <- rmonad::funnel(
-    syn = synmap_ %>>% read_synmap(
-      seqinfo_a = f_primary@seqinfo,
-      seqinfo_b = t_primary@seqinfo
-    ),
+    syn = synmap_,
     gff = gff
   ) %*>%
   synder::search(
@@ -29,8 +26,6 @@ compare_target_to_focal <- function(
     r       = con@synder@r,
     offsets = con@synder@offsets
   )
-
-  si_
 
   synder_flags_summary_ <-
     rmonad::funnel(
@@ -57,6 +52,14 @@ compare_target_to_focal <- function(
   # # - align query DNA sequence against the SI
   #
   # rmonad::funnel(si=si_, unassembled=unassembled_, scrambled=scrambled_)
+
+  rmonad::funnel(
+    si           = si_,
+    flag_summary = synder_flags_summary_,
+    unassembled  = unassembled_,
+    scrambled    = scrambled_,
+    indels       = indels_
+  )
 
 }
 
@@ -90,7 +93,14 @@ secondary_data <- function(primary_input, con){
 
   } %>>%
     GenomicFeatures::transcripts %>>%
-    synder::as_gff(id_tag="tx_name")
+    {
+      synder::as_gff(
+        .,
+        seqinfo=primary_input@species[[con@input@focal_species]]@seqinfo,
+        id=GenomicRanges::mcols(.)$tx_name,
+        type="mRNA"
+      )
+    }
 
   rmonad::funnel(
     prim = primary_input,

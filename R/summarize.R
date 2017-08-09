@@ -155,16 +155,20 @@ summarize_nstring <- function(x){
 #' @rdname fagin_summary
 #' @export
 summarize_syn <- function(x){
-  if(length(x) == 0 || nrow(x) == 0){
+
+  stopifnot(class(x) == "Synmap")
+
+  if(length(x) == 0)
     return(synmap_summary())
-  }
-  qwidth <- x$qstop - x$qstart + 1
-  twidth <- x$tstop - x$tstart + 1
+
+  qwidth <- GenomicRanges::width(CNEr::first(x))
+  twidth <- GenomicRanges::width(CNEr::second(x))
+  score  <- GenomicRanges::mcols(x)$score
   new(
     "synmap_summary",
-    nrow = nrow(x),
+    nrow                    = length(x),
     width                   = summarize_numeric(qwidth),
-    score                   = summarize_numeric(x$score),
+    score                   = summarize_numeric(score),
     query_target_log2_ratio = summarize_numeric(log2 (qwidth / twidth) )
   )
 }

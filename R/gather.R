@@ -159,11 +159,22 @@ load_species <- function(species_name, input){
 }
 
 
-load_synmaps <- function(target_species, focal_species, syndir){
+load_synmap_meta <- function(tspec, fspec, syndir){
 
   "Load the synteny map for the given focal and target species. Then cache the
   synteny map and return the cached filename and a summary of the map as a
   `synteny_meta` object."
+
+  target_species <- GenomeInfoDb::genome(tspec@seqinfo) %>% unique
+  focal_species <- GenomeInfoDb::genome(fspec@seqinfo) %>% unique
+
+  if(length(target_species) != 1  ||  length(focal_species) != 1){
+    stop("More than one species found in Seqinfo file, this should not happen.")
+  }
+
+  if(any(is.na(target_species)) || any(is.na(focal_species))){
+    stop("Species must be set in each Seqinfo object (must not be NA)")
+  }
 
   rmonad::funnel(
     focal_name  = focal_species,
@@ -171,7 +182,10 @@ load_synmaps <- function(target_species, focal_species, syndir){
     dir         = syndir
   ) %*>%
     get_synmap_filename %v>%
-    load_synmap %>%
+    synder::read_synmap(
+      seqinfo_a = fspec@seqinfo,
+      seqinfo_b = tspec@seqinfo
+    ) %>%
     {
       rmonad::funnel(
         synmap.file = . %>>% to_cache(label="synmap", group=target_species),
@@ -252,7 +266,7 @@ primary_data <- function(...) {
 
   }
 
-  species_meta_list_ <- con_ %>>% { con@input } %>%
+  species_meta_list_ <- con_ %>>% { .@input } %>%
     rmonad::funnel(specs=species_names_) %*>%
     {
 
@@ -265,24 +279,22 @@ primary_data <- function(...) {
 
     }
 
-  synmap_meta_list_ <- con_ %>>%
-    { .@input@syn_dir } %>%
-    rmonad::funnel(specs=species_names_, focal=focal_species_) %*>%
+  synmap_meta_list_ <-
+    rmonad::funnel(
+      syndir = con@input@syn_dir,
+      fspec  = species_meta_list_ %>>% { .[[con@input@focal_species]] },
+      tspecs = species_meta_list_ %>>% {.[names(.) != con@input@focal_species]}
+    ) %*>%
     {
 
       "Load synteny map for focal species against each target species"
 
       ss <- lapply(
-        setdiff(specs, focal),
-        function(x) {
-          load_synmaps(
-            target_species = x,
-            focal_species = focal,
-            syndir = .
-          )
-        }
+        tspecs,
+        load_synmap_meta,
+        fspec  = fspec,
+        syndir = syndir
       )
-      names(ss) <- setdiff(specs, focal)
 
       rmonad::combine(ss)
     }

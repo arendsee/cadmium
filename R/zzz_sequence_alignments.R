@@ -2,8 +2,8 @@
 # Statistics
 # ============================================================================
 
-require(robustreg)
-require(fitdistrplus)
+# require(robustreg)
+# require(fitdistrplus)
 
 dgumbel <- function(x, mu, s){
   z <- (mu - x) / s

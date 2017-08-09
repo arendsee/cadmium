@@ -11,7 +11,7 @@ Description:
     syntenic filter.
 Depends: R (>= 3.4.0)
 Imports:
-    synder (>= 0.21.0),
+    synder (>= 0.23.0),
     rmonad (>= 0.2.0.9015),
     methods,
     magrittr,

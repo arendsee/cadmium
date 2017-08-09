@@ -16,33 +16,21 @@ compare_target_to_focal <- function(
 
   synmap_ <- as_monad( from_cache(synmap@synmap.file) )
 
-  si_ <- synmap_ %>>% {
-    rmonad::funnel(
-      syn =
-        rmonad::funnel(
-          first=GenomicRanges::GRanges(
-            seqnames = .$qseqid,
-            ranges   = IRanges(.$qstart, .$qstop),
-            strand   = '+',
-            seqinfo  = f_primary@seqinfo
-          ),
-          second=GenomicRanges::GRanges(
-            seqnames = .$tseqid,
-            ranges   = IRanges(.$tstart, .$tstop),
-            strand   = .$strand,
-            seqinfo  = t_primary@seqinfo,
-            score    = .$score
-          )
-        ) %*>% CNEr::GRangePairs,
-      gff = gff
-    )
-  } %*>%
+  si_ <- rmonad::funnel(
+    syn = synmap_ %>>% read_synmap(
+      seqinfo_a = f_primary@seqinfo,
+      seqinfo_b = t_primary@seqinfo
+    ),
+    gff = gff
+  ) %*>%
   synder::search(
     trans   = con@synder@trans,
     k       = con@synder@k,
     r       = con@synder@r,
     offsets = con@synder@offsets
   )
+
+  si_
 
   synder_flags_summary_ <-
     rmonad::funnel(
@@ -54,21 +42,21 @@ compare_target_to_focal <- function(
 
   scrambled_ <- si_ %>>% find_scrambled
 
-  # indels_ <- funnel(si_, t_primary) %*>% find_indels,
+  indels_ <- funnel(si_, con@alignment@indel_threshold) %*>% find_indels
+
+  # # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped
   #
-  # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped,
-
-  # - find target CDS and mRNA that are in SI for each query
-
-  # - align query protein against target genes in the SI
-
-  # - align query protein against ORFs in transcripts in the SI
-
-  # - align query protein against ORFs in genomic intervals in SI
-
-  # - align query DNA sequence against the SI
-
-  rmonad::funnel(si=si_, unassembled=unassembled_, scrambled=scrambled_)
+  # # - find target CDS and mRNA that are in SI for each query
+  #
+  # # - align query protein against target genes in the SI
+  #
+  # # - align query protein against ORFs in transcripts in the SI
+  #
+  # # - align query protein against ORFs in genomic intervals in SI
+  #
+  # # - align query DNA sequence against the SI
+  #
+  # rmonad::funnel(si=si_, unassembled=unassembled_, scrambled=scrambled_)
 
 }
 

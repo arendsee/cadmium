@@ -1,6 +1,8 @@
 summarize_syntenic_flags <- function(si, queries){
 
-  if(!all(queries %in% si$attr)){
+  met <- GenomicRanges::mcols(si)
+
+  if(!all(queries %in% met$attr)){
     stop(
       "expected the 'attr' column of the synder search interval table to ",
       "include all ids in the query list. It doesn't. This probably means ",
@@ -9,11 +11,11 @@ summarize_syntenic_flags <- function(si, queries){
   }
 
   data.frame(
-    seqid     = si$attr,
-    lo_flag   = si$l_flag,
-    hi_flag   = si$r_flag,
-    inbetween = si$inbetween,
-    is_orphan = si$attr %in% queries
+    seqid     = met$attr,
+    lo_flag   = met$l_flag,
+    hi_flag   = met$r_flag,
+    inbetween = met$inbetween,
+    is_orphan = met$attr %in% queries
   ) %>%
     dplyr::group_by(seqid) %>%
     dplyr::summarize(
@@ -47,7 +49,9 @@ find_scrambled <- function(si){
   "Get the ids of all queries that map to scrambled regions of the target
   genome."
 
-  si[ si$l_flag > 1 & si$r_flag > 1 & si$inbetween, ]$attr %>% unique
+  met <- GenomicRanges::mcols(si)
+
+  met[ met$l_flag > 1 & met$r_flag > 1 & met$inbetween, ]$attr %>% unique
 
 }
 
@@ -55,6 +59,8 @@ find_unassembled <- function(si){
 
   "Find all genes that map to regions at the extrema of scaffolds"
 
-  si[ si$l_flag == 3 | si$r_flag == 3, ]$attr %>% unique
+  met <- GenomicRanges::mcols(si)
+
+  met[ met$l_flag == 3 | met$r_flag == 3, ]$attr %>% unique
 
 }

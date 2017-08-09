@@ -42,7 +42,9 @@ load_queries <- function(filename){
 #' @rdname fagin_io
 #' @export
 load_synmap <- function(filename) {
-  synder::read_synmap(filename)
+  # FIXME: cut the indirection, go straight to Synmap object, rewrite
+  # summarize_synmap accordingly
+  synder::read_synmap(filename) %>% as.data.frame
 }
 
 #' @rdname fagin_io

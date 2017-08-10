@@ -1,15 +1,17 @@
-overlapMap <- function(si, tgff){
+overlapMap <- function(si, gff){
 
-  "Find all features in the tgff GenomicRanges object that overlap a search interval."
+  "Find all features in the gff GenomicRanges object that overlap a search interval."
 
   # A Hits object
   # from(o) accesses the si indices
   # to(o) acceses the ft indices
-  GenomicRanges::findOverlaps(CNEr::second(si), tgff) %>% {
+  GenomicRanges::findOverlaps(CNEr::second(si), gff) %>% {
     data.frame(
       query            = GenomicRanges::mcols(si[from(.)])$attr,
-      target           = GenomicRanges::mcols(tgff[to(.)])$attr,
-      type             = GenomicRanges::mcols(tgff[to(.)])$type,
+      target           = GenomicRanges::mcols(gff[to(.)])$attr,
+      type             = GenomicRanges::mcols(gff[to(.)])$type,
+      qid              = from(.),
+      tid              = to(.),
       stringsAsFactors = FALSE
     )
   }

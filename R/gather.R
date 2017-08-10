@@ -196,7 +196,7 @@ load_synmap_meta <- function(tspec, fspec, syndir){
 }
 
 
-#' Derive secondary data from the minimal required inputs
+#' Load primary data from the minimal required inputs
 #'
 #' @param con The config object that provides paths to required data
 #' @return derived_input object

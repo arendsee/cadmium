@@ -1,8 +1,6 @@
 get_transcripts_from_txdb <- function(spec){
 
-  {
-      {from_cache(spec@files@gff.file, type='sqlite')}
-  } %>>%
+  from_cache(spec@files@gff.file, type='sqlite') %>>%
   GenomicFeatures::transcripts %>>%
   {
     synder::as_gff(
@@ -36,20 +34,66 @@ compare_target_to_focal <- function(
 
   synmap_ <- as_monad( from_cache(synmap@synmap.file) )
 
-  si_ <- rmonad::funnel(
+  fsi_ <- rmonad::funnel(
     syn = synmap_,
     gff = fgff
   ) %*>%
   synder::search(
+    swap    = FALSE,
     trans   = con@synder@trans,
     k       = con@synder@k,
     r       = con@synder@r,
     offsets = con@synder@offsets
   )
 
+
+  # FIXME: This is generating out of bounds warnings
+  esi_ <- rmonad::funnel(
+    syn = synmap_,
+    gff = fsi_ %>>% {
+
+      "Echo the search intervals back at the query."
+
+      synder::as_gff(
+        CNEr::second(.),
+        id=as.character(seq_along(.))
+      )
+    }
+  ) %*>%
+  synder::search(
+    swap    = TRUE,
+    trans   = con@synder@trans,
+    k       = con@synder@k,
+    r       = con@synder@r,
+    offsets = con@synder@offsets
+  )
+
+  rsi_ <- rmonad::funnel(
+    syn = synmap_,
+    gff = tgff_
+  ) %*>% {
+
+  "
+  Trace target genes to focal genome using the reversed synteny map. This may
+  produce 'SKIPPING ENTRY' warnings. These warnings mean that the GFF
+  contains scaffolds that are missing in the synteny map. This is likely to
+  occur in genomes that are not fully assembled (thousands of scaffolds).
+  "
+
+    synder::search(
+      syn,
+      gff,
+      swap    = TRUE,
+      trans   = con@synder@trans,
+      k       = con@synder@k,
+      r       = con@synder@r,
+      offsets = con@synder@offsets
+    )
+  }
+
   synder_flags_summary_ <-
     rmonad::funnel(
-      si      = si_,
+      si      = fsi_,
       queries = queries
     ) %*>% summarize_syntenic_flags
 
@@ -57,22 +101,24 @@ compare_target_to_focal <- function(
 
   scrambled_ <- si_ %>>% find_scrambled
 
-  indels_ <- funnel(si_, con@alignment@indel_threshold) %*>% find_indels
+  indels_ <- rmonad::funnel(si_, con@alignment@indel_threshold) %*>% find_indels
 
-  overlapping_transcripts_ <- funnel(si=si_, tgff=tgff_) %*>%
-    overlapMap %>_% {
+  
+  f_si_map <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
 
-      "Assert all the types are mRNAs"
+  r_si_map <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
-      stopifnot(all(.$type == 'mRNA'))
+  # f_count_qid_ <- f_si_map %>>% {
+  #   "The number of target genes in each search interval"
+  #   dplyr::group_by(., .data$qid) %>% dplyr::count()
+  # }
+  #
+  # f_count_tid_ <- f_si_map %>>% {
+  #   "The number of search intervals that overlap given target gene"
+  #   dplyr::group_by(., .data$tid) %>% dplyr::count()
+  # }
 
-    } %>>% {
-
-      "Remove type column (since these will all be mRNA anyways)"
-
-      .$type <- NULL
-      .
-    }
+  # rmonad::funnel(fmap=f_si_map, rmap=r_si_map)
 
   # # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped
   #

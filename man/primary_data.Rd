@@ -2,7 +2,7 @@
 % Please edit documentation in R/gather.R
 \name{primary_data}
 \alias{primary_data}
-\title{Derive secondary data from the minimal required inputs}
+\title{Load primary data from the minimal required inputs}
 \usage{
 primary_data(...)
 }
@@ -13,5 +13,5 @@ primary_data(...)
 derived_input object
 }
 \description{
-Derive secondary data from the minimal required inputs
+Load primary data from the minimal required inputs
 }

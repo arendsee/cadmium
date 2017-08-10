@@ -1,6 +1,24 @@
+get_transcripts_from_txdb <- function(spec){
+
+  {
+      {from_cache(spec@files@gff.file, type='sqlite')}
+  } %>>%
+  GenomicFeatures::transcripts %>>%
+  {
+    synder::as_gff(
+      .,
+      seqinfo=spec@seqinfo,
+      id=GenomicRanges::mcols(.)$tx_name,
+      type="mRNA"
+    )
+  }
+}
+
+
+
 compare_target_to_focal <- function(
   species,
-  gff,
+  fgff,
   f_primary,
   t_primary,
   synmap,
@@ -14,11 +32,13 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
+  tgff_ <- get_transcripts_from_txdb(t_primary)
+
   synmap_ <- as_monad( from_cache(synmap@synmap.file) )
 
   si_ <- rmonad::funnel(
     syn = synmap_,
-    gff = gff
+    gff = fgff
   ) %*>%
   synder::search(
     trans   = con@synder@trans,
@@ -39,6 +59,21 @@ compare_target_to_focal <- function(
 
   indels_ <- funnel(si_, con@alignment@indel_threshold) %*>% find_indels
 
+  overlapping_transcripts_ <- funnel(si=si_, tgff=tgff_) %*>%
+    overlapMap %>_% {
+
+      "Assert all the types are mRNAs"
+
+      stopifnot(all(.$type == 'mRNA'))
+
+    } %>>% {
+
+      "Remove type column (since these will all be mRNA anyways)"
+
+      .$type <- NULL
+      .
+    }
+
   # # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped
   #
   # # - find target CDS and mRNA that are in SI for each query
@@ -58,7 +93,8 @@ compare_target_to_focal <- function(
     flag_summary = synder_flags_summary_,
     unassembled  = unassembled_,
     scrambled    = scrambled_,
-    indels       = indels_
+    indels       = indels_,
+    overlapping_transcripts = overlapping_transcripts_
   )
 
 }
@@ -70,15 +106,15 @@ secondary_data <- function(primary_input, con){
   orphans. This step will take a long time (many CPU hours).
   "
 
-  gff_ <- {
-    primary_input@species[[con@input@focal_species]] %>%
-      {from_cache(.@files@gff.file, type='sqlite')}
-  } %>_% {
+  focal_species <- con@input@focal_species
+  f_primary <- primary_input@species[[focal_species]]
+
+  focal_gff_ <- get_transcripts_from_txdb(f_primary) %>_% {
 
     "Assert query ids match the names in the GFF file"
 
     queries <- primary_input@queries
-    txnames <- GenomicRanges::mcols(GenomicFeatures::transcripts(.))$tx_name
+    txnames <- GenomicRanges::mcols(.)$attr
     matches <- queries %in% txnames
 
     if(!all(matches)){
@@ -90,24 +126,13 @@ secondary_data <- function(primary_input, con){
         paste(head(queries[!matches]), collapse=", ")
       ))
     }
-
-  } %>>%
-    GenomicFeatures::transcripts %>>%
-    {
-      synder::as_gff(
-        .,
-        seqinfo=primary_input@species[[con@input@focal_species]]@seqinfo,
-        id=GenomicRanges::mcols(.)$tx_name,
-        type="mRNA"
-      )
-    }
+  }
 
   rmonad::funnel(
     prim = primary_input,
-    gff = gff_
+    fgff = focal_gff_
   ) %*>% {
 
-    focal_species <- con@input@focal_species
     species <- names(prim@species)
     target_species <- setdiff(species, focal_species)
 
@@ -116,8 +141,8 @@ secondary_data <- function(primary_input, con){
         function(spec){
           compare_target_to_focal(
             species   = spec,
-            gff       = gff,
-            f_primary = prim@species[[focal_species]],
+            fgff      = fgff,
+            f_primary = f_primary,
             t_primary = prim@species[[spec]],
             synmap    = prim@synmaps[[spec]],
             queries   = prim@queries,

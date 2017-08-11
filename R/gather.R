@@ -28,12 +28,14 @@ load_species <- function(species_name, input){
     get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
 
-  seqinfo_ <- dna_ %>>% scanFa_trw %>>% {funnel(
-    seqnames   = names(.),
-    seqlengths = IRanges::width(.),
-    isCircular = NA,
-    genome     = species_name
-  )} %*>% GenomeInfoDb::Seqinfo
+  seqinfo_ <- dna_ %>>% scanFa_trw %>>% {
+    rmonad::funnel(
+      seqnames   = names(.),
+      seqlengths = IRanges::width(.),
+      isCircular = NA,
+      genome     = species_name
+    )
+  } %*>% GenomeInfoDb::Seqinfo
 
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring

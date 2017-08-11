@@ -17,13 +17,3 @@ overlapMap <- function(si, gff){
   }
 
 }
-
-findQueryGaps <- function(si, nstring){
-
-  # data.frame(
-  #   query = sique$seqid[from(over)],
-  #   length = nstring[to(over)] %>% width,
-  #   stringsAsFactors=FALSE
-  # )
-
-}

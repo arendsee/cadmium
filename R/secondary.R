@@ -47,7 +47,6 @@ compare_target_to_focal <- function(
   )
 
 
-  # FIXME: This is generating out of bounds warnings
   esi_ <- rmonad::funnel(
     syn = synmap_,
     gff = fsi_ %>>% {
@@ -108,6 +107,8 @@ compare_target_to_focal <- function(
 
   r_si_map <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
+  # TODO: there is a lot more analysis that could be done here ...
+
   # f_count_qid_ <- f_si_map %>>% {
   #   "The number of target genes in each search interval"
   #   dplyr::group_by(., .data$qid) %>% dplyr::count()
@@ -120,8 +121,32 @@ compare_target_to_focal <- function(
 
   # rmonad::funnel(fmap=f_si_map, rmap=r_si_map)
 
-  # # gapped_ <- funnel(si_, t_primary@nstrings) %*>% find_gapped
-  #
+  nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
+
+  gapped_ <- rmonad::funnel(
+    si = fsi_,
+    gff = nstrings_
+  ) %*>% overlapMap %>%
+  { rmonad::funnel(x=., nstring=nstrings_) } %*>%
+  {
+
+    "
+    Get a N-string table with the columns
+
+    query  - query id
+    siid   - search interval id
+    length - length of N-string
+
+    Filter out any queries that overlap no N-strings.
+    "
+
+    data.frame(
+      query  = x$query,
+      siid   = x$qid,
+      length = GenomicRanges::width(nstring)[x$qid]
+    ) %>% { .[!is.na(.$length), ] }
+  }
+
   # # - find target CDS and mRNA that are in SI for each query
   #
   # # - align query protein against target genes in the SI
@@ -140,7 +165,9 @@ compare_target_to_focal <- function(
     unassembled  = unassembled_,
     scrambled    = scrambled_,
     indels       = indels_,
-    overlapping_transcripts = overlapping_transcripts_
+    f_si_map     = f_si_map,
+    r_si_map     = r_si_map
+    gapped       = gapped_
   )
 
 }

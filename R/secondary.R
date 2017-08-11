@@ -138,26 +138,32 @@ compare_target_to_focal <- function(
     length - length of N-string
 
     Filter out any queries that overlap no N-strings.
+
+    If there are no N-strings, return an empty dataframe.
     "
 
-    data.frame(
-      query  = x$query,
-      siid   = x$qid,
-      length = GenomicRanges::width(nstring)[x$qid]
-    ) %>% { .[!is.na(.$length), ] }
+    if(is.null(nstring)){
+      data.frame(
+        query  = character(0),
+        siid   = integer(0),
+        length = integer(0)
+      )
+    } else {
+      data.frame(
+        query  = x$query,
+        siid   = x$qid,
+        length = GenomicRanges::width(nstring)[x$qid]
+      ) %>% { .[!is.na(.$length), ] }
+    }
   }
 
-  # # - find target CDS and mRNA that are in SI for each query
-  #
-  # # - align query protein against target genes in the SI
-  #
-  # # - align query protein against ORFs in transcripts in the SI
-  #
-  # # - align query protein against ORFs in genomic intervals in SI
-  #
-  # # - align query DNA sequence against the SI
-  #
-  # rmonad::funnel(si=si_, unassembled=unassembled_, scrambled=scrambled_)
+  # - align query protein against target genes in the SI
+
+  # - align query protein against ORFs in transcripts in the SI
+
+  # - align query protein against ORFs in genomic intervals in SI
+
+  # - align query DNA sequence against the SI
 
   rmonad::funnel(
     si           = si_,

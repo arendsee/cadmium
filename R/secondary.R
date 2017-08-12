@@ -107,6 +107,38 @@ compare_target_to_focal <- function(
 
   r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
+  f_si_map_orf_ <- rmonad::funnel(
+    si  = fsi_,
+    gff = t_primary@files@orfgff.file %>>%
+          from_cache %>>%
+          synder::as_gff(type='orf')
+  ) %*>% overlapMap
+
+  transorffaa_ <- as_monad(t_primary@files@transorffaa.file %>% from_cache)
+
+  f_si_map_transorf_ <- rmonad::funnel(
+    map = f_si_map_,
+    faa = transorffaa_
+  ) %*>% {
+
+    # FIXME: code duplication
+    if(!all(map$target %in% names(faa))){
+      dif <- setdiff(map$target, names(tarseq))
+      msg <- "%s of %s of target genes missing in map; [%s, ...]"
+      warning(sprintf(
+        msg,
+        length(dif),
+        length(faa),
+        paste(head(dif), collapse=', ')
+      ))
+      map <- map[map$target %in% names(faa), ]
+    }
+
+    faa[match(map$target, names(faa))] 
+  }
+
+  
+
   # TODO: there is a lot more analysis that could be done here ...
 
   # f_count_qid_ <- f_si_map_ %>>% {
@@ -165,7 +197,14 @@ compare_target_to_focal <- function(
     tarseq  = t_primary@files@aa.file %>>% from_cache,
     map     = f_si_map_,
     queries = queries
-  ) %*>% align_aa2aa
+  ) %*>% align_by_map
+
+  aa2orf_ <- rmonad::funnel(
+    queseq  = queseq_,
+    tarseq  = t_primary@files@orffaa.file %>>% from_cache,
+    map     = f_si_map_orf_,
+    queries = queries
+  ) %*>% align_by_map
 
   # - align query protein against ORFs in transcripts in the SI
 

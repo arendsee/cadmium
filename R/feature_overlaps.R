@@ -1,6 +1,8 @@
-overlapMap <- function(si, gff){
+overlapMap <- function(si, gff, type=NULL){
 
   "Find all features in the gff GenomicRanges object that overlap a search interval."
+
+  stopifnot(class(gff) == 'GFF')
 
   # A Hits object
   # from(o) accesses the si indices

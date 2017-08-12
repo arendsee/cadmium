@@ -156,7 +156,7 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   )
 }
 
-align_aa2aa <- function(queseq, tarseq, map, queries){
+align_by_map <- function(queseq, tarseq, map, queries=names(queseq)){
 
   "Queries may be missing from the map if there are no target genes in any of
   their search intervals"

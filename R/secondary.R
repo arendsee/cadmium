@@ -103,23 +103,23 @@ compare_target_to_focal <- function(
   indels_ <- rmonad::funnel(si_, con@alignment@indel_threshold) %*>% find_indels
 
   
-  f_si_map <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
+  f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
 
-  r_si_map <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
+  r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
   # TODO: there is a lot more analysis that could be done here ...
 
-  # f_count_qid_ <- f_si_map %>>% {
+  # f_count_qid_ <- f_si_map_ %>>% {
   #   "The number of target genes in each search interval"
   #   dplyr::group_by(., .data$qid) %>% dplyr::count()
   # }
   #
-  # f_count_tid_ <- f_si_map %>>% {
+  # f_count_tid_ <- f_si_map_ %>>% {
   #   "The number of search intervals that overlap given target gene"
   #   dplyr::group_by(., .data$tid) %>% dplyr::count()
   # }
 
-  # rmonad::funnel(fmap=f_si_map, rmap=r_si_map)
+  # rmonad::funnel(fmap=f_si_map_, rmap=r_si_map_)
 
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
 
@@ -157,7 +157,15 @@ compare_target_to_focal <- function(
     }
   }
 
+  queseq_ <- f_primary@files@aa.file %>>% from_cache
+
   # - align query protein against target genes in the SI
+  aa2aa_ <- rmonad::funnel(
+    queseq  = queseq_,
+    tarseq  = t_primary@files@aa.file %>>% from_cache,
+    map     = f_si_map_,
+    queries = queries
+  ) %*>% align_aa2aa
 
   # - align query protein against ORFs in transcripts in the SI
 
@@ -171,8 +179,8 @@ compare_target_to_focal <- function(
     unassembled  = unassembled_,
     scrambled    = scrambled_,
     indels       = indels_,
-    f_si_map     = f_si_map,
-    r_si_map     = r_si_map
+    f_si_map     = f_si_map_,
+    r_si_map     = r_si_map_,
     gapped       = gapped_
   )
 

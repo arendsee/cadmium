@@ -21,6 +21,8 @@ Imports:
     GenomeInfoDb,
     BiocParallel,
     IRanges,
+    robustreg,
+    fitdistrplus,
     ape,
     rlang,
     readr,

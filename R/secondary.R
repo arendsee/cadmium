@@ -102,57 +102,6 @@ compare_target_to_focal <- function(
 
   indels_ <- rmonad::funnel(si_, con@alignment@indel_threshold) %*>% find_indels
 
-  
-  f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
-
-  r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
-
-  f_si_map_orf_ <- rmonad::funnel(
-    si  = fsi_,
-    gff = t_primary@files@orfgff.file %>>%
-          from_cache %>>%
-          synder::as_gff(type='orf')
-  ) %*>% overlapMap
-
-  transorffaa_ <- as_monad(t_primary@files@transorffaa.file %>% from_cache)
-
-  f_si_map_transorf_ <- rmonad::funnel(
-    map = f_si_map_,
-    faa = transorffaa_
-  ) %*>% {
-
-    # FIXME: code duplication
-    if(!all(map$target %in% names(faa))){
-      dif <- setdiff(map$target, names(tarseq))
-      msg <- "%s of %s of target genes missing in map; [%s, ...]"
-      warning(sprintf(
-        msg,
-        length(dif),
-        length(faa),
-        paste(head(dif), collapse=', ')
-      ))
-      map <- map[map$target %in% names(faa), ]
-    }
-
-    faa[match(map$target, names(faa))] 
-  }
-
-  
-
-  # TODO: there is a lot more analysis that could be done here ...
-
-  # f_count_qid_ <- f_si_map_ %>>% {
-  #   "The number of target genes in each search interval"
-  #   dplyr::group_by(., .data$qid) %>% dplyr::count()
-  # }
-  #
-  # f_count_tid_ <- f_si_map_ %>>% {
-  #   "The number of search intervals that overlap given target gene"
-  #   dplyr::group_by(., .data$tid) %>% dplyr::count()
-  # }
-
-  # rmonad::funnel(fmap=f_si_map_, rmap=r_si_map_)
-
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
 
   gapped_ <- rmonad::funnel(
@@ -189,26 +138,74 @@ compare_target_to_focal <- function(
     }
   }
 
-  queseq_ <- f_primary@files@aa.file %>>% from_cache
+  # TODO: there is a lot more analysis that could be done here ...
+
+  # f_count_qid_ <- f_si_map_ %>>% {
+  #   "The number of target genes in each search interval"
+  #   dplyr::group_by(., .data$qid) %>% dplyr::count()
+  # }
+  #
+  # f_count_tid_ <- f_si_map_ %>>% {
+  #   "The number of search intervals that overlap given target gene"
+  #   dplyr::group_by(., .data$tid) %>% dplyr::count()
+  # }
+
+  # rmonad::funnel(fmap=f_si_map_, rmap=r_si_map_)
+
+  f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
+
+  r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
+
+  orfgff_ <- t_primary@files@orfgff.file %>>%
+    from_cache %>>%
+    { synder::as_gff(., id=GenomicRanges::mcols(.)$seqid) }
+
+  f_si_map_orf_ <- rmonad::funnel(
+    si  = fsi_,
+    gff = orfgff_
+  ) %*>% overlapMap
+
+  f_faa_ <- f_primary@files@aa.file %>>% from_cache
+  t_faa_ <- t_primary@files@aa.file %>>% from_cache
+
+  t_orffaa_ <- as_monad(t_primary@files@orffaa.file %>% from_cache)
+
+  t_transorffaa_ <- as_monad(t_primary@files@transorffaa.file %>% from_cache)
 
   # - align query protein against target genes in the SI
   aa2aa_ <- rmonad::funnel(
-    queseq  = queseq_,
-    tarseq  = t_primary@files@aa.file %>>% from_cache,
+    queseq  = f_faa_,
+    tarseq  = t_faa_,
     map     = f_si_map_,
     queries = queries
   ) %*>% align_by_map
 
+  # # Run the exact test above, but with the query indices scrambled. For a
+  # # reasonably sized genome, there should be very few hits (I should do the
+  # # math and make a test)
+  # rand_aa2aa_ <- rmonad::funnel(
+  #   queseq  = f_faa_,
+  #   tarseq  = t_faa_,
+  #   map     = f_si_map_,
+  #   queries = queries
+  # ) %*>% align_by_map(permute=TRUE)
+
+  # - align query protein against ORFs in genomic intervals in SI
   aa2orf_ <- rmonad::funnel(
-    queseq  = queseq_,
-    tarseq  = t_primary@files@orffaa.file %>>% from_cache,
+    queseq  = f_faa_,
+    tarseq  = t_orffaa_,
     map     = f_si_map_orf_,
     queries = queries
   ) %*>% align_by_map
 
-  # - align query protein against ORFs in transcripts in the SI
+  # rand_aa2orf_ <- rmonad::funnel(
+  #   queseq  = f_faa_,
+  #   tarseq  = t_orffaa_,
+  #   map     = f_si_map_orf_,
+  #   queries = queries
+  # ) %*>% align_by_map(permute=TRUE)
 
-  # - align query protein against ORFs in genomic intervals in SI
+  # - align query protein against ORFs in transcripts in the SI
 
   # - align query DNA sequence against the SI
 
@@ -220,6 +217,8 @@ compare_target_to_focal <- function(
     indels       = indels_,
     f_si_map     = f_si_map_,
     r_si_map     = r_si_map_,
+    aa2aa        = aa2aa_,
+    aa2orf       = aa2orf_,
     gapped       = gapped_
   )
 

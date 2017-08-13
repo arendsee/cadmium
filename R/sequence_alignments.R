@@ -156,12 +156,25 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   )
 }
 
-align_by_map <- function(queseq, tarseq, map, queries=names(queseq)){
+align_by_map <- function(
+  queseq,
+  tarseq,
+  map,
+  queries = names(queseq),
+  permute = FALSE
+){
 
   "Queries may be missing from the map if there are no target genes in any of
   their search intervals"
 
+  map <- dplyr::select(map, .data$query, .data$target)
+
+  if(permute){
+    map$query <- map$query %>% { .[sample.int(length(.))] }
+  }
+
   map <- map[map$query %in% queries, ]
+
 
   if(!all(map$target %in% names(tarseq))){
     dif <- setdiff(map$target, names(tarseq))
@@ -180,6 +193,6 @@ align_by_map <- function(queseq, tarseq, map, queries=names(queseq)){
   queseq <- queseq[ match(map$query,  names(queseq)) ]
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
-  AA_aln(head(queseq), head(tarseq), nsims=100)
+  AA_aln(queseq, tarseq, nsims=1000)
 
 }

@@ -99,13 +99,25 @@ derive_orfgff <- function(dna) {
   `<START>(...)+<STOP>` intervals. I should replace this with a real ORF
   finder.
 
+  Gives ORFs unique ids (just an integer sequence for now) in meta-column `seqid`.
+
   BUG: This misses potentially longer ORFs that start within a previous ORF.
   TODO: replace with real ORF finder.
   "
 
   orfpat <- "ATG(AAA|AAC|AAG|AAT|ACA|ACC|ACG|ACT|AGA|AGC|AGG|AGT|ATA|ATC|ATG|ATT|CAA|CAC|CAG|CAT|CCA|CCC|CCG|CCT|CGA|CGC|CGG|CGT|CTA|CTC|CTG|CTT|GAA|GAC|GAG|GAT|GCA|GCC|GCG|GCT|GGA|GGC|GGG|GGT|GTA|GTC|GTG|GTT|TAC|TAT|TCA|TCC|TCG|TCT|TGC|TGG|TGT|TTA|TTC|TTG|TTT){49,}(TAA|TGA|TAG)"
 
-  dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE)
+  dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE) %>%
+  {
+
+    GenomicRanges::mcols(.) <- data.frame(
+      seqid = paste0('orf_', seq_along(.)),
+      type  = 'orf',
+      stringsAsFactors=FALSE
+    )
+
+    .
+  }
 
 }
 
@@ -125,7 +137,12 @@ extractWithComplements <- function(dna, gff){
      respective scaffold (not currently tested).
   "
 
-  Rsamtools::getSeq(dna, gff)
+  dna <- Rsamtools::getSeq(dna, gff)
+
+  if(!is.null(GenomicRanges::mcols(gff)$seqid))
+    names(dna) <- GenomicRanges::mcols(gff)$seqid
+
+  dna
 
 }
 

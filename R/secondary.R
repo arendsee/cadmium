@@ -205,6 +205,36 @@ compare_target_to_focal <- function(
   #   queries = queries
   # ) %*>% align_by_map(permute=TRUE)
 
+  transorf_map_ <- rmonad::funnel(
+    transorfgff = t_primary@files@transorfgff.file %>% from_cache,
+    f_si_map = f_si_map_
+  ) %*>% {
+    transorfgff %>%
+    {
+      data.frame(
+        seqid = GenomicRanges::seqnames(.),
+        orfid = GenomicRanges::mcols(.)$seqid,
+        stringsAsFactors=FALSE
+      )
+    } %>%
+    merge(f_si_map, by.x='seqid', by.y='target') %>%
+    {
+      data.frame(
+        query = .$query,
+        target = .$orfid,
+        type = 'transorf',
+        stringsAsFactors=FALSE
+      )
+    }
+  }
+
+  aa2transorf_ <- rmonad::funnel(
+    queseq  = f_faa_,
+    tarseq  = t_transorffaa_,
+    map     = transorf_map_,
+    queries = queries
+  ) %*>% align_by_map
+
   # - align query protein against ORFs in transcripts in the SI
 
   # - align query DNA sequence against the SI
@@ -219,6 +249,7 @@ compare_target_to_focal <- function(
     r_si_map     = r_si_map_,
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,
+    aa2transorf  = aa2transorf_
     gapped       = gapped_
   )
 

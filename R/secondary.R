@@ -1,5 +1,4 @@
 get_transcripts_from_txdb <- function(spec){
-
   from_cache(spec@files@gff.file, type='sqlite') %>>%
   GenomicFeatures::transcripts %>>%
   {
@@ -228,6 +227,7 @@ compare_target_to_focal <- function(
     }
   }
 
+  # - align query protein against ORFs in transcripts in the SI
   aa2transorf_ <- rmonad::funnel(
     queseq  = f_faa_,
     tarseq  = t_transorffaa_,
@@ -235,7 +235,19 @@ compare_target_to_focal <- function(
     queries = queries
   ) %*>% align_by_map
 
-  # - align query protein against ORFs in transcripts in the SI
+
+  gene2genome <- rmonad::funnel(
+    map=fsi_
+    quedna = f_primary@files@trans.file %>>% from_cache %>>% scanfFa
+    tardna = t_primary@files@dna.file %>>% from_cache
+  ) %*>% {
+
+    tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
+    queseq <- quedna[ CNEr::first(map)$attr ]
+
+    get_dna2dna(tarseq=tarseq, queseq=queseq) 
+
+  }
 
   # - align query DNA sequence against the SI
 
@@ -249,7 +261,7 @@ compare_target_to_focal <- function(
     r_si_map     = r_si_map_,
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,
-    aa2transorf  = aa2transorf_
+    aa2transorf  = aa2transorf_,
     gapped       = gapped_
   )
 

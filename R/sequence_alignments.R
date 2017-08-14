@@ -211,26 +211,9 @@ add_logmn <- function(d){
     base::merge(d)
 }
 
-get_dna2dna <- function(queseq, tarseq, maxspace=1e8){
 
-  set.seed(42)
 
-  too.big <- log(width(queseq)) + log(width(tarseq)) > log(maxspace)
-  if(any(too.big)){
-    warning(sprintf('%d(%.1f%%) query / SI pairs are very large, N*M>%d. These
-    pairs are ignored. Dealing with them will require a heuristic aligment
-    program, such as BLAST, which is not currently implemented.',
-    sum(too.big), signif(100*sum(too.big)/length(too.big), 2), maxspace))
-    orfgff <- orfgff[!too.big]
-    skipped <- ogen[too.big] %>% unique %>% names
-    ogen <- ogen[!too.big]
-  } else {
-    skipped = c()
-  }
-
-  message(sprintf('This may require on the order of %.1f minutes',
-    (wdith(queseq) * width(tarseq) * (3/9e8)) %>% sum %>% signif(1)))
-
+alignToGenome <- function(queseq, tarseq){
   # Search + and - strands
   nuc.scores <- pairwiseAlignment(
     pattern=c(queseq, reverseComplement(queseq)),
@@ -238,28 +221,63 @@ get_dna2dna <- function(queseq, tarseq, maxspace=1e8){
     type='local',
     scoreOnly=TRUE
   )
-
-  hits <- data.frame(
+  data.frame(
     query            = queseq %>% names %>% rep(2),
     qwidth           = queseq %>% width %>% rep(2),
     twidth           = tarseq %>% width %>% rep(2),
     score            = nuc.scores,
-    strand           = rep(c('+', '-'), each=length(query.seqs)),
+    strand           = rep(c('+', '-'), each=length(queseq)),
     stringsAsFactors = FALSE
-  ) %>%
-  add_logmn 
+  )
+}
+
+
+add_logmn <- function(d){
+  dplyr::group_by(d, query) %>%
+    # Calculate adjusted score
+    dplyr::filter(twidth > 1 & qwidth > 1) %>%
+    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
+    base::merge(d)
+}
+
+
+get_dna2dna <- function(queseq, tarseq, queries, maxspace=1e8){
+
+  set.seed(42)
+
+  is_query <- names(queseq) %in% queries
+
+  queseq <- queseq[is_query]
+  tarseq <- tarseq[is_query]
+
+  too.big <- log(width(queseq)) + log(width(tarseq)) > log(maxspace)
+  if(any(too.big)){
+    warning(sprintf('%d(%.1f%%) query / SI pairs are very large, N*M>%d. These
+    pairs are ignored. Dealing with them will require a heuristic aligment
+    program, such as BLAST, which is not currently implemented.',
+    sum(too.big), signif(100*sum(too.big)/length(too.big), 2), maxspace))
+    skipped <- names(queseq)[too.big] %>% unique %>% names
+    queseq <- queseq[!too.big]
+    tarseq <- tarseq[!too.big]
+  } else {
+    skipped = c()
+  }
+
+  stopifnot(length(queseq) == length(tarseq))
+
+  # message(sprintf('This may require on the order of %.1f minutes',
+  #   (width(queseq) * width(tarseq) * (3/9e8)) %>% sum %>% signif(1)))
+
+  hits <- alignToGenome(queseq, tarseq) %>% add_logmn 
 
   # Align queries against random search intervals
-
-  ctrl <- pairwiseAlignment(
-    pattern=c(queseq, reverseComplement(queseq)),
-    subject=c(tarseq, tarseq),
-    type='local',
-    scoreOnly=TRUE
-  )                 %>%
-    add_logmn       %>%
-    group_by(query) %>%
-    filter(score == max(score))
+  ctrl <- alignToGenome(
+    queseq=queseq,
+    tarseq=tarseq[sample.int(length(tarseq))]
+  ) %>%
+    add_logmn              %>%
+    dplyr::group_by(query) %>%
+    dplyr::filter(.data$score == max(.data$score))
 
   gum <- fit.gumbel(ctrl)
 

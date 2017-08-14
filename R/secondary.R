@@ -236,20 +236,20 @@ compare_target_to_focal <- function(
   ) %*>% align_by_map
 
 
-  gene2genome <- rmonad::funnel(
-    map=fsi_
-    quedna = f_primary@files@trans.file %>>% from_cache %>>% scanfFa
-    tardna = t_primary@files@dna.file %>>% from_cache
+  # - align query DNA sequence against the SI
+  gene2genome_ <- rmonad::funnel(
+    map=fsi_,
+    quedna = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
+    tardna = t_primary@files@dna.file %>>% from_cache,
+    queries = queries
   ) %*>% {
 
     tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
-    queseq <- quedna[ CNEr::first(map)$attr ]
+    queseq <- quedna[ GenomicRanges::mcols(map)$attr ]
 
-    get_dna2dna(tarseq=tarseq, queseq=queseq) 
+    get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries)
 
   }
-
-  # - align query DNA sequence against the SI
 
   rmonad::funnel(
     si           = si_,
@@ -262,7 +262,8 @@ compare_target_to_focal <- function(
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,
     aa2transorf  = aa2transorf_,
-    gapped       = gapped_
+    gapped       = gapped_,
+    gene2genome  = gene2genome_
   )
 
 }

@@ -31,7 +31,7 @@ compare_target_to_focal <- function(
 
   tgff_ <- get_transcripts_from_txdb(t_primary)
 
-  synmap_ <- as_monad( from_cache(synmap@synmap.file) )
+  synmap_ <- rmonad::as_monad( from_cache(synmap@synmap.file) )
 
   fsi_ <- rmonad::funnel(
     syn = synmap_,
@@ -95,11 +95,11 @@ compare_target_to_focal <- function(
       queries = queries
     ) %*>% summarize_syntenic_flags
 
-  unassembled_ <- si_ %>>% find_unassembled
+  unassembled_ <- fsi_ %>>% find_unassembled
 
-  scrambled_ <- si_ %>>% find_scrambled
+  scrambled_ <- fsi_ %>>% find_scrambled
 
-  indels_ <- rmonad::funnel(si_, con@alignment@indel_threshold) %*>% find_indels
+  indels_ <- rmonad::funnel(fsi_, con@alignment@indel_threshold) %*>% find_indels
 
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
 
@@ -149,8 +149,6 @@ compare_target_to_focal <- function(
   #   dplyr::group_by(., .data$tid) %>% dplyr::count()
   # }
 
-  # rmonad::funnel(fmap=f_si_map_, rmap=r_si_map_)
-
   f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
 
   r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
@@ -167,9 +165,9 @@ compare_target_to_focal <- function(
   f_faa_ <- f_primary@files@aa.file %>>% from_cache
   t_faa_ <- t_primary@files@aa.file %>>% from_cache
 
-  t_orffaa_ <- as_monad(t_primary@files@orffaa.file %>% from_cache)
+  t_orffaa_ <- rmonad::as_monad(t_primary@files@orffaa.file %>% from_cache)
 
-  t_transorffaa_ <- as_monad(t_primary@files@transorffaa.file %>% from_cache)
+  t_transorffaa_ <- rmonad::as_monad(t_primary@files@transorffaa.file %>% from_cache)
 
   # - align query protein against target genes in the SI
   aa2aa_ <- rmonad::funnel(
@@ -252,7 +250,7 @@ compare_target_to_focal <- function(
   }
 
   rmonad::funnel(
-    si           = si_,
+    si           = fsi_,
     flag_summary = synder_flags_summary_,
     unassembled  = unassembled_,
     scrambled    = scrambled_,
@@ -262,8 +260,8 @@ compare_target_to_focal <- function(
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,
     aa2transorf  = aa2transorf_,
-    gapped       = gapped_,
-    gene2genome  = gene2genome_
+    gene2genome  = gene2genome_,
+    gapped       = gapped_
   )
 
 }

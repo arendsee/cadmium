@@ -215,8 +215,8 @@ add_logmn <- function(d){
 
 alignToGenome <- function(queseq, tarseq){
   # Search + and - strands
-  nuc.scores <- pairwiseAlignment(
-    pattern=c(queseq, reverseComplement(queseq)),
+  nuc.scores <- Biostrings::pairwiseAlignment(
+    pattern=c(queseq, Biostrings::reverseComplement(queseq)),
     subject=c(tarseq, tarseq),
     type='local',
     scoreOnly=TRUE

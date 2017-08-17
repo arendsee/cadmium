@@ -213,82 +213,128 @@ add_logmn <- function(d){
 
 
 
-alignToGenome <- function(queseq, tarseq){
+alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
   # Search + and - strands
-  nuc.scores <- Biostrings::pairwiseAlignment(
-    pattern=c(queseq, Biostrings::reverseComplement(queseq)),
-    subject=c(tarseq, tarseq),
-    type='local',
-    scoreOnly=TRUE
-  )
-  data.frame(
-    query            = queseq %>% names %>% rep(2),
-    qwidth           = queseq %>% width %>% rep(2),
-    twidth           = tarseq %>% width %>% rep(2),
-    score            = nuc.scores,
-    strand           = rep(c('+', '-'), each=length(queseq)),
-    stringsAsFactors = FALSE
-  )
+  pattern <- c(queseq, Biostrings::reverseComplement(queseq))
+  subject <- c(tarseq, tarseq)
+
+  if(permute){
+    permid <- sample.int(length(subject))
+    subject <- subject[permid]
+    if(length(offset) == length(tarseq)){
+      offset <- c(offset, offset)[permid]
+    }
+  }
+
+  Biostrings::pairwiseAlignment(
+    pattern=pattern,
+    subject=subject,
+    type='local'
+  ) %>>% {
+    CNEr::GRangePairs(
+      first = GenomicRanges::GRanges(
+        seqnames = names(pattern),
+        ranges = IRanges::IRanges(
+          start = Biostrings::pattern(.) %>% BiocGenerics::start(),
+          end = Biostrings::pattern(.) %>% BiocGenerics::end()
+        )
+      ),
+      second = GenomicRanges::GRanges(
+        seqnames = names(subject),
+        ranges = IRanges::IRanges(
+          start = Biostrings::subject(.) %>% BiocGenerics::start() %>% '+'(offset),
+          end = Biostrings::subject(.) %>% BiocGenerics::end() %>% '+'(offset)
+        )
+      ),
+      strand = c(rep('+', length(.)/2), rep('-', length(.)/2)),
+      score = BiocGenerics::score(.),
+      query = names(pattern),
+      qwidth = Biostrings::width(pattern),
+      twidth = Biostrings::width(subject)
+    )
+  }
 }
 
 
 add_logmn <- function(d){
-  dplyr::group_by(d, query) %>%
-    # Calculate adjusted score
-    dplyr::filter(twidth > 1 & qwidth > 1) %>%
-    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-    base::merge(d)
+  GenomicRanges::mcols(d) <-
+    as.data.frame(GenomicRanges::mcols(d)) %>%
+    dplyr::group_by(.data$query) %>%
+    dplyr::mutate(logmn=log2(.data$qwidth) + log2(sum(.data$twidth)))
+  d
 }
 
 
-get_dna2dna <- function(queseq, tarseq, queries, maxspace=1e8){
+get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
 
   set.seed(42)
 
-  is_query <- names(queseq) %in% queries
+  skipped_ <- rmonad::as_monad({
 
-  queseq <- queseq[is_query]
-  tarseq <- tarseq[is_query]
+    "Currently sequence searching is performed with a quadratic time alignment
+    algorithm. If the search space is too big, this becomes prohibitively
+    time-consuming. Ultimately I will need to use a heuristic program, such as
+    BLAST. But this is not yet implemented. For now I just ignore spaces that
+    are too large. Specifically, if `n*m > maxspace`, I skip the pair. The
+    skipped pairs will be returned and ultimately be represented as a column in
+    the feature table."
 
-  too.big <- log(width(queseq)) + log(width(tarseq)) > log(maxspace)
-  if(any(too.big)){
-    warning(sprintf('%d(%.1f%%) query / SI pairs are very large, N*M>%d. These
-    pairs are ignored. Dealing with them will require a heuristic aligment
-    program, such as BLAST, which is not currently implemented.',
-    sum(too.big), signif(100*sum(too.big)/length(too.big), 2), maxspace))
-    skipped <- names(queseq)[too.big] %>% unique %>% names
-    queseq <- queseq[!too.big]
-    tarseq <- tarseq[!too.big]
-  } else {
-    skipped = c()
-  }
+    too_big <- log(GenomicRanges::width(queseq)) +
+               log(GenomicRanges::width(tarseq)) > log(maxspace)
+    names(queseq)[too_big] %>% unique
 
-  stopifnot(length(queseq) == length(tarseq))
+  })
 
-  # message(sprintf('This may require on the order of %.1f minutes',
-  #   (width(queseq) * width(tarseq) * (3/9e8)) %>% sum %>% signif(1)))
+  truncated_seqs_ <-
+    rmonad::funnel(
+      skipped = skipped_,
+      queries = queries
+    ) %*>% {
 
-  hits <- alignToGenome(queseq, tarseq) %>% add_logmn 
+      "Select which gene/search_interval pairs to align"
 
-  # Align queries against random search intervals
-  ctrl <- alignToGenome(
-    queseq=queseq,
-    tarseq=tarseq[sample.int(length(tarseq))]
-  ) %>%
-    add_logmn              %>%
-    dplyr::group_by(query) %>%
-    dplyr::filter(.data$score == max(.data$score))
+      i <- setdiff(queries, skipped) %>% match(names(queseq))
 
-  gum <- fit.gumbel(ctrl)
+      list(
+        queseq=queseq[i],
+        tarseq=tarseq[i],
+        offset=offset[i]
+      )
+    }
 
-  hits$pval <- 1 - gum$p(hits$score, hits$logmn)
-  ctrl$pval <- 1 - gum$p(ctrl$score, ctrl$logmn)
+  ctrl_ <- truncated_seqs_ %*>% alignToGenome(permute=T) %>>% add_logmn
+    # dplyr::group_by(query) %>%
+    # dplyr::filter(.data$score == max(.data$score))
 
-  list(
-    map      = hits,
-    dis      = gum,
-    sam      = ctrl,
-    skipped  = skipped,
-    maxspace = maxspace
+  hits_ <- truncated_seqs_ %*>% alignToGenome(permute=F) %>>% add_logmn 
+
+  gum_ <- ctrl_ %>>%
+    {
+      GenomicRanges::mcols(.) %>%
+      as.data.frame %>%
+      dplyr::select(.data$query, .data$score, .data$logmn)
+    } %>>%
+    fit.gumbel
+
+  funnel(
+    ctrl = ctrl_,
+    hits = hits_,
+    gum = gum_
+  ) %*>% {
+
+    GenomicRanges::mcols(hits)$pval <- 1 - gum$p(GenomicRanges::mcols(hits)$score,
+                                                 GenomicRanges::mcols(hits)$logmn)
+    GenomicRanges::mcols(ctrl)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl)$score,
+                                                 GenomicRanges::mcols(ctrl)$logmn)
+
+    list(
+      map=hits,
+      sam=ctrl,
+      dis=gum
+    )
+  } %*>%
+  rmonad::funnel(
+    skipped=skipped_
   )
+
 }

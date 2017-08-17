@@ -1,14 +1,9 @@
-get_transcripts_from_txdb <- function(spec){
-  from_cache(spec@files@gff.file, type='sqlite') %>>%
-  GenomicFeatures::transcripts %>>%
-  {
-    synder::as_gff(
-      .,
-      seqinfo=spec@seqinfo,
-      id=GenomicRanges::mcols(.)$tx_name,
-      type="mRNA"
-    )
-  }
+get_gff_from_txdb <- function(x, ...){
+  synder::as_gff(
+    x,
+    id=GenomicRanges::mcols(x)$tx_name,
+    ...
+  )
 }
 
 
@@ -29,7 +24,19 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
-  tgff_ <- get_transcripts_from_txdb(t_primary)
+  ttxdb_ <- as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
+  
+  tgff_ <- ttxdb_ %>>%
+    GenomicFeatures::transcripts %>>%
+    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='mRNA')
+
+  tcds_ <- ttxdb_ %>>%
+    GenomicFeatures::cds %>>%
+    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='CDS')
+
+  texons_ <- ttxdb_ %>>%
+    GenomicFeatures::exons %>>%
+    get_gff_from_txdb(seqinfo=t_primary@seqinfo, 'exon')
 
   synmap_ <- rmonad::as_monad( from_cache(synmap@synmap.file) )
 
@@ -44,7 +51,6 @@ compare_target_to_focal <- function(
     r       = con@synder@r,
     offsets = con@synder@offsets
   )
-
 
   esi_ <- rmonad::funnel(
     syn = synmap_,
@@ -236,16 +242,20 @@ compare_target_to_focal <- function(
 
   # - align query DNA sequence against the SI
   gene2genome_ <- rmonad::funnel(
-    map=fsi_,
-    quedna = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
-    tardna = t_primary@files@dna.file %>>% from_cache,
+    map     = fsi_,
+    cds     = tcds_,
+    exons   = texons_,
+    mrna    = tgff_,
+    quedna  = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
+    tardna  = t_primary@files@dna.file %>>% from_cache,
     queries = queries
   ) %*>% {
 
     tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
     queseq <- quedna[ GenomicRanges::mcols(map)$attr ]
+    offset <- GenomicRanges::start(CNEr::second(map)) - 1
 
-    get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries)
+    get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries, offset=offset)
 
   }
 
@@ -276,24 +286,27 @@ secondary_data <- function(primary_input, con){
   focal_species <- con@input@focal_species
   f_primary <- primary_input@species[[focal_species]]
 
-  focal_gff_ <- get_transcripts_from_txdb(f_primary) %>_% {
 
-    "Assert query ids match the names in the GFF file"
+  focal_gff_ <- from_cache(f_primary@files@gff.file, type='sqlite') %>>%
+    GenomicFeatures::transcripts %>>%
+    get_gff_from_txdb(seqinfo=f_primary@seqinfo, type='mRNA') %>_%
+    {
+      "Assert query ids match the names in the GFF file"
 
-    queries <- primary_input@queries
-    txnames <- GenomicRanges::mcols(.)$attr
-    matches <- queries %in% txnames
+      queries <- primary_input@queries
+      txnames <- GenomicRanges::mcols(.)$attr
+      matches <- queries %in% txnames
 
-    if(!all(matches)){
-      msg <- "%s of %s query ids are missing in the GFF. Here is the head: [%s]"
-      stop(sprintf(
-        msg,
-        sum(!matches),
-        length(queries),
-        paste(head(queries[!matches]), collapse=", ")
-      ))
+      if(!all(matches)){
+        msg <- "%s of %s query ids are missing in the GFF. Here is the head: [%s]"
+        stop(sprintf(
+          msg,
+          sum(!matches),
+          length(queries),
+          paste(head(queries[!matches]), collapse=", ")
+        ))
+      }
     }
-  }
 
   rmonad::funnel(
     prim = primary_input,

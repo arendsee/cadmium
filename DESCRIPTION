@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.25.0),
-    rmonad (>= 0.2.0.9027),
+    rmonad (>= 0.2.0.9028),
     methods,
     magrittr,
     CNEr,

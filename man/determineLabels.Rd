@@ -4,7 +4,7 @@
 \alias{determineLabels}
 \title{Merge labels for all species}
 \usage{
-determineLabels(query, results, config)
+determineLabels(features, config)
 }
 \description{
 Merge labels for all species

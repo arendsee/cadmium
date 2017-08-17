@@ -1,45 +1,40 @@
 #' Build table of binary features
-buildFeatureTable <- function(result, query, config){
-  orphans <- query$orphans 
+buildFeatureTable <- function(d, config){
+
+  orphans <- d$queries
 
   # Perform bonferoni corrections on all pvalue cutoffs
-  p2p_cutoff <- config$prot2prot_pval     / length(orphans)
-  p2a_cutoff <- config$prot2allorf_pval   / length(orphans)
-  d2d_cutoff <- config$dna2dna_pval       / length(orphans)
-  p2t_cutoff <- config$prot2transorf_pval / length(orphans)
+  p2p_cutoff <- config@alignment@thresholds@prot2prot     / length(orphans)
+  p2a_cutoff <- config@alignment@thresholds@prot2allorf   / length(orphans)
+  d2d_cutoff <- config@alignment@thresholds@dna2dna       / length(orphans)
+  p2t_cutoff <- config@alignment@thresholds@prot2transorf / length(orphans)
 
-  getGaps <- function(q2g){
-    if(is.null(q2g)){
-      q2g
-    } else {
-      q2g$query 
-    }
-  }
+  met <- GenomicRanges::mcols(d$gene2genome$map) %>% as.data.frame %>% subset(pval < d2d_cutoff)
 
   # Synteny is scrambled
-  scr <- orphans %in% result$scrambled
-  # at least one search interval overlaps a target CDS
-  cds <- orphans %in% (result$features$CDS$query %>% unique)
-  # at least one search interval overlaps a target mRNA
-  rna <- orphans %in% (result$features$mRNA$query %>% unique)
+  scr <- orphans %in% d$scrambled
+  # matches somewhere in at least one search interval
+  nuc <- orphans %in% met$query
+  # matches CDS in at least one search interval
+  cds <- orphans %in% subset(met, cds_match)$query
+  # matches transcript in at least one search interval
+  rna <- orphans %in% subset(met, mrna_match)$query
+  # matches exon in at least one search interval
+  exo <- orphans %in% subset(met, exon_match)$query
   # at least search interval overlaps a N-string
-  nst <- orphans %in% getGaps(result$query2gap)
+  nst <- orphans %in% as.character(d$gapped$query)
   # number of confirmed indels (based on search interval size)
-  ind <- orphans %in% result$ind.stats$indeled.queries
-  # number of confirmed resized (based on search interval size)
-  res <- orphans %in% result$ind.stats$resized.queries
+  ind <- orphans %in% d$indels
   # the query has an ortholog in the target
-  gen <- orphans %in% (result$prot2prot$map %>% subset(pval < p2p_cutoff) %$% query)
+  gen <- orphans %in% subset(d$aa2aa$map, pval < p2p_cutoff)$query 
   # ORF match in SI
-  orf <- orphans %in% (result$prot2allorf$map %>% subset(pval < p2a_cutoff) %$% query)
-  # has nucleotide match in SI
-  nuc <- orphans %in% (result$dna2dna$map %>% subset(pval < d2d_cutoff) %$% query)
+  orf <- orphans %in% subset(d$aa2orf$map, pval < p2a_cutoff)$query 
   # ORF match to spliced transcript (possibly multi-exonic)
-  trn <- orphans %in% (result$prot2transorf$map %>% subset(pval < p2t_cutoff) %$% query)
-  # at least one search interval maps off scaffold (flag==4 or flag==5)
-  una <- orphans %in% result$unassembled
+  trn <- orphans %in% subset(d$aa2transorf$map, pval < p2t_cutoff)$query 
+  # at least one search interval maps off scaffold
+  una <- orphans %in% d$unassembled
   # search interval was not processed for technical reasons (e.g. too big)
-  tec <- orphans %in% result$skipped
+  tec <- orphans %in% d$gene2genome$skipped
 
   data.frame(
     seqid = orphans,
@@ -49,13 +44,19 @@ buildFeatureTable <- function(result, query, config){
     gen   = gen,
     nst   = nst,
     ind   = ind,
-    res   = res,
     orf   = orf,
     nuc   = nuc,
     trn   = trn,
     una   = una,
-    tec   = tec
+    tec   = tec,
+    stringsAsFactors=FALSE
   )
+}
+
+tertiary_data <- function(secondary_data, config){
+
+  lapply(secondary_data, buildFeatureTable, config)
+  
 }
 
 buildLabelsTree <- function(feats, config){

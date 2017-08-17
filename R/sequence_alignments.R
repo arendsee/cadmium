@@ -316,7 +316,7 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
     } %>>%
     fit.gumbel
 
-  funnel(
+  rmonad::funnel(
     ctrl = ctrl_,
     hits = hits_,
     gum = gum_

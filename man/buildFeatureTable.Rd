@@ -4,7 +4,7 @@
 \alias{buildFeatureTable}
 \title{Build table of binary features}
 \usage{
-buildFeatureTable(result, query, config)
+buildFeatureTable(d, config)
 }
 \description{
 Build table of binary features

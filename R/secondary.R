@@ -286,6 +286,7 @@ compare_target_to_focal <- function(
   }
 
   rmonad::funnel(
+    queries      = queries,
     si           = fsi_,
     flag_summary = synder_flags_summary_,
     unassembled  = unassembled_,

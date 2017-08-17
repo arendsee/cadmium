@@ -24,7 +24,7 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
-  ttxdb_ <- as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
+  ttxdb_ <- rmonad::as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
   
   tgff_ <- ttxdb_ %>>%
     GenomicFeatures::transcripts %>>%
@@ -243,9 +243,6 @@ compare_target_to_focal <- function(
   # - align query DNA sequence against the SI
   gene2genome_ <- rmonad::funnel(
     map     = fsi_,
-    cds     = tcds_,
-    exons   = texons_,
-    mrna    = tgff_,
     quedna  = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
     tardna  = t_primary@files@dna.file %>>% from_cache,
     queries = queries
@@ -255,8 +252,37 @@ compare_target_to_focal <- function(
     queseq <- quedna[ GenomicRanges::mcols(map)$attr ]
     offset <- GenomicRanges::start(CNEr::second(map)) - 1
 
+    # An rmonad bound list with elements: map | sam | dis | skipped
     get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries, offset=offset)
 
+  } %*>% rmonad::funnel(
+    cds     = tcds_,
+    exon   = texons_,
+    mrna    = tgff_
+  ) %*>% {
+
+    "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,
+    but GFF uses mRNA to specify the entire transcript before splicing)"
+
+    met <- GenomicRanges::mcols(map)
+    rng <- CNEr::second(map)
+
+    has_cds_match  <- GenomicRanges::findOverlaps(rng, cds)  %>% queryHits %>% unique
+    has_exon_match <- GenomicRanges::findOverlaps(rng, exon) %>% queryHits %>% unique
+    has_mrna_match <- GenomicRanges::findOverlaps(rng, mrna) %>% queryHits %>% unique
+
+    met$cds_match  <- seq_along(met$score) %in% has_cds_match
+    met$exon_match <- seq_along(met$score) %in% has_exon_match
+    met$mrna_match <- seq_along(met$score) %in% has_mrna_match
+
+    GenomicRanges::mcols(map) <- met
+
+    list(
+      map=map,
+      sam=sam,
+      dis=dis,
+      skipped=skipped
+    )
   }
 
   rmonad::funnel(

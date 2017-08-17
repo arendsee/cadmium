@@ -124,6 +124,90 @@ config_synder <- setClass(
   )
 )
 
+default_decision_tree <- '
+gen:
+  divisor: Is AA similar to a known gene?
+  O1:
+    primary: ORFic
+    secondary: O1
+    label: ORFic - known protein
+  trn:
+    divisor: Is AA similar to any ORF on known mRNA?
+    O2:
+      primary: ORFic
+      secondary: O2
+      label: ORFic - transcribed ORF
+    orf:
+      divisor: Is AA similar to any ORF anywhere?
+      O3:
+        primary: ORFic
+        secondary: O3
+        label: ORFic - unknown ORF
+      nuc:
+        divisor: Is DNA similar to anything?
+        cds:
+          divisor: Does match overlap a CDS?
+          N1:
+            primary: Non-ORFic
+            secondary: N1
+            label: DNA match to CDS
+          exo:
+            divisor: Does match overlap an exon?
+            N2:
+              primary: Non-ORFic
+              secondary: N1
+              label: SI overlaps exon
+            rna:
+              divisor: Does match overlap a known transcript?
+              N3:
+                primary: Non-ORFic
+                secondary: N2
+                label: DNA match to transcript
+              N4:
+                primary: Non-ORFic
+                secondary: N3
+                label: No DNA match to any known gene
+        tec:
+          U7:
+            primary: Unknown
+            secondary: U7
+            label: skipped
+          una:
+            divisor: Query maps off target scaffold
+            U1:
+              primary: Unknown
+              secondary: U1
+              label: unassembled
+            ind:
+              divisor: Query maps to zero-length target interval
+              U2:
+                primary: Unknown
+                secondary: U2
+                label: possible indel
+              nst:
+                divisor: Query maps to N-string
+                U3:
+                  primary: Unknown
+                  secondary: U3
+                  label: possibly in unknown region
+                res:
+                  divisor: Query maps to target interval smaller than self
+                  U4:
+                    primary: Unknown
+                    secondary: U4
+                    label: possibly resized
+                  scr:
+                    divisor: Query maps inbetween contiguous block
+                    U5:
+                      primary: Unknown
+                      secondary: U5
+                      label: scrambled synteny
+                    U6:
+                      primary: Unknown
+                      secondary: U6
+                      label: good syntenic match, no homology
+'
+
 #' The top configuration class
 #'
 #' The main thing you will need to change is the input.
@@ -136,12 +220,14 @@ fagin_config <- setClass(
   representation(
     input     = "config_input",
     synder    = "config_synder",
-    alignment = "config_alignment"
+    alignment = "config_alignment",
+    decision_tree = "list"
   ),
   prototype(
     input     = config_input(),
     synder    = config_synder(),
-    alignment = config_alignment()
+    alignment = config_alignment(),
+    decision_tree = yaml::yaml.load(default_decision_tree)
   )
 )
 

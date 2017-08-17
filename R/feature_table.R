@@ -76,12 +76,12 @@ tertiary_data <- function(secondary_data, config){
 
 
 #' Merge labels for all species
-determineLabels <- function(features, config){
+determineLabels <- function(features, con){
 
 
 
-  buildLabelsTree <- function(feats, config){
-    root <- yaml::yaml.load_file(config$f_decision_tree) %>%
+  buildLabelsTree <- function(feats, con){
+    root <- con@decision_tree %>%
       data.tree::as.Node(replaceUnderscores=FALSE)
     classify <- function(node, membership=NULL){
       if(is.null(membership)){
@@ -137,7 +137,7 @@ determineLabels <- function(features, config){
     #   <Node_4> d
     # The columns are recast as vectors, fed to the wrong children, and the
     # leftovers are tossed.
-    root$Get(toTable, filterFun = isLeaf, simplify=FALSE) %>%
+    root$Get(toTable, filterFun = data.tree::isLeaf, simplify=FALSE) %>%
       # Remove any NULL elements (so rbind doesn't crash)
       lapply(function(x) if(!is.null(x)) { x })           %>%
       # Bind all tables into one
@@ -161,12 +161,13 @@ determineLabels <- function(features, config){
     U5 = 'unknown: syntenically scrambled',
     U6 = 'unknown: seriously unknown',
     U7 = 'unknown: skipped for technical reasons',
-    N1 = 'non-genic: no gene in SI',
-    N2 = 'non-genic: CDS in SI',
-    N3 = 'non-genic: mRNA but not CDS in SI'
+    N1 = 'non-genic: DNA match to CDS',
+    N2 = 'non-genic: DNA match to exon',
+    N3 = 'non-genic: DNA match to mRNA',
+    N4 = 'non-genic: No DNA match'
   )
 
-  labelTrees <- lapply(features, buildLabelsTree, config)
+  labelTrees <- lapply(features, buildLabelsTree, con)
 
   labels <- lapply(
     names(labelTrees),
@@ -193,4 +194,36 @@ determineLabels <- function(features, config){
     labels  = labels,
     summary = label.summary
   )
+}
+
+
+
+plotDecisionTree <- function(root){
+  GetNodeLabel <- function(node) { sprintf('%s\n%s', node$name, node$N) }
+
+  GetEdgeLabel <- function(node) {
+    if(!node$isRoot){
+      if(node$name == node$parent$children[[1]]$name){
+        'yes'
+      } else {
+        'no'
+      }
+    } else {
+      NULL
+    }
+  }
+
+  GetNodeShape <- function(node) {
+    if(node$isLeaf){
+      'circle'
+    } else {
+      'square'
+    }
+  }
+
+  SetEdgeStyle(root, label=GetEdgeLabel)
+  SetNodeStyle(root, label=GetNodeLabel, shape=GetNodeShape)
+  SetGraphStyle(root, rankdir="LR")
+
+  plot(root)
 }

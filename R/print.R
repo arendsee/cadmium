@@ -85,6 +85,17 @@ print.config <- function(x, ...){
   print(x@alignment)
 }
 
+#' @rdname fagin_printer
+#' @export 
+print.fagin_config <- function(x, ...){
+  cat('Slot "decision_tree" (as data.tree Node):\n')
+  print(data.tree::as.Node(x@decision_tree, replaceUnderscores=FALSE))
+  print(x@input)
+  print(x@synder)
+  print(x@alignment)
+}
+
+
 
 #' @rdname fagin_printer
 #' @export 

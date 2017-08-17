@@ -19,21 +19,27 @@ gen:
       nuc:
         divisor: Is DNA similar to anything?
         cds:
-          divisor: Does search interval overlap a CDS?
+          divisor: Does match overlap a CDS?
           N1:
             primary: Non-ORFic
             secondary: N1
-            label: SI overlaps CDS
-          rna:
-            divisor: Does search interval overlap an exon?
+            label: DNA match to CDS
+          exo:
+            divisor: Does match overlap an exon?
             N2:
               primary: Non-ORFic
-              secondary: N2
+              secondary: N1
               label: SI overlaps exon
-            N3:
-              primary: Non-ORFic
-              secondary: N3
-              label: SI overlaps no known gene
+            rna:
+              divisor: Does match overlap a known transcript?
+              N3:
+                primary: Non-ORFic
+                secondary: N2
+                label: DNA match to transcript
+              N4:
+                primary: Non-ORFic
+                secondary: N3
+                label: No DNA match to any known gene
         tec:
           U7:
             primary: Unknown

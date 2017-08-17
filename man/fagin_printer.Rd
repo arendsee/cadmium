@@ -8,6 +8,7 @@
 \alias{print.config_input}
 \alias{print.config_synder}
 \alias{print.config}
+\alias{print.fagin_config}
 \alias{print.numeric_summary}
 \title{Special printers}
 \usage{
@@ -22,6 +23,8 @@
 \method{print}{config_synder}(x, ...)
 
 \method{print}{config}(x, ...)
+
+\method{print}{fagin_config}(x, ...)
 
 \method{print}{numeric_summary}(x, ...)
 }

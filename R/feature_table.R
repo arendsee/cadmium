@@ -76,25 +76,32 @@ tertiary_data <- function(secondary_data, config){
 
 
 #' Merge labels for all species
+#' @export
 determineLabels <- function(features, con){
 
-
-
   buildLabelsTree <- function(feats, con){
+
+    "Merge all features into the feature decision tree. Each node contains a
+    logical vector specifying which queries are members of the node. The names
+    in the decision tree must match the names in the feature table."
+
     root <- con@decision_tree %>%
       data.tree::as.Node(replaceUnderscores=FALSE)
-    classify <- function(node, membership=NULL){
-      if(is.null(membership)){
+    classify <- function(node, membership=logical(0)){
+      if(length(membership) == 0){
         membership <- rep(TRUE, nrow(feats))
       }
       node$membership <- membership
       node$N <- sum(membership)
       if(node$name %in% names(feats)){
-        if(length(node$children) == 2){
+        kids <- node$children
+        if(length(kids) == 2){
           yes <-  feats[[node$name]] & membership
           no  <- !feats[[node$name]] & membership
-          classify(node$children[[1]], yes)
-          classify(node$children[[2]], no)
+          classify(kids[[1]], yes)
+          classify(kids[[2]], no)
+        } else if (length(kids) != 0) {
+          stop("Nodes have either 0 or 2 children")
         }
       } else if(node$isRoot){
         classify(node$children[[1]], membership)
@@ -104,24 +111,35 @@ determineLabels <- function(features, con){
     root
   }
 
-
-
   labelTreeToTable <- function(root, feats){
+
+    "
+    Build a dataframe for each node
+    For example:
+            seqid primary secondary
+    1 AT1G29418.1   ORFic        O1
+    2 AT3G15909.1   ORFic        O1
+
+    Then bind the rows of the dataframes for each node.
+    "
+
     toTable <- function(node) {
-      # Build a dataframe for each node
-      # For example:
-      #         seqid primary secondary
-      # 1 AT1G29418.1   ORFic        O1
-      # 2 AT3G15909.1   ORFic        O1
-      if(node$N > 0){
-        d <- data.frame(seqid = feats$seqid[node$membership])
-        d$primary <- node$primary
-        d$secondary <- node$secondary
-        d
+      if(!is.null(node$N) && node$N > 0){
+        seqid     <- feats$seqid[node$membership]
+        primary   <- node$primary
+        secondary <- node$secondary
       # If there are no members in the class
       } else {
-        NULL
+        seqid     <- character(0)
+        primary   <- character(0)
+        secondary <- character(0)
       }
+      data.frame(
+        seqid     = seqid,
+        primary   = primary,
+        secondary = secondary,
+        stringsAsFactors=FALSE
+      )
     }
     # Get a table for each class
     # --- NOTE: Without simplify=FALSE something truly dreadful happens.
@@ -138,12 +156,8 @@ determineLabels <- function(features, con){
     # The columns are recast as vectors, fed to the wrong children, and the
     # leftovers are tossed.
     root$Get(toTable, filterFun = data.tree::isLeaf, simplify=FALSE) %>%
-      # Remove any NULL elements (so rbind doesn't crash)
-      lapply(function(x) if(!is.null(x)) { x })           %>%
       # Bind all tables into one
-      do.call(what=rbind)                                 %>%
-      # Remove missing elements ... TODO: is this necessary?
-      filter(!is.na(seqid))                               %>%
+      do.call(what=rbind) %>%
       # Remove rownames
       set_rownames(NULL)
   }
@@ -167,32 +181,44 @@ determineLabels <- function(features, con){
     N4 = 'non-genic: No DNA match'
   )
 
-  labelTrees <- lapply(features, buildLabelsTree, con)
+  labelTrees_ <- lapply(features, function(feat) feat %>>% buildLabelsTree(con) ) %>% rmonad::combine()
+  
+  labels_ <- labelTrees_ %>>%
+    {
+      lapply(
+        seq_along(.),
+        function(i) .[[i]] %>>% labelTreeToTable(features[[i]])
+      ) %>% magrittr::set_names(names(features))
+    } %>>% rmonad::combine()
 
-  labels <- lapply(
-    names(labelTrees),
-    function(x) labelTreeToTable(labelTrees[[x]], features[[x]])
-  ) %>% set_names(names(labelTrees))
 
 
-  lapply(names(labelTrees), function(x) lapply(features[[x]][2:11], sum) %>% unlist) %>%
-    set_names(names(labelTrees))
+  label.summary_ <- labels_ %>>%
+  {
 
-  label.summary <- labels                                   %>% 
-    lapply(count, primary, secondary)                       %>% 
-    melt(id.vars=c('primary', 'secondary'))                 %>% 
-    dplyr::rename(species=L1, count=value)                  %>% 
-    dplyr::select(secondary, species, count)                %>% 
-    tidyr::complete(secondary, species, fill=list(count=0)) %>% 
-    dplyr::mutate(count = as.integer(count))                %>% 
-    dplyr::mutate(description = descriptions[secondary])    %>% 
-    dplyr::arrange(description, secondary, species, count)  %>% 
+    "Summarize labels as a table with the columns:
+
+      1. secondary
+      2. species
+      3. count
+      4. description
+    "
+
+    lapply(., dplyr::count, primary, secondary)             %>%
+    reshape2::melt(id.vars=c('primary', 'secondary'))       %>%
+    dplyr::rename(species=L1, count=value)                  %>%
+    dplyr::select(secondary, species, count)                %>%
+    tidyr::complete(secondary, species, fill=list(count=0)) %>%
+    dplyr::mutate(count = as.integer(count))                %>%
+    dplyr::mutate(description = descriptions[secondary])    %>%
+    dplyr::arrange(description, secondary, species, count)  %>%
     as.data.frame
+  }
 
-  list(
-    trees   = labelTrees,
-    labels  = labels,
-    summary = label.summary
+  rmonad::funnel(
+    trees   = labelTrees_,
+    labels  = labels_,
+    summary = label.summary_
   )
 }
 
@@ -221,9 +247,9 @@ plotDecisionTree <- function(root){
     }
   }
 
-  SetEdgeStyle(root, label=GetEdgeLabel)
-  SetNodeStyle(root, label=GetNodeLabel, shape=GetNodeShape)
-  SetGraphStyle(root, rankdir="LR")
+  data.tree::SetEdgeStyle(root, label=GetEdgeLabel)
+  data.tree::SetNodeStyle(root, label=GetNodeLabel, shape=GetNodeShape)
+  data.tree::SetGraphStyle(root, rankdir="LR")
 
   plot(root)
 }

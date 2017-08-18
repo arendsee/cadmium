@@ -153,11 +153,20 @@ mergeSeqs <- function(dna, gff, tag){
   sequences that share a common parent, are then merged. If they are on the
   negative strang, the reverse complement is taken."
 
-  g <- {
+  g <- gff %>_% {
+
+    "Assert that the GFF file has the required columns"
+
+    # TODO: need to standardize the case across columns
+
+    if(is.null(.$type) || is.null(.$Parent))
+      stop("GFF must have the meta-columns 'type' and 'Parent'")
+  
+  } %>>% {
 
     "Extract elements of type `tag` from the `gff`"
 
-    gff[gff$type == tag]
+    .[.$type == tag]
 
   } %>>% {
 

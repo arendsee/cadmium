@@ -15,7 +15,7 @@ gff <- GenomicRanges::GRanges(
     strand=c('+','+','-','-')
   )
 GenomicRanges::mcols(gff)$type = "CDS"
-GenomicRanges::mcols(gff)$parent = c("pan", "pan", "bob", "bob")
+GenomicRanges::mcols(gff)$Parent = c("pan", "pan", "bob", "bob")
 
 cds <- c("ATGGGGCCCTAA", "ATGCCCGGGTAA") %>%
   Biostrings::DNAStringSet() %>%
@@ -26,8 +26,7 @@ faa <- c("MGP*", "MPG*") %>%
   magrittr::set_names(c("bob", "pan"))
 
 test_that("mergeSeqs correctly merges", {
-  expect_true(all( mergeSeqs(fna, gff, "CDS") == cds))
-  expect_true(all( derive_aa(fna, gff) == faa))
+  expect_true(all( (mergeSeqs(fna, gff, "CDS") %>% esc) == cds))
 })
 
 test_that("dnaregex gracefully handles no matches", {

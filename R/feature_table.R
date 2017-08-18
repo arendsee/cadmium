@@ -62,11 +62,11 @@ buildFeatureTable <- function(d, con){
   } %>>% as.data.frame(stringsAsFactors=FALSE)
 }
 
-tertiary_data <- function(secondary_data, config){
+tertiary_data <- function(secondary_data, con){
 
   "For each species, build a feature table"
 
-  ss <- lapply(secondary_data, buildFeatureTable, config)
+  ss <- lapply(secondary_data, buildFeatureTable, con=con)
   names(ss) <- names(secondary_data)
 
   rmonad::combine(ss)
@@ -77,7 +77,7 @@ tertiary_data <- function(secondary_data, config){
 
 #' Merge labels for all species
 #' @export
-determineLabels <- function(features, con){
+determine_labels <- function(features, con){
 
   buildLabelsTree <- function(feats, con){
 

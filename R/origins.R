@@ -1,6 +1,8 @@
 #' Given a species tree and a set of labels, determine orphan origin
 #' @export
-determineOrigins <- function(labels, con){
+determine_origins <- function(labels, con){
+
+  labels <- labels$labels
 
   if((sapply(labels, nrow) %>% unique %>% length) != 1)
     stop("All label tables must have equal numbers of rows")
@@ -9,7 +11,7 @@ determineOrigins <- function(labels, con){
   # require(ape)
   # require(data.tree)
 
-  root <- ape::read.tree(con@input@tree) %>% as.Node(replaceUnderscores=FALSE)
+  root <- ape::read.tree(con@input@tree) %>% data.tree::as.Node(replaceUnderscores=FALSE)
 
   apply_class_rule <- function(a, b){
     cls <- ifelse(              a == "ORFic"   | b == "ORFic"    , "ORFic"     , NA )

@@ -161,11 +161,11 @@ gen:
               divisor: Does match overlap a known transcript?
               N3:
                 primary: Non-ORFic
-                secondary: N2
+                secondary: N3
                 label: DNA match to transcript
               N4:
                 primary: Non-ORFic
-                secondary: N3
+                secondary: N4
                 label: No DNA match to any known gene
         tec:
           U7:
@@ -190,22 +190,16 @@ gen:
                   primary: Unknown
                   secondary: U3
                   label: possibly in unknown region
-                res:
-                  divisor: Query maps to target interval smaller than self
-                  U4:
+                scr:
+                  divisor: Query maps inbetween contiguous block
+                  U5:
                     primary: Unknown
-                    secondary: U4
-                    label: possibly resized
-                  scr:
-                    divisor: Query maps inbetween contiguous block
-                    U5:
-                      primary: Unknown
-                      secondary: U5
-                      label: scrambled synteny
-                    U6:
-                      primary: Unknown
-                      secondary: U6
-                      label: good syntenic match, no homology
+                    secondary: U5
+                    label: scrambled synteny
+                  U6:
+                    primary: Unknown
+                    secondary: U6
+                    label: good syntenic match, no homology
 '
 
 #' The top configuration class

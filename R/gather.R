@@ -198,28 +198,7 @@ load_synmap_meta <- function(tspec, fspec, syndir){
 }
 
 
-#' Load primary data from the minimal required inputs
-#'
-#' @param con The config object that provides paths to required data
-#' @return derived_input object
-#' @export
-primary_data <- function(...) {
-
-  # TODO: this is a temporary caching function, repeal and replace.
-
-  if(file.exists('d.Rda')){
-    load('d.Rda')
-  } else {
-    d <- .primary_data(...)
-  }
-
-  save(d, file='d.Rda')
-
-  d
-
-}
-
-.primary_data <- function(con){
+primary_data <- function(con){
 
   "
   Derive secondary data from the minimal required inputs

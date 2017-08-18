@@ -1,8 +1,3 @@
-input/
-output/
-data/
-db/
-bin/
 *.tab
 *.gff
 *.gff3
@@ -10,42 +5,24 @@ bin/
 *.faa
 *.fna
 *.fasta
+*.fai
 
-log.Rout
-
-preconfig.sh
-runconfig.R
-config
-
-preconfig.sh
-runconfig.R
-
-*.un~
-
-archives/
-ARCHIVE/
-
-# downloaded source files
-smof/
-synder/
+vignettes/*Rda
 
 tags
 
-*log
-*.RDat
-*.Rdat
-*.RData
-*.Rhistory
+test.R
+d.Rda
 
-**/.ropeproject/
+.fagin_cache
 
-# systemic specific scripts
-util/prep-araport11.sh
-util/prepare-data.sh
-
-# My personal temporary files
-z*
-
+INPUT
+log.Rout
+preconfig.sh
+runconfig.R
+config
+*.un~
+archives/
 # latex temporary files and folders
 cache/
 figure/
@@ -57,3 +34,16 @@ figure/
 *.fls
 *.toc
 *.out
+# Haskell things
+dist/
+*sandbox*
+[0-9][0-9]/
+000*
+fagin
+report.html
+fagin.prof
+*.o
+*.hi
+*.hp
+*.ps
+inst/doc

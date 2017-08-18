@@ -1,0 +1,46 @@
+Package: fagin
+Type: Package
+Title: Annotate Orphan Genes
+Version: 0.8.0
+Author: Zebulun Arendsee
+Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
+URL: https://github.com/arendsee/fagin
+BugReports: https://github.com/arendsee/fagin/issues
+Description:
+    A pipeline for the classification of orphans into origin classes using a
+    syntenic filter.
+Depends: R (>= 3.4.0)
+Imports:
+    synder (>= 0.25.0),
+    rmonad (>= 0.2.0.9028),
+    methods,
+    magrittr,
+    CNEr,
+    Biostrings,
+    GenomicRanges,
+    GenomeInfoDb,
+    BiocParallel,
+    IRanges,
+    robustreg,
+    fitdistrplus,
+    ape,
+    rlang,
+    readr,
+    tibble,
+    tidyr,
+    stringr,
+    dplyr,
+    yaml
+Remotes:
+    arendsee/synder
+    arendsee/rmonad@dev
+License: GPL-3 + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Suggests: testthat,
+    knitr,
+    rmarkdown,
+    covr
+VignetteBuilder: knitr
+RoxygenNote: 6.0.1
+BiocViews: 

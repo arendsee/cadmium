@@ -73,8 +73,8 @@ print.config_input <- function(x, ...){
 #' @rdname fagin_printer
 #' @export 
 print.config_synder <- function(x, ...){
-  prettyCat("offsets" , x@offsets , 2)
-  prettyCat("k"       , x@k       , 2)
+  prettyCat("offsets", paste(x@offsets, collapse=""), 2)
+  prettyCat("k", x@k, 2)
 }
 
 #' @rdname fagin_printer

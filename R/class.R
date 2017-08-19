@@ -215,13 +215,15 @@ fagin_config <- setClass(
     input     = "config_input",
     synder    = "config_synder",
     alignment = "config_alignment",
-    decision_tree = "list"
+    decision_tree = "list",
+    archive = "character"
   ),
   prototype(
-    input     = config_input(),
-    synder    = config_synder(),
-    alignment = config_alignment(),
-    decision_tree = yaml::yaml.load(default_decision_tree)
+    input         = config_input(),
+    synder        = config_synder(),
+    alignment     = config_alignment(),
+    decision_tree = yaml::yaml.load(default_decision_tree),
+    archive       = 'ARCHIVE'
   )
 )
 

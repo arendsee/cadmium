@@ -7,10 +7,6 @@ determine_origins <- function(labels, con){
   if((sapply(labels, nrow) %>% unique %>% length) != 1)
     stop("All label tables must have equal numbers of rows")
 
-
-  # require(ape)
-  # require(data.tree)
-
   root <- ape::read.tree(con@input@tree) %>% data.tree::as.Node(replaceUnderscores=FALSE)
 
   apply_class_rule <- function(a, b){

@@ -14,9 +14,9 @@ library(fagin)
 
 # Dependencies
 
-Currently `fagin` has no dependencies outside of R. It makes heavy use of the
-core libraries of bioconductor (`Biostring` and `GenomicRanges`). The only
-really experimental (read unstable) dependency is `synder`.
+Currently `fagin` has no dependencies outside of R. It makes heavy use of
+bioconductor (e.g. `Biostring`, `GenomicRanges`, and `GenomicFeatures`). It
+also uses the rather experimental packages 'synder' and 'rmonad'.
 
 # Input
 
@@ -38,7 +38,29 @@ a configuration object. The default configuration can be generated
 config()
 ```
 
-and taylored to specific needs.
+This will need to be tailored to your specific needs. To run the full fagin analysis, call
+
+```R
+# Where con is your configuration object
+run_fagin(con)
+```
+
+All results of the analysis will be archived (in the folder `ARCHIVE` by
+default, this can be customized in the config). The archive contains the
+following Rdata files:
+
+ 1. `d1.Rda` - gathering and checking raw data
+
+ 2. `d2.Rda` - comparisons of target species to the focal species
+
+ 3. `d3.Rda` - building a feature table from the target/focal comparisons
+
+ 4. `d4.Rda` - labels and trees built from the feature table
+
+ 5. `d5.Rda` - results of superimposing labels on the phylogenetic tree
+
+ 6. `final_obj.Rda` -  the final rmonad object
+
 
 # Pipeline
 
@@ -64,11 +86,10 @@ Implementation
  - [x] * ab initio refactor as pure R package
  - [x] * replace all shellscripts
  - [x] * add test suite
- - [ ] all data in RSQLite databases (constant memory)
  - [ ] parallelize everything (divide-analyze-recombine)
  - [ ] integrate BLAST orphan identification
  - [ ] integrate phylostratigraphy
- - [ ] toss knitr, modularize for interactive exploration
+ - [x] toss knitr, modularize for interactive exploration
  - [ ] integrate with Trelliscope and datadr
 
 Final Destination

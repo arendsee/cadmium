@@ -1,7 +1,7 @@
 Package: fagin
 Type: Package
 Title: Annotate Orphan Genes
-Version: 0.8.0
+Version: 0.8.1
 Author: Zebulun Arendsee
 Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
 URL: https://github.com/arendsee/fagin
@@ -14,6 +14,7 @@ Imports:
     synder (>= 0.25.0),
     rmonad (>= 0.2.0.9028),
     methods,
+    devtools,
     magrittr,
     CNEr,
     Biostrings,

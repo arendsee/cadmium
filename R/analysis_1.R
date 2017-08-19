@@ -53,8 +53,7 @@ load_species <- function(species_name, input){
   aa_ <-
     rmonad::funnel(
       x = dna_,
-      transcripts =
-        txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
+      transcripts = txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     Biostrings::translate(if.fuzzy.codon="solve")

@@ -127,3 +127,28 @@ NULL
 #' @docType package
 #' @name fagin
 NULL
+
+
+
+run_fagin <- function(con){
+  {
+
+    "Set random seed for the analysis, the choice of 210 is arbitrary. The
+    random seed mainly affects the p-value estimates for alignments."
+
+    set.seed(210)
+
+  } %__% {
+
+    "Record the date, system info, and installed packages. Of particular
+    importance are the versions of `synder` and `rmonad`."
+
+    devtools::session_info()
+  
+  } %v__%
+  primary_data(con)      %>>%
+  secondary_data(con)    %>>%
+  tertiary_data(con)     %>>%
+  determine_labels(con)  %>>%
+  determine_origins(con)
+}

@@ -267,8 +267,6 @@ add_logmn <- function(d){
 
 get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
 
-  set.seed(42)
-
   skipped_ <- rmonad::as_monad({
 
     "Currently sequence searching is performed with a quadratic time alignment

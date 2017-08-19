@@ -18,6 +18,8 @@ compare_target_to_focal <- function(
   con
 ){
 
+  # FIXME: factor out functions
+
   "
   Collect secondary data for one species. The main output is a feature table.
   Internal data is summarized (for use in downstream diagnostics or

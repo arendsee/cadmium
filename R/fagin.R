@@ -145,10 +145,17 @@ run_fagin <- function(con){
 
     devtools::session_info()
   
-  } %v__%
-  primary_data(con)      %>>%
-  secondary_data(con)    %>>%
-  tertiary_data(con)     %>>%
-  determine_labels(con)  %>>%
-  determine_origins(con)
+  } %v__% {
+
+    "Create the archival directory"
+
+    dir.create(con@archive)
+
+  }
+  primary_data(con)      %>_% archive_1(con@archive) %>>%
+  secondary_data(con)    %>_% archive_2(con@archive) %>>%
+  tertiary_data(con)     %>_% archive_3(con@archive) %>>%
+  determine_labels(con)  %>_% archive_4(con@archive) %>>%
+  determine_origins(con) %>_% archive_5(con@archive) %>%
+                              archive_rmonad(con@archive)
 }

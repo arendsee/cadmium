@@ -7,7 +7,7 @@
 *.fasta
 *.fai
 
-ARCHIVE
+ARCHIVE*
 
 vignettes/*Rda
 

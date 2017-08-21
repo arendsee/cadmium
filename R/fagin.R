@@ -151,7 +151,7 @@ run_fagin <- function(con){
 
     dir.create(con@archive)
 
-  }
+  } %__%
   primary_data(con)      %>_% archive_1(con@archive) %>>%
   secondary_data(con)    %>_% archive_2(con@archive) %>>%
   tertiary_data(con)     %>_% archive_3(con@archive) %>>%

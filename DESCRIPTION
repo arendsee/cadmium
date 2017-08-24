@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.25.0),
-    rmonad (>= 0.2.0.9029),
+    rmonad (>= 0.2.0),
     methods,
     devtools,
     magrittr,
@@ -34,7 +34,6 @@ Imports:
     yaml
 Remotes:
     arendsee/synder
-    arendsee/rmonad@dev
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

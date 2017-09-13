@@ -130,6 +130,11 @@ NULL
 
 
 
+#' Run a Fagin analysis
+#'
+#' @export
+#' @param con A fagin_config object
+#' @return An rmonad object containing all results
 run_fagin <- function(con){
   {
 

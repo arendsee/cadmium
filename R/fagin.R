@@ -157,10 +157,10 @@ run_fagin <- function(con){
     dir.create(con@archive)
 
   } %__%
-  primary_data(con)      %>_% archive_1(con@archive) %>>%
-  secondary_data(con)    %>_% archive_2(con@archive) %>>%
-  tertiary_data(con)     %>_% archive_3(con@archive) %>>%
-  determine_labels(con)  %>_% archive_4(con@archive) %>>%
-  determine_origins(con) %>_% archive_5(con@archive) %>_%
+  primary_data(con=con)      %>_% archive_1(con@archive) %>>%
+  secondary_data(con=con)    %>_% archive_2(con@archive) %>>%
+  tertiary_data(con=con)     %>_% archive_3(con@archive) %>>%
+  determine_labels(con=con)  %>_% archive_4(con@archive) %>>%
+  determine_origins(con=con) %>_% archive_5(con@archive) %>_%
                               archive_rmonad(con@archive)
 }

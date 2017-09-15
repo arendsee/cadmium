@@ -65,10 +65,27 @@ load_species <- function(species_name, input){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
+
+      "Print the transcripts to a temporary file"
+
       filepath <- paste0(".", species_name, "_trans.fna")
-      Biostrings::writeXStringSet(., filepath=filepath)   
-      Rsamtools::indexFa(filepath)
-      Rsamtools::FaFile(filepath)
+      Biostrings::writeXStringSet(., filepath=filepath)
+      filepath
+
+    } %>>% {
+
+      "Build an indexed version of the genome"
+
+      Rsamtools::indexFa(.)
+
+      .
+
+    } %>>% {
+
+      "Get a reference to the genome"
+
+      Rsamtools::FaFile(.)
+
     }
 
   transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff

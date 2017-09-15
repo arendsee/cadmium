@@ -90,6 +90,7 @@ derive_nstring <- function(dna) {
 #'
 #' @param dna DNAStringSet genome
 #' @return GenomicRanges object
+#' @export
 derive_orfgff <- function(dna) {
 
   "

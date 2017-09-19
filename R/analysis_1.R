@@ -17,13 +17,6 @@ load_species <- function(species_name, input){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
-  txdb_ <-
-    get_gff_filename(species_name, dir=input@gff_dir) %v>%
-    {
-      specname <- gsub(pattern='_', replacement=' ', x=species_name)
-      GenomicFeatures::makeTxDbFromGFF(., organism=specname)
-    }
-
   dna_ <-
     get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
@@ -36,6 +29,10 @@ load_species <- function(species_name, input){
       genome     = species_name
     )
   } %*>% GenomeInfoDb::Seqinfo
+
+  txdb_ <-
+    get_gff_filename(species_name, dir=input@gff_dir) %v>%
+    load_gene_models(seqinfo_=seqinfo_)
 
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring

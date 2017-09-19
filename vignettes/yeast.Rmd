@@ -1,0 +1,20 @@
+---
+title: "Yeast orphan analysis"
+author: "Zebulun Arendsee"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Yeast orphan analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+library(fagin)
+con <- config()
+file.symlink("../inst/yeast", "INPUT")
+```
+
+```{r}
+run_fagin(con)
+```

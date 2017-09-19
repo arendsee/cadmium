@@ -16,8 +16,8 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
   g
 }
 
-load_gene_models <- function(filename){
-  load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE)
+load_gene_models <- function(filename, ...){
+  load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE, ...)
 }
 
 #' Load a GFF file as a GenomicFeatures object
@@ -28,7 +28,16 @@ load_gene_models <- function(filename){
 #' @param get_naked parse untagged attributes as ID if they are they only field
 #' @param infer_id if ID is missing, try to create one
 #' @param Rmonad wrapped GenomicFeatures object
-load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
+load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE, seqinfo_=NULL){
+
+  "
+  Load a GFF. There are many ways this can go wrong. Below is a summary of the
+  checks and transforms applied here.
+
+  * check GFF types (character, integer or float) 
+  * unify type synonyms
+  
+  "
 
   raw_gff_ <-
     {
@@ -64,7 +73,14 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
   } %>>% {
 
     "
-    Unify all type synonyms
+    Unify all type synonyms. Synonymous sets:
+
+    gene : SO:0000704
+    mRNA : messenger_RNA | messenger RNA | SO:0000234
+    CDS  : coding_sequence | coding sequence | SO:0000316
+    exon : SO:0000147
+
+    The SO:XXXXXXX entries are ontology terms
     "
 
     gene_synonyms <- 'SO:0000704'
@@ -86,6 +102,11 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     respectively. This is not formally correct, but is probably the right thing
     to do. Since this is questionable, a warning is emitted if any replacements
     are made.
+
+    The following nearly synonymous sets are merged:
+
+    mRNA : transcript | SO:0000673
+    exon : SO:0000147 | coding_exon | coding exon | SO:0000195
     "
 
     mRNA_near_synonyms <- c('transcript', 'SO:0000673')
@@ -112,9 +133,9 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     "
     Internal. Setup and check tag list.
 
-    1) ad ID to tag list if we need to infer ID
+    1) add ID to tag list if we need to infer ID
     2) sets a temporary tag for untagged entry
-    3) assert at least on tag is pressent (otherwise nothing would be done)
+    3) assert at least one tag is pressent (otherwise nothing would be done)
     "
 
     if(infer_id && (! "ID" %in% .)){
@@ -149,20 +170,18 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
     tibble::data_frame(
       attr  = stringr::str_split(., ";"),
       order = seq_len(length(.))
-    )
-
-  } %>>%
-      dplyr::mutate(ntags = sapply(attr, length)) %>>%
-      tidyr::unnest(attr) %>>%
+    )                                                                                  %>>%
+      dplyr::mutate(ntags = sapply(attr, length))                                      %>>%
+      tidyr::unnest(attr)                                                              %>>%
       dplyr::mutate(attr = ifelse(grepl('=', attr), attr, paste(".U", attr, sep="="))) %>>%
       tidyr::separate_(
         col   = "attr",
         into  = c("tag", "value"),
         sep   = "=",
         extra = "merge"
-      ) %>%
+      )
 
-  rmonad::funnel(tags=tags_) %*>% {
+  } %>>% rmonad::funnel(tags=tags_) %*>% {
 
     "Ignore any tags other than the specified ones"
 
@@ -211,7 +230,7 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
     "If no ID is given, but there is one untagged field, and if there are no
     other fields, then cast the untagged field as an ID. This is needed to
-    accomadate the irresponsible output of AUGUSTUS."
+    accommodate the reprehensible output of AUGUSTUS."
 
     if(infer_id && ".U" %in% names(.)){
       # handle the excrement of AUGUSTUS
@@ -250,8 +269,11 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
       if(any(parent_types == "gene"))
         warning("Found CDS or exon directly inheriting from a gene, this may be fine.")
 
-      if(! all(parent_types %in% c("gene", "mRNA")))
-        stop("Found CDS or exon with illegal parent")
+      if(! all(parent_types %in% c("gene", "mRNA"))){
+        offenders <- parent_types[!(parent_types %in% c("gene", "mRNA"))]
+        msg <- "Found CDS or exon with unexpected parent: [%s]"
+        warning(sprintf(msg, paste0(unique(offenders), collapse=", ")))
+      }
 
       if( any(is.na(parents)) )
         stop("Found CDS or exon with no parent")
@@ -274,44 +296,56 @@ load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE){
 
     GenomicRanges::mcols(gi)$type <- .$type
 
+    GenomicRanges::seqinfo(gi) <- seqinfo_
+
     gi
 
   } %>>% {
 
-    "From the GenomicRanges object, create a transcript database as a TxDb object
+    "
+    From the GenomicRanges object, create a transcript database as a TxDb object
 
-     makeTxDb has two required inputs (both as data frames). These notes are from (?makeTxDb):
-       1) transcripts - one row per transcript with the following columns
-          * tx_id - Transcript ID as an integer vector without NA or duplicates
-          * tx_name - [optional] Transcript names as character vector
-          * tx_chrm - transcript chromsomes as character vector with no NA
-          * tx_strand - transcript strand as factor or character vector with no NA from [+-]
-          * tx_start - transcript start position
-          * tx_end - transcript end position
-       2) splicings - must have one row for each exon in each transcript, each
-          row describes the exon and the CDS contained in it (if any) 
-          * tx_id
-          * exon_rank
-          * exon_id
-          * exon_name
-          * exon_chrom
-          * exon_start
-          * exon_end
-          * cds_id
-          * cds_name
-          * cds_start
-          * cds_end
-      makeTxDb also has the following optional inputs
-        3) genes - must have one row for every transcript in every gene (often equals 1)
-           * tx_id/tx_name - genes must have either tx_id OR tx_name, but not both
-           * gene_id - Gene ID, character vector or factor with no NAs
-        4) chrominfo - must have 1 row per chromosome
-           * chrom - Chromosome name as character vector or factor with no NAs or duplicates
-           * length - chromosome length as integer vector with either all or no NAs
-           * is_circular - logical vector possibly with NAs
+    makeTxDb has two required inputs (both as data frames). These notes are from (?makeTxDb):
+      1) transcripts - one row per transcript with the following columns
+         * tx_id - Transcript ID as an integer vector without NA or duplicates
+         * tx_name - [optional] Transcript names as character vector
+         * tx_chrm - transcript chromosomes as character vector with no NA
+         * tx_strand - transcript strand as factor or character vector with no NA from [+-]
+         * tx_start - transcript start position
+         * tx_end - transcript end position
+      2) splicings - must have one row for each exon in each transcript, each
+         row describes the exon and the CDS contained in it (if any) 
+         * tx_id
+         * exon_rank
+         * exon_id
+         * exon_name
+         * exon_chrom
+         * exon_start
+         * exon_end
+         * cds_id
+         * cds_name
+         * cds_start
+         * cds_end
+    makeTxDb also has the following optional inputs
+      3) genes - must have one row for every transcript in every gene (often equals 1)
+         * tx_id/tx_name - genes must have either tx_id OR tx_name, but not both
+         * gene_id - Gene ID, character vector or factor with no NAs
+      4) chrominfo - must have 1 row per chromosome
+         * chrom - Chromosome name as character vector or factor with no NAs or duplicates
+         * length - chromosome length as integer vector with either all or no NAs
+         * is_circular - logical vector possibly with NAs
     "
 
-    # TODO: build the above from the input GRanges object, then pass into makeTxDb
+    meta <- GenomicRanges::mcols(.)
+
+    # NOTE: This cannot just be `is_trans <- meta$type == "mRNA"` because some
+    # exons are recorded as direct children of a "gene" feature. So I list as a
+    # transcript anything that is the parent of an exon or CDS.
+    is_trans <- meta$ID %in% meta$Parent[meta$type %in% c("exon", "CDS")]
+
+    GenomicRanges::mcols(.)$type = ifelse(is_trans, "mRNA", meta$type)
+
+    GenomicFeatures::makeTxDbFromGRanges(.)
 
   }
 

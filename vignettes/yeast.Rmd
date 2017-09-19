@@ -11,10 +11,11 @@ vignette: >
 
 ```{r}
 library(fagin)
+library(rmonad)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
 ```
 
 ```{r}
-run_fagin(con)
+d <- run_fagin(con)
 ```

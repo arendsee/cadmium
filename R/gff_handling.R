@@ -16,19 +16,20 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
   g
 }
 
-load_gene_models <- function(filename, ...){
-  load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE, ...)
-}
-
 #' Load a GFF file as a GenomicFeatures object
 #'
 #' @export
 #' @param file GFF filename
-#' @param tags metadata tags to keep
-#' @param get_naked parse untagged attributes as ID if they are they only field
-#' @param infer_id if ID is missing, try to create one
 #' @param Rmonad wrapped GenomicFeatures object
-load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE, seqinfo_=NULL){
+#' @param seqinfo_ Seqinfo object
+load_gene_models <- function(filename, seqinfo_=NULL){
+  .load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE, seqinfo_=seqinfo_)
+}
+
+# @param tags metadata tags to keep
+# @param get_naked parse untagged attributes as ID if they are they only field
+# @param infer_id if ID is missing, try to create one
+.load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE, seqinfo_=NULL){
 
   "
   Load a GFF. There are many ways this can go wrong. Below is a summary of the

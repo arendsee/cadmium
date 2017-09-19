@@ -31,9 +31,10 @@ load_species <- function(species_name, input){
   } %*>% GenomeInfoDb::Seqinfo
 
   txdb_ <-
-    get_gff_filename(species_name, dir=input@gff_dir) %v>%
-    load_gene_models(seqinfo_=seqinfo_)
-
+    rmonad::funnel(
+      filename = get_gff_filename(species_name, dir=input@gff_dir),
+      seqinfo_ = seqinfo_
+    ) %*>% load_gene_models
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
@@ -246,7 +247,7 @@ primary_data <- function(con){
 
   }
 
-  focal_species_ = con_ %>>% { .@input@focal_species } %>%
+  focal_species_ <- con_ %>>% { .@input@focal_species } %>%
   rmonad::funnel(specs=species_names_) %*>% {
     
     "Assert that the focal species is in the phylogenetic tree"

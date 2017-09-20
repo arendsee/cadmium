@@ -2,9 +2,9 @@
 #' @importFrom graphics plot
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%"
-#' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%v__%" "%||%" "%|>%" "%>_%"
+#' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%||%" "%|>%" "%>_%"
 #' @importFrom utils head tail
-utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%v__%", "%||%", "%|>%", "%>_%"))
+utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%||%", "%|>%", "%>_%"))
 NULL
 
 #' fagin: Trace the origins of orphan genes
@@ -150,7 +150,7 @@ run_fagin <- function(con){
 
     devtools::session_info()
   
-  } %v__% {
+  } %__% {
 
     "Create the archival directory"
 

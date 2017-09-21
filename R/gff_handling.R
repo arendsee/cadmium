@@ -297,10 +297,16 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     GenomicRanges::mcols(gi)$type <- .$type
 
-    GenomicRanges::seqinfo(gi) <- seqinfo_
-
     gi
 
+  } %>% rmonad::funnel(si=seqinfo_) %*>% {
+
+    "Set the Seqinfo"
+
+    GenomicRanges::seqinfo(.) <- si 
+
+    .
+    
   } %>>% {
 
     "

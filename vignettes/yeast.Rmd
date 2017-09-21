@@ -18,4 +18,10 @@ file.symlink("../inst/yeast", "INPUT")
 
 ```{r}
 d <- run_fagin(con)
+missues(d) %>% subset(type == "error")
+e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
+
+ms <- as.list(d)
+ierr <- sapply(d, function(x) x$has_error())
+ms[ierr]
 ```

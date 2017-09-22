@@ -154,6 +154,12 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
   }
 
+  sources_ <- raw_gff_ %>>% {
+
+    unique(as.character(.[[2]]))
+
+  }
+
   raw_gff_ %>>% {
 
     "Extract the attribute column"
@@ -182,7 +188,34 @@ load_gene_models <- function(filename, seqinfo_=NULL){
         extra = "merge"
       )
 
-  } %>>% rmonad::funnel(tags=tags_) %*>% {
+  } %>% rmonad::funnel(tags=tags_, src=sources_) %*>% {
+
+    "Catch an AUGUSTUS shenanigan - using the tag 'Other' where 'Parent' should
+    be used to link an mRNA to its gene"
+
+    if('Other' %in% .$tag){
+      if('AUGUSTUS' %in% src){
+        warning("Replacing the tag 'Other' with 'Parent'. This file appears to be
+        an AUGUSTUS-produced GFF, and AUGUSTUS uses the tag Other to refer to a
+        Parent relationship. To avoid this warning, you may replace Other with
+        Parent in the GFF files. You should confirm that Other is being used only
+        to link to parents.")
+        .$tag <- ifelse(.$tag == "Other", "Parent", .$tag)
+      } else {
+        warning("This GFF file contains the tag 'Other'. This may be fine. But
+        some programs, like AUGUSTUS, use this tag to refer to a Parent. Your
+        file does not appear to be from AUGUSTUS (based on source column),
+        however you may want to double check the GFF. If it is using the tag
+        Other as a Parent link, just replace Other with Parent and rerun fagin.
+        If this file is from AUGUSTUS, you may want to change the source column
+        to 'AUGUSTUS', this will allow fagin to make smarter choices in some
+        circumstances.")
+      }
+    }
+
+    .
+
+  } %>% rmonad::funnel(tags=tags_) %*>% {
 
     "Ignore any tags other than the specified ones"
 
@@ -305,11 +338,11 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     # Will fail loadly if any sequence in `.` is not in the seqinfo file
     # This step is needed since seqinfo() will not create new levels.
-    seqlevels(.) <- unique(seqnames(si))
+    GenomeInfoDb::seqlevels(.) <- unique(GenomeInfoDb::seqnames(si))
     GenomicRanges::seqinfo(.) <- si 
 
     .
-    
+
   } %>>% {
 
     "

@@ -16,7 +16,7 @@ Imports:
     methods,
     devtools,
     magrittr,
-    CNEr,
+    CNEr (>= 1.12.1),
     Biostrings,
     GenomicRanges,
     GenomeInfoDb,

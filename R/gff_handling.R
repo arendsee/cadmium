@@ -303,6 +303,9 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     "Set the Seqinfo"
 
+    # Will fail loadly if any sequence in `.` is not in the seqinfo file
+    # This step is needed since seqinfo() will not create new levels.
+    seqlevels(.) <- unique(seqnames(si))
     GenomicRanges::seqinfo(.) <- si 
 
     .

@@ -1,4 +1,5 @@
 #' Given a species tree and a set of labels, determine orphan origin
+#'
 #' @export
 determine_origins <- function(labels, con){
 

@@ -62,6 +62,9 @@ buildFeatureTable <- function(d, con){
   } %>>% as.data.frame(stringsAsFactors=FALSE)
 }
 
+#' Load tertiary data
+#'
+#' @export
 tertiary_data <- function(secondary_data, con){
 
   "For each species, build a feature table"

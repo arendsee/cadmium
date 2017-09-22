@@ -10,18 +10,26 @@ vignette: >
 ---
 
 ```{r}
-library(fagin)
+
+document()
 library(rmonad)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
-```
-
-```{r}
 d <- run_fagin(con)
 missues(d) %>% subset(type == "error")
 e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
-
 ms <- as.list(d)
 ierr <- sapply(d, function(x) x$has_error())
-ms[ierr]
+es <- ms[ierr]
+
+```
+
+```{r}
+load('ARCHIVE/d1.Rda')
+d1 %>>% secondary_data(con=con) -> d
+missues(d) %>% subset(type == "error")
+e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
+ms <- as.list(d)
+ierr <- sapply(d, function(x) x$has_error())
+es <- ms[ierr]
 ```

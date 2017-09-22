@@ -212,6 +212,9 @@ load_synmap_meta <- function(tspec, fspec, syndir){
 }
 
 
+#' Load primary data
+#'
+#' @export
 primary_data <- function(con){
 
   "

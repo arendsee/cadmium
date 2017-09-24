@@ -10,26 +10,91 @@ vignette: >
 ---
 
 ```{r}
-
 document()
 library(rmonad)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
 d <- run_fagin(con)
-errors <- missues(d) %>% subset(type == "error")
-e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
-ms <- as.list(d)
-ierr <- sapply(d, function(x) x$has_error())
-es <- ms[ierr]
+```
 
+```{r}
+missues(d) %>% subset(type == "error")
+mtabulate(d, code=TRUE) %>% subset(error != 0)
+es <- as.list(d)[sapply(d, function(x) x$has_error())]
+ws <- as.list(d)[sapply(d, function(x) x$has_warning())]
+```
+
+```{r}
+invertSummaries <- function(x){
+  xs <- list(
+    gff         = list(),
+    dna         = list(),
+    aa          = list(),
+    trans       = list(),
+    orfgff      = list(),
+    orffaa      = list(),
+    transorfgff = list(),
+    transorffaa = list(),
+    nstring     = list()
+  )
+  for(s in names(x@species)){
+    xs$gff         = append(xs$gff         , x@species[[s]]@summaries@gff.summary         )
+    xs$dna         = append(xs$dna         , x@species[[s]]@summaries@dna.summary         )
+    xs$aa          = append(xs$aa          , x@species[[s]]@summaries@aa.summary          )
+    xs$trans       = append(xs$trans       , x@species[[s]]@summaries@trans.summary       )
+    xs$orfgff      = append(xs$orfgff      , x@species[[s]]@summaries@orfgff.summary      )
+    xs$orffaa      = append(xs$orffaa      , x@species[[s]]@summaries@orffaa.summary      )
+    xs$transorfgff = append(xs$transorfgff , x@species[[s]]@summaries@transorfgff.summary )
+    xs$transorffaa = append(xs$transorffaa , x@species[[s]]@summaries@transorffaa.summary )
+    xs$nstring     = append(xs$nstring     , x@species[[s]]@summaries@nstring.summary     )
+  }
+  lapply(xs, function(xx) { names(xx) <- names(x@species); xx } )
+}
 ```
 
 ```{r}
 load('ARCHIVE/d1.Rda')
-d1 %>>% secondary_data(con=con) -> d
-missues(d) %>% subset(type == "error")
-e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
-ms <- as.list(d)
-ierr <- sapply(d, function(x) x$has_error())
-es <- ms[ierr]
+require(ape)
+plot(d1@tree)
+ss <- invertSummaries(d1)
+```
+
+```{r}
+ss$aa %>% lapply(function(x) x@initial_residue)
+```
+
+```{r}
+ss$aa %>% lapply(function(x) x@final_residue)
+```
+
+```{r}
+ss$aa %>% lapply(function(x) x@has_internal_stop %>% sum)
+```
+
+```{r}
+ss$dna %>% lapply(function(x) x@table %>% nrow)
+ss$dna %>% lapply(function(x) x@comp %>% colSums %>% { . / sum(.) })
+```
+
+
+```{r}
+load('ARCHIVE/d2.Rda')
+```
+
+```{r}
+# load the binary feature table
+load('ARCHIVE/d3.Rda')
+```
+
+```{r}
+load('ARCHIVE/d4.Rda')
+d4$labels %>% lapply(function(x) { dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count() })
+```
+
+```{r}
+load('ARCHIVE/d5.Rda')
+```
+
+```{r}
+load('ARCHIVE/final_obj.Rda')
 ```

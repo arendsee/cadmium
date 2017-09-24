@@ -22,7 +22,7 @@ Imports:
     GenomeInfoDb,
     BiocParallel,
     IRanges,
-    robustreg,
+    L1pack,
     fitdistrplus,
     ape,
     rlang,

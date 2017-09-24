@@ -17,13 +17,6 @@ load_species <- function(species_name, input){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
-  txdb_ <-
-    get_gff_filename(species_name, dir=input@gff_dir) %v>%
-    {
-      specname <- gsub(pattern='_', replacement=' ', x=species_name)
-      GenomicFeatures::makeTxDbFromGFF(., organism=specname)
-    }
-
   dna_ <-
     get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
@@ -37,6 +30,11 @@ load_species <- function(species_name, input){
     )
   } %*>% GenomeInfoDb::Seqinfo
 
+  txdb_ <-
+    rmonad::funnel(
+      filename = get_gff_filename(species_name, dir=input@gff_dir),
+      seqinfo_ = seqinfo_
+    ) %*>% load_gene_models
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
@@ -65,10 +63,27 @@ load_species <- function(species_name, input){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
+
+      "Print the transcripts to a temporary file"
+
       filepath <- paste0(".", species_name, "_trans.fna")
-      Biostrings::writeXStringSet(., filepath=filepath)   
-      Rsamtools::indexFa(filepath)
-      Rsamtools::FaFile(filepath)
+      Biostrings::writeXStringSet(., filepath=filepath)
+      filepath
+
+    } %>>% {
+
+      "Build an indexed version of the genome"
+
+      Rsamtools::indexFa(.)
+
+      .
+
+    } %>>% {
+
+      "Get a reference to the genome"
+
+      Rsamtools::FaFile(.)
+
     }
 
   transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff
@@ -197,6 +212,9 @@ load_synmap_meta <- function(tspec, fspec, syndir){
 }
 
 
+#' Load primary data
+#'
+#' @export
 primary_data <- function(con){
 
   "
@@ -232,7 +250,7 @@ primary_data <- function(con){
 
   }
 
-  focal_species_ = con_ %>>% { .@input@focal_species } %>%
+  focal_species_ <- con_ %>>% { .@input@focal_species } %>%
   rmonad::funnel(specs=species_names_) %*>% {
     
     "Assert that the focal species is in the phylogenetic tree"

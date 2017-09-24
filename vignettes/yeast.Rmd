@@ -1,0 +1,35 @@
+---
+title: "Yeast orphan analysis"
+author: "Zebulun Arendsee"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Yeast orphan analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+
+document()
+library(rmonad)
+con <- config()
+file.symlink("../inst/yeast", "INPUT")
+d <- run_fagin(con)
+errors <- missues(d) %>% subset(type == "error")
+e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
+ms <- as.list(d)
+ierr <- sapply(d, function(x) x$has_error())
+es <- ms[ierr]
+
+```
+
+```{r}
+load('ARCHIVE/d1.Rda')
+d1 %>>% secondary_data(con=con) -> d
+missues(d) %>% subset(type == "error")
+e <- mtabulate(d, code=TRUE) %>% subset(error != 0)
+ms <- as.list(d)
+ierr <- sapply(d, function(x) x$has_error())
+es <- ms[ierr]
+```

@@ -96,8 +96,8 @@ get_synmap_filename <- function(focal_name, target_name, dir) {
   filename should have the format:
   <focal-genus>_<focal-species>.vs.<target-genus>_<target-species>.syn"
 
-  .check_name(focal_name) %v__%
-    .check_name(target_name) %v__%
+  .check_name(focal_name) %__%
+    .check_name(target_name) %__%
     paste0(focal_name, ".vs.", target_name) %v>%
     make_readable_filename(dir=dir, ext="syn")
 }

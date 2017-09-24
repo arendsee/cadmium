@@ -39,6 +39,9 @@ print.config_alignment_thresholds <- function(x, ...){
   prettyCat("prot2transorf", x@prot2transorf, 4)
   prettyCat("dna2dna",       x@dna2dna,       4)
 }
+setMethod("show", "config_alignment_thresholds",
+  function(object) print(object)
+)
 
 #' @rdname fagin_printer
 #' @export 
@@ -47,6 +50,9 @@ print.config_alignment_simulation <- function(x, ...){
   prettyCat("prot2allorf",   x@prot2allorf,   4)
   prettyCat("prot2transorf", x@prot2transorf, 4)
 }
+setMethod("show", "config_alignment_simulation",
+  function(object) print(object)
+)
 
 #' @rdname fagin_printer
 #' @export 
@@ -58,6 +64,9 @@ print.config_alignment <- function(x, ...){
   cat('  Slot "simulation":\n')
   print(x@simulation)
 }
+setMethod("show", "config_alignment",
+  function(object) print(object)
+)
 
 #' @rdname fagin_printer
 #' @export 
@@ -69,6 +78,9 @@ print.config_input <- function(x, ...){
   prettyCat("focal_species"   , x@focal_species   , 2)
   prettyCat("query_gene_list" , x@query_gene_list , 2)
 }
+setMethod("show", "config_input",
+  function(object) print(object)
+)
 
 #' @rdname fagin_printer
 #' @export 
@@ -76,14 +88,9 @@ print.config_synder <- function(x, ...){
   prettyCat("offsets", paste(x@offsets, collapse=""), 2)
   prettyCat("k", x@k, 2)
 }
-
-#' @rdname fagin_printer
-#' @export 
-print.config <- function(x, ...){
-  print(x@input)
-  print(x@synder)
-  print(x@alignment)
-}
+setMethod("show", "config_synder",
+  function(object) print(object)
+)
 
 #' @rdname fagin_printer
 #' @export 
@@ -94,7 +101,9 @@ print.fagin_config <- function(x, ...){
   print(x@synder)
   print(x@alignment)
 }
-
+setMethod("show", "fagin_config",
+  function(object) print(object)
+)
 
 
 #' @rdname fagin_printer

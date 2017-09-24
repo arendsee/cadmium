@@ -115,8 +115,7 @@ compare_target_to_focal <- function(
     si = fsi_,
     gff = nstrings_
   ) %*>% overlapMap %>%
-  { rmonad::funnel(x=., nstring=nstrings_) } %*>%
-  {
+  { rmonad::funnel(x=., nstring=nstrings_) } %*>% {
 
     "
     Get a N-string table with the columns
@@ -250,8 +249,27 @@ compare_target_to_focal <- function(
     queries = queries
   ) %*>% {
 
+    qids <- GenomicRanges::mcols(map)$attr
+    if(! all(qids %in% names(quedna)) ){
+
+      ngood <- sum(unique(qids) %in% names(quedna))
+      ntotal <- length(unique(qids)) 
+
+      msg <- "There is a mismatch between the names in the synteny map and
+      those derived from the GFF file. %s of %s names from the synteny map are
+      missing in the DNA file. Here are the first 5 names from the GFF-derived
+      DNA file: [%s]. Here are the first 5 from the synteny map: [%s]."
+
+      stop(sprintf(
+        msg, ngood, ntotal,
+        paste0(head(names(quedna), 5), collapse=", "),
+        paste0(head(qids, 5), collapse=", ")
+      ))
+
+    }
+
     tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
-    queseq <- quedna[ GenomicRanges::mcols(map)$attr ]
+    queseq <- quedna[ qids ]
     offset <- GenomicRanges::start(CNEr::second(map)) - 1
 
     # An rmonad bound list with elements: map | sam | dis | skipped
@@ -305,6 +323,9 @@ compare_target_to_focal <- function(
 
 }
 
+#' Load secondary data
+#'
+#' @export
 secondary_data <- function(primary_input, con){
 
   "

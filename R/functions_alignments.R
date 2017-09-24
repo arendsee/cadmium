@@ -24,9 +24,16 @@ fit.gumbel <- function(sam){
     dplyr::group_by(query)           %>%
     dplyr::filter(score==max(score)) %>%
     dplyr::summarize(score=mean(score), logmn=max(logmn)) # to remove ties
-  adj.fit <- robustreg::robustRegBS(score ~ logmn, sam)
-  b0 <- coef(adj.fit)[1]
-  b1 <- coef(adj.fit)[2]
+
+  fit <- L1pack::l1fit(sam$logmn, sam$score)$coefficients
+  b0 <- fit[[1]]
+  b1 <- fit[[2]]
+
+  # # adj.fit <- robustreg::robustRegBS(formula = score ~ logmn, data = sam)
+  # adj.fit <- robustreg::robustRegH(formula = score ~ logmn, data = sam)
+  #
+  # b0 <- coef(adj.fit)[1]
+  # b1 <- coef(adj.fit)[2]
 
   get.adj.from.score <- function(x, logmn){
     x - b0 - b1 * logmn

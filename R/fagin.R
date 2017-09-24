@@ -2,9 +2,9 @@
 #' @importFrom graphics plot
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%"
-#' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%v__%" "%||%" "%|>%" "%>_%"
+#' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%||%" "%|>%" "%>_%"
 #' @importFrom utils head tail
-utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%v__%", "%||%", "%|>%", "%>_%"))
+utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%||%", "%|>%", "%>_%"))
 NULL
 
 #' fagin: Trace the origins of orphan genes
@@ -130,6 +130,11 @@ NULL
 
 
 
+#' Run a Fagin analysis
+#'
+#' @export
+#' @param con A fagin_config object
+#' @return An rmonad object containing all results
 run_fagin <- function(con){
   {
 
@@ -145,17 +150,17 @@ run_fagin <- function(con){
 
     devtools::session_info()
   
-  } %v__% {
+  } %__% {
 
     "Create the archival directory"
 
     dir.create(con@archive)
 
   } %__%
-  primary_data(con)      %>_% archive_1(con@archive) %>>%
-  secondary_data(con)    %>_% archive_2(con@archive) %>>%
-  tertiary_data(con)     %>_% archive_3(con@archive) %>>%
-  determine_labels(con)  %>_% archive_4(con@archive) %>>%
-  determine_origins(con) %>_% archive_5(con@archive) %>%
+  primary_data(con=con)      %>_% archive_1(con@archive) %>>%
+  secondary_data(con=con)    %>_% archive_2(con@archive) %>>%
+  tertiary_data(con=con)     %>_% archive_3(con@archive) %>>%
+  determine_labels(con=con)  %>_% archive_4(con@archive) %>>%
+  determine_origins(con=con) %>_% archive_5(con@archive) %>_%
                               archive_rmonad(con@archive)
 }

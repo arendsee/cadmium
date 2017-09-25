@@ -12,16 +12,17 @@ vignette: >
 ```{r}
 document()
 library(rmonad)
+library(knitr)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
 d <- run_fagin(con)
 ```
 
 ```{r}
-missues(d) %>% subset(type == "error")
-mtabulate(d, code=TRUE) %>% subset(error != 0)
+missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
 es <- as.list(d)[sapply(d, function(x) x$has_error())]
-ws <- as.list(d)[sapply(d, function(x) x$has_warning())]
+ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
 ```
 
 ```{r}

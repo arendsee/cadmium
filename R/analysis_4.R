@@ -105,10 +105,28 @@ determine_origins <- function(labels, con){
 
   backbone <- do.call(cbind, d) %>%
     as.data.frame %>%
-    set_names(paste0('ps', 1:(root$height-1)))
+    set_names(paste0('ps', 1:(root$height-1))) %>% {
+      l <- levels(.[[1]])
+      l <- sub("Non-ORFic", "N", l)
+      l <- sub("ORFic",     "O", l)
+      l <- sub("Unknown",   "U", l)
+      lapply(., function(s) {levels(s) <- l; s})
+    } %>%
+    as.data.frame
+
+  classStr <- apply(backbone, 1, paste, collapse="")
+
+  classSum <- classStr %>% factor %>% summary(maxsum=Inf) %>% {
+    data.frame(
+      group = names(.),
+      count = .
+    )} %>% { rownames(.) <- NULL; . }
 
   list(
-    root=root,
-    backbone=backbone
+    root     = root,
+    backbone = backbone,
+    classStr = classStr,
+    classSum = classSum
   )
+
 }

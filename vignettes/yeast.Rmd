@@ -10,19 +10,20 @@ vignette: >
 ---
 
 ```{r}
-document()
+# document()
 library(rmonad)
+library(ggplot2)
 library(knitr)
-con <- config()
-file.symlink("../inst/yeast", "INPUT")
-d <- run_fagin(con)
+# con <- config()
+# file.symlink("../inst/yeast", "INPUT")
+# d <- run_fagin(con)
 ```
 
 ```{r}
-missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
-mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-es <- as.list(d)[sapply(d, function(x) x$has_error())]
-ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
+# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+# es <- as.list(d)[sapply(d, function(x) x$has_error())]
+# ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
 ```
 
 ```{r}
@@ -55,8 +56,6 @@ invertSummaries <- function(x){
 
 ```{r}
 load('ARCHIVE/d1.Rda')
-require(ape)
-plot(d1@tree)
 ss <- invertSummaries(d1)
 ```
 
@@ -82,18 +81,64 @@ ss$dna %>% lapply(function(x) x@comp %>% colSums %>% { . / sum(.) })
 load('ARCHIVE/d2.Rda')
 ```
 
+```{r, fig.width=8, fig.height=6}
+require(ape)
+plot(d1@tree)
+```
+
+```
+    O1 = genic: known gene
+    O2 = genic: unknown ORF on known mRNA
+    O3 = genic: unknown ORF off known mRNA
+    U1 = unknown: maps off the scaffold
+    U2 = unknown: possible indel
+    U3 = unknown: possible N-string
+    U5 = unknown: syntenically scrambled
+    U4 = -- RIP - there is no 4
+    U6 = unknown: seriously unknown
+    U7 = unknown: skipped for technical reasons
+    N1 = non-genic: DNA match to CDS
+    N2 = non-genic: DNA match to exon
+    N3 = non-genic: DNA match to mRNA
+    N4 = non-genic: No DNA match to any known gene
+```
+
 ```{r}
 # load the binary feature table
 load('ARCHIVE/d3.Rda')
 ```
 
-```{r}
+```{r, fig.width=8, fig.height=6}
 load('ARCHIVE/d4.Rda')
-d4$labels %>% lapply(function(x) { dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count() })
+d4$labels %>%
+    lapply(
+        function(x) {
+            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+        }
+    ) %>%
+    dplyr::bind_rows(.id='species') %>%
+    ggplot +
+        geom_bar(aes(x=species, y=n, fill=secondary), position="dodge", stat="identity") +
+        theme(
+            axis.text.x = element_text(angle=270, hjust=0, vjust=1)
+        )
+```
+
+```{r, fig.width=8, fig.height=4}
+d4$labels %>%
+    lapply(
+        function(x) {
+            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+        }
+    ) %>%
+    dplyr::bind_rows(.id='species') %>%
+    ggplot +
+        geom_bar(aes(x=secondary, y=n, fill=species), position="dodge", stat="identity")
 ```
 
 ```{r}
 load('ARCHIVE/d5.Rda')
+d5$classSum
 ```
 
 ```{r}

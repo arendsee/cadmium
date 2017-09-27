@@ -5,20 +5,27 @@
 
 A pipeline for the classification of orphans into origin classes using a syntenic filter.
 
-# Installation
+## Funding
+
+This work is funded by the National Science Foundation grant:
+
+[NSF-IOS 1546858](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1546858)
+Orphan Genes: An Untapped Genetic Reservoir of Novel Traits
+
+## Installation
 
 ```R
 devtools::install_github("arendsee/fagin")
 library(fagin)
 ```
 
-# Dependencies
+## Dependencies
 
 Currently `fagin` has no dependencies outside of R. It makes heavy use of
 bioconductor (e.g. `Biostring`, `GenomicRanges`, and `GenomicFeatures`). It
 also uses the rather experimental packages 'synder' and 'rmonad'.
 
-# Input
+## Input
 
 The following is required
 
@@ -29,7 +36,7 @@ The following is required
    - GFF file (must at least include gene models)
    - Full genome (GFF reference)
 
-# Configuration
+## Configuration
 
 To run and configure `fagin`, you need to set paths to your data in
 a configuration object. The default configuration can be generated
@@ -62,7 +69,7 @@ following Rdata files:
  6. `final_obj.Rda` -  the final rmonad object
 
 
-# Pipeline
+## Pipeline
 
  - Identify target genes that overlap the search space.
  - Search the query protein against the overlapping target gene's ORFs
@@ -70,7 +77,7 @@ following Rdata files:
  - Predict ancestor states
 
 
-# TODO
+## TODO
 
 Content
  - [x] generalize from 'orphan' to 'query'

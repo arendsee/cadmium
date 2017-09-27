@@ -60,25 +60,33 @@ ss <- invertSummaries(d1)
 ```
 
 ```{r}
-ss$aa %>% lapply(function(x) x@initial_residue)
-```
-
-```{r}
-ss$aa %>% lapply(function(x) x@final_residue)
-```
-
-```{r}
-ss$aa %>% lapply(function(x) x@has_internal_stop %>% sum)
-```
-
-```{r}
-ss$dna %>% lapply(function(x) x@table %>% nrow)
-ss$dna %>% lapply(function(x) x@comp %>% colSums %>% { . / sum(.) })
-```
-
-
-```{r}
 load('ARCHIVE/d2.Rda')
+
+number_of_chromosomes <- function(x){
+    lapply(x$dna, function(s) nrow(s@table))
+}
+
+initial_protein_residue_counts <- function(x){
+    lapply(x$aa, function(s) s@initial_residue)
+}
+
+final_protein_residue_counts <- function(x){
+    lapply(x$aa, function(s) s@final_residue)
+}
+
+protein_has_internal_stop <- function(x){
+    lapply(x$aa, function(s) s@has_internal_stop %>% sum)
+}
+
+genomic_composition <- function(x){
+    x$dna %>% lapply(function(s) s@comp %>% colSums %>% { . / sum(.) })
+}
+
+number_of_chromosomes(ss)
+initial_protein_residue_counts(ss)
+final_protein_residue_counts(ss)
+protein_has_internal_stop(ss)
+genomic_composition(ss)
 ```
 
 ```{r, fig.width=8, fig.height=6}
@@ -108,32 +116,42 @@ plot(d1@tree)
 load('ARCHIVE/d3.Rda')
 ```
 
+```{r}
+plotSecondaryLabels <- function(con, fill='secondary'){
+    load(file.path(con@archive, 'd4.Rda'))
+    if(fill == 'secondary'){
+        d4$labels %>%
+            lapply(
+                function(x) {
+                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+                }
+            ) %>%
+            dplyr::bind_rows(.id='species') %>%
+            ggplot +
+                geom_bar(aes(x=species, y=n, fill=secondary), position="dodge", stat="identity") +
+                theme(
+                    axis.text.x = element_text(angle=270, hjust=0, vjust=1)
+                )
+    } else {
+        d4$labels %>%
+            lapply(
+                function(x) {
+                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+                }
+            ) %>%
+            dplyr::bind_rows(.id='species') %>%
+            ggplot +
+                geom_bar(aes(x=secondary, y=n, fill=species), position="dodge", stat="identity")
+    }
+}
+```
+
 ```{r, fig.width=8, fig.height=6}
-load('ARCHIVE/d4.Rda')
-d4$labels %>%
-    lapply(
-        function(x) {
-            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-        }
-    ) %>%
-    dplyr::bind_rows(.id='species') %>%
-    ggplot +
-        geom_bar(aes(x=species, y=n, fill=secondary), position="dodge", stat="identity") +
-        theme(
-            axis.text.x = element_text(angle=270, hjust=0, vjust=1)
-        )
+plotSecondaryLabels(con)
 ```
 
 ```{r, fig.width=8, fig.height=4}
-d4$labels %>%
-    lapply(
-        function(x) {
-            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-        }
-    ) %>%
-    dplyr::bind_rows(.id='species') %>%
-    ggplot +
-        geom_bar(aes(x=secondary, y=n, fill=species), position="dodge", stat="identity")
+plotSecondaryLabels(con, fill='species')
 ```
 
 ```{r}

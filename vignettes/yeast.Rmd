@@ -9,24 +9,25 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
+```{r, echo=FALSE, message=FALSE}
 # document()
 library(rmonad)
 library(ggplot2)
 library(knitr)
-# con <- config()
+library(dplyr)
+con <- config()
 # file.symlink("../inst/yeast", "INPUT")
 # d <- run_fagin(con)
 ```
 
-```{r}
+```{r, echo=FALSE}
 # missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 # mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
 # es <- as.list(d)[sapply(d, function(x) x$has_error())]
 # ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
 ```
 
-```{r}
+```{r, echo=FALSE}
 invertSummaries <- function(x){
   xs <- list(
     gff         = list(),
@@ -54,12 +55,12 @@ invertSummaries <- function(x){
 }
 ```
 
-```{r}
+```{r, echo=FALSE}
 load('ARCHIVE/d1.Rda')
 ss <- invertSummaries(d1)
 ```
 
-```{r}
+```{r, echo=FALSE}
 load('ARCHIVE/d2.Rda')
 
 number_of_chromosomes <- function(x){
@@ -81,17 +82,34 @@ protein_has_internal_stop <- function(x){
 genomic_composition <- function(x){
     x$dna %>% lapply(function(s) s@comp %>% colSums %>% { . / sum(.) })
 }
-
-number_of_chromosomes(ss)
-initial_protein_residue_counts(ss)
-final_protein_residue_counts(ss)
-protein_has_internal_stop(ss)
-genomic_composition(ss)
 ```
 
-```{r, fig.width=8, fig.height=6}
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE}
 require(ape)
 plot(d1@tree)
+speciesOrder <- d1@tree$tip.label
+```
+
+```{r, echo=FALSE, result='asis'}
+nscaf <- number_of_chromosomes(ss)
+initialRes <- initial_protein_residue_counts(ss)
+finalRes <- final_protein_residue_counts(ss)
+hasStop <- protein_has_internal_stop(ss)
+genComp <- genomic_composition(ss)
+
+data.frame(
+    species = names(nscaf) %>% factor(levels=speciesOrder)
+  , n_scaffolds = nscaf %>% unlist %>% unname
+  , n_bases = sapply(ss$dna, function(x) x@table$length %>% sum)
+  , n_prot = sapply(initialRes, sum) %>% unname
+  , GC = sapply(genComp, function(x) ((x['G'] + x['C']) * 100) %>% round)
+  , n_oddstart = sapply(initialRes, function(x) { sum(x) - x['M'] }) %>% unname
+  , n_oddstop = sapply(finalRes, function(x) { sum(x) - x['*'] }) %>% unname
+  , p_N = sapply(genComp, function(x) x['N'] %>% signif(3))
+  , n_stop = hasStop %>% unlist %>% unname
+) %>%
+    dplyr::arrange(species) %>%
+    knitr::kable()
 ```
 
 ```
@@ -111,12 +129,13 @@ plot(d1@tree)
     N4 = non-genic: No DNA match to any known gene
 ```
 
-```{r}
+```{r, echo=FALSE}
 # load the binary feature table
 load('ARCHIVE/d3.Rda')
 ```
 
-```{r}
+```{r, echo=FALSE}
+
 plotSecondaryLabels <- function(con, fill='secondary'){
     load(file.path(con@archive, 'd4.Rda'))
     if(fill == 'secondary'){
@@ -146,19 +165,19 @@ plotSecondaryLabels <- function(con, fill='secondary'){
 }
 ```
 
-```{r, fig.width=8, fig.height=6}
+```{r, fig.width=8, fig.height=6, echo=FALSE}
 plotSecondaryLabels(con)
 ```
 
-```{r, fig.width=8, fig.height=4}
+```{r, fig.width=8, fig.height=4, echo=FALSE}
 plotSecondaryLabels(con, fill='species')
 ```
 
-```{r}
+```{r, echo=FALSE}
 load('ARCHIVE/d5.Rda')
 d5$classSum
 ```
 
-```{r}
+```{r, echo=FALSE}
 load('ARCHIVE/final_obj.Rda')
 ```

@@ -10,7 +10,7 @@ vignette: >
 ---
 
 ```{r, echo=FALSE, message=FALSE}
-# document()
+library(fagin)
 library(rmonad)
 library(ggplot2)
 library(knitr)
@@ -61,8 +61,6 @@ ss <- invertSummaries(d1)
 ```
 
 ```{r, echo=FALSE}
-load('ARCHIVE/d2.Rda')
-
 number_of_chromosomes <- function(x){
     lapply(x$dna, function(s) nrow(s@table))
 }
@@ -113,18 +111,18 @@ data.frame(
 ```
 
 ```{r, echo=FALSE}
-# load the binary feature table
-load('ARCHIVE/d3.Rda')
+load('ARCHIVE/d2.Rda')
 ```
 
 ```{r, echo=FALSE}
+load('ARCHIVE/d3.Rda') # the binary feature table
 
 plotSecondaryLabels <- function(con, fill='secondary'){
      desc <- data.frame(
         desc = c(
-            "known gene"                         , #O1
-            "unknown ORF on known mRNA"          , #O2
-            "unknown ORF off known mRNA"         , #O3
+            "AA match to known protein"          , #O1
+            "AA match to genic ORF"              , #O2
+            "AA match to inter-genic ORF"        , #O3
             "maps off the scaffold"              , #U1
             "possible indel"                     , #U2
             "possible N-string"                  , #U3
@@ -133,8 +131,8 @@ plotSecondaryLabels <- function(con, fill='secondary'){
             "skipped for technical reasons"      , #U7
             "DNA match to CDS"                   , #N1
             "DNA match to exon"                  , #N2
-            "DNA match to mRNA"                  , #N3
-            "No DNA match to any known gene"       #N4
+            "DNA match to gene"                  , #N3
+            "DNA match to inter-genic region"      #N4
         ),
         secondary = c(
             "O1" ,
@@ -169,17 +167,28 @@ plotSecondaryLabels <- function(con, fill='secondary'){
     if(fill == 'secondary'){
         ggplot(dat) +
             geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
-            scale_fill_brewer(palette="Set1") +
+            scale_fill_brewer(palette="Paired") +
             theme(
-                axis.text.x = element_text(angle=315, hjust=0, vjust=1)
+                axis.text.x = element_text(angle=270, hjust=0, vjust=1)
               , legend.position = 'bottom'
+            ) +
+            guides(fill = guide_legend(ncol = 2)) +
+            labs(
+                fill="Classification",
+                x="Target species",
+                y="# of focal genes"
             )
     } else {
         ggplot(dat) +
             scale_fill_brewer(palette="Paired") +
             geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
             theme(
-                axis.text.x = element_text(angle=315, hjust=0, vjust=1)
+                axis.text.x = element_text(angle=325, hjust=0, vjust=1)
+            ) +
+            labs(
+                fill="Target species",
+                x="Classification",
+                y="# of focal genes"
             )
     }
 }

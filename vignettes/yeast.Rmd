@@ -202,3 +202,16 @@ d5$classSum
 ```{r, echo=FALSE}
 load('ARCHIVE/final_obj.Rda')
 ```
+
+```{r, echo=FALSE, result='asis'}
+data.frame(
+    min    = sapply(d1@synmaps, function(x) x@synmap.summary@width@min)
+  , q25    = sapply(d1@synmaps, function(x) x@synmap.summary@width@q25)
+  , median = sapply(d1@synmaps, function(x) x@synmap.summary@width@median)
+  , q75    = sapply(d1@synmaps, function(x) x@synmap.summary@width@q75)
+  , max    = sapply(d1@synmaps, function(x) x@synmap.summary@width@max)
+  , mean   = sapply(d1@synmaps, function(x) x@synmap.summary@width@mean)
+  , sd     = sapply(d1@synmaps, function(x) x@synmap.summary@width@sd)
+  , n      = sapply(d1@synmaps, function(x) x@synmap.summary@width@n)
+) %>% knitr::kable(caption="Summary of synteny map widths")
+```

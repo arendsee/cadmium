@@ -26,7 +26,7 @@ Imports:
     L1pack,
     fitdistrplus,
     ape,
-    rlang (>= 1.1.2),
+    rlang (>= 0.1.2),
     readr,
     tibble,
     tidyr,

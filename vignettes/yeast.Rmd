@@ -112,23 +112,6 @@ data.frame(
     knitr::kable()
 ```
 
-```
-    O1 = genic: known gene
-    O2 = genic: unknown ORF on known mRNA
-    O3 = genic: unknown ORF off known mRNA
-    U1 = unknown: maps off the scaffold
-    U2 = unknown: possible indel
-    U3 = unknown: possible N-string
-    U5 = unknown: syntenically scrambled
-    U4 = -- RIP - there is no 4
-    U6 = unknown: seriously unknown
-    U7 = unknown: skipped for technical reasons
-    N1 = non-genic: DNA match to CDS
-    N2 = non-genic: DNA match to exon
-    N3 = non-genic: DNA match to mRNA
-    N4 = non-genic: No DNA match to any known gene
-```
-
 ```{r, echo=FALSE}
 # load the binary feature table
 load('ARCHIVE/d3.Rda')
@@ -137,40 +120,67 @@ load('ARCHIVE/d3.Rda')
 ```{r, echo=FALSE}
 
 plotSecondaryLabels <- function(con, fill='secondary'){
+     desc <- data.frame(
+        desc = c(
+            "known gene"                         , #O1
+            "unknown ORF on known mRNA"          , #O2
+            "unknown ORF off known mRNA"         , #O3
+            "maps off the scaffold"              , #U1
+            "possible indel"                     , #U2
+            "possible N-string"                  , #U3
+            "syntenically scrambled"             , #U5
+            "seriously unknown"                  , #U6
+            "skipped for technical reasons"      , #U7
+            "DNA match to CDS"                   , #N1
+            "DNA match to exon"                  , #N2
+            "DNA match to mRNA"                  , #N3
+            "No DNA match to any known gene"       #N4
+        ),
+        secondary = c(
+            "O1" ,
+            "O2" ,
+            "O3" ,
+            "U1" ,
+            "U2" ,
+            "U3" ,
+            "U5" ,
+            "U6" ,
+            "U7" ,
+            "N1" ,
+            "N2" ,
+            "N3" ,
+            "N4"  
+        )
+     )
     load(file.path(con@archive, 'd4.Rda'))
+    dat <- d4$labels %>%
+            lapply(
+                function(x) {
+                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+                }
+            ) %>%
+            dplyr::bind_rows(.id='species') %>%
+            {
+                .$species <- factor(.$species, levels=speciesOrder)
+                . <- merge(., desc)
+                .$desc <- paste(.$secondary, .$desc, sep=': ')
+                .
+            }
     if(fill == 'secondary'){
-        d4$labels %>%
-            lapply(
-                function(x) {
-                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-                }
-            ) %>%
-            dplyr::bind_rows(.id='species') %>%
-            {
-                .$species <- factor(.$species, levels=speciesOrder)
-                .
-            } %>%
-            ggplot +
-                geom_bar(aes(x=species, y=n, fill=secondary), position="dodge", stat="identity") +
-                scale_fill_brewer(palette="Set1") +
-                theme(
-                    axis.text.x = element_text(angle=270, hjust=0, vjust=1)
-                )
+        ggplot(dat) +
+            geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
+            scale_fill_brewer(palette="Set1") +
+            theme(
+                axis.text.x = element_text(angle=315, hjust=0, vjust=1)
+              , legend.position = 'bottom'
+            )
     } else {
-        d4$labels %>%
-            lapply(
-                function(x) {
-                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-                }
-            ) %>%
-            dplyr::bind_rows(.id='species') %>%
-            {
-                .$species <- factor(.$species, levels=speciesOrder)
-                .
-            } %>%
-            ggplot +
-                scale_fill_brewer(palette="Paired") +
-                geom_bar(aes(x=secondary, y=n, fill=species), position="dodge", stat="identity")
+        ggplot(dat) +
+            scale_fill_brewer(palette="Paired") +
+            geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
+            theme(
+                axis.text.x = element_text(angle=315, hjust=0, vjust=1)
+            )
     }
 }
 

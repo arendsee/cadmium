@@ -146,8 +146,13 @@ plotSecondaryLabels <- function(con, fill='secondary'){
                 }
             ) %>%
             dplyr::bind_rows(.id='species') %>%
+            {
+                .$species <- factor(.$species, levels=speciesOrder)
+                .
+            } %>%
             ggplot +
                 geom_bar(aes(x=species, y=n, fill=secondary), position="dodge", stat="identity") +
+                scale_fill_brewer(palette="Set1") +
                 theme(
                     axis.text.x = element_text(angle=270, hjust=0, vjust=1)
                 )
@@ -159,10 +164,16 @@ plotSecondaryLabels <- function(con, fill='secondary'){
                 }
             ) %>%
             dplyr::bind_rows(.id='species') %>%
+            {
+                .$species <- factor(.$species, levels=speciesOrder)
+                .
+            } %>%
             ggplot +
+                scale_fill_brewer(palette="Paired") +
                 geom_bar(aes(x=secondary, y=n, fill=species), position="dodge", stat="identity")
     }
 }
+
 ```
 
 ```{r, fig.width=8, fig.height=6, echo=FALSE}

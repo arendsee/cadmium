@@ -26,7 +26,7 @@ Imports:
     L1pack,
     fitdistrplus,
     ape,
-    rlang,
+    rlang (>= 1.1.2),
     readr,
     tibble,
     tidyr,
@@ -39,10 +39,13 @@ Remotes:
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Suggests: testthat,
+Suggests:
+    testthat,
+    covr,
     knitr,
     rmarkdown,
-    covr
+    ggplot2,
+    reshape2
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
 BiocViews: 

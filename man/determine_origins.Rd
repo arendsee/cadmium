@@ -4,7 +4,7 @@
 \alias{determine_origins}
 \title{Given a species tree and a set of labels, determine orphan origin}
 \usage{
-determine_origins(labels, con)
+determine_origins(labels, con, ...)
 }
 \description{
 Given a species tree and a set of labels, determine orphan origin

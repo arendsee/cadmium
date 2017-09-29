@@ -105,3 +105,9 @@ Final Destination
  - [ ] Phylostratigraphic contextualization using NCBI common tree
  - [ ] Syntenic map creation
  - [ ] Visualize the results genewise with Trelliscope
+
+Report
+ - [ ] Better order for UNO secondary classes
+ - [ ] Distinguish between scaffolds and chromosomes
+ - [ ] Retrieve cytology info?
+ - [ ] Add alignment stats - overlaps, length of target and query

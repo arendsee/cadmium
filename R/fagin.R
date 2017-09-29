@@ -1,10 +1,10 @@
 #' @importFrom methods isClass new
 #' @importFrom graphics plot
 #' @importFrom rlang .data
-#' @importFrom magrittr "%>%"
+#' @importFrom magrittr "%>%" "%T>%"
 #' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%||%" "%|>%" "%>_%"
 #' @importFrom utils head tail
-utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%||%", "%|>%", "%>_%"))
+utils::globalVariables(c("%>%", ".", "%>>%", "%v>%", "%*>%", "%__%", "%||%", "%|>%", "%>_%", "%T>%"))
 NULL
 
 #' fagin: Trace the origins of orphan genes
@@ -161,6 +161,6 @@ run_fagin <- function(con){
   secondary_data(con=con)    %>_% archive_2(con@archive) %>>%
   tertiary_data(con=con)     %>_% archive_3(con@archive) %>>%
   determine_labels(con=con)  %>_% archive_4(con@archive) %>>%
-  determine_origins(con=con) %>_% archive_5(con@archive) %>_%
-                              archive_rmonad(con@archive)
+  determine_origins(con=con) %>_% archive_5(con@archive) %T>%
+                                  archive_rmonad(con@archive)
 }

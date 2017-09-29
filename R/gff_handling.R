@@ -347,36 +347,6 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     "
     From the GenomicRanges object, create a transcript database as a TxDb object
-
-    makeTxDb has two required inputs (both as data frames). These notes are from (?makeTxDb):
-      1) transcripts - one row per transcript with the following columns
-         * tx_id - Transcript ID as an integer vector without NA or duplicates
-         * tx_name - [optional] Transcript names as character vector
-         * tx_chrm - transcript chromosomes as character vector with no NA
-         * tx_strand - transcript strand as factor or character vector with no NA from [+-]
-         * tx_start - transcript start position
-         * tx_end - transcript end position
-      2) splicings - must have one row for each exon in each transcript, each
-         row describes the exon and the CDS contained in it (if any) 
-         * tx_id
-         * exon_rank
-         * exon_id
-         * exon_name
-         * exon_chrom
-         * exon_start
-         * exon_end
-         * cds_id
-         * cds_name
-         * cds_start
-         * cds_end
-    makeTxDb also has the following optional inputs
-      3) genes - must have one row for every transcript in every gene (often equals 1)
-         * tx_id/tx_name - genes must have either tx_id OR tx_name, but not both
-         * gene_id - Gene ID, character vector or factor with no NAs
-      4) chrominfo - must have 1 row per chromosome
-         * chrom - Chromosome name as character vector or factor with no NAs or duplicates
-         * length - chromosome length as integer vector with either all or no NAs
-         * is_circular - logical vector possibly with NAs
     "
 
     meta <- GenomicRanges::mcols(.)

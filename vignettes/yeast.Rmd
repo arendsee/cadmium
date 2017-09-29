@@ -1,101 +1,119 @@
 ---
-title: "Yeast orphan analysis"
+title: "Yeast Report"
 author: "Zebulun Arendsee"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Yeast orphan analysis}
+  %\VignetteIndexEntry{Yeast Report}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r}
-document()
+```{r, echo=FALSE, message=FALSE}
+library(fagin)
 library(rmonad)
+library(ggplot2)
 library(knitr)
+library(dplyr)
+require(CNEr)
+require(GenomicRanges)
 con <- config()
-file.symlink("../inst/yeast", "INPUT")
-d <- run_fagin(con)
+# file.symlink("../inst/yeast", "INPUT")
+# d <- run_fagin(con)
 ```
 
-```{r}
-missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
-mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-es <- as.list(d)[sapply(d, function(x) x$has_error())]
-ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
+```{r, echo=FALSE}
+# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+# es <- as.list(d)[sapply(d, function(x) x$has_error())]
+# ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
 ```
 
-```{r}
-invertSummaries <- function(x){
-  xs <- list(
-    gff         = list(),
-    dna         = list(),
-    aa          = list(),
-    trans       = list(),
-    orfgff      = list(),
-    orffaa      = list(),
-    transorfgff = list(),
-    transorffaa = list(),
-    nstring     = list()
-  )
-  for(s in names(x@species)){
-    xs$gff         = append(xs$gff         , x@species[[s]]@summaries@gff.summary         )
-    xs$dna         = append(xs$dna         , x@species[[s]]@summaries@dna.summary         )
-    xs$aa          = append(xs$aa          , x@species[[s]]@summaries@aa.summary          )
-    xs$trans       = append(xs$trans       , x@species[[s]]@summaries@trans.summary       )
-    xs$orfgff      = append(xs$orfgff      , x@species[[s]]@summaries@orfgff.summary      )
-    xs$orffaa      = append(xs$orffaa      , x@species[[s]]@summaries@orffaa.summary      )
-    xs$transorfgff = append(xs$transorfgff , x@species[[s]]@summaries@transorfgff.summary )
-    xs$transorffaa = append(xs$transorffaa , x@species[[s]]@summaries@transorffaa.summary )
-    xs$nstring     = append(xs$nstring     , x@species[[s]]@summaries@nstring.summary     )
-  }
-  lapply(xs, function(xx) { names(xx) <- names(x@species); xx } )
-}
-```
+## Input data summaries
 
-```{r}
+```{r, echo=FALSE}
 load('ARCHIVE/d1.Rda')
-require(ape)
-plot(d1@tree)
 ss <- invertSummaries(d1)
 ```
 
-```{r}
-ss$aa %>% lapply(function(x) x@initial_residue)
+```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE}
+require(ape)
+plot(d1@tree)
+speciesOrder <- d1@tree$tip.label
 ```
 
-```{r}
-ss$aa %>% lapply(function(x) x@final_residue)
+```{r, echo=FALSE, result='asis'}
+nscaf <- number_of_chromosomes(ss)
+initialRes <- initial_protein_residue_counts(ss)
+finalRes <- final_protein_residue_counts(ss)
+hasStop <- protein_has_internal_stop(ss)
+genComp <- genomic_composition(ss)
+data.frame(
+    species = names(nscaf) %>% factor(levels=speciesOrder)
+  , n_scaffolds = nscaf %>% unlist %>% unname
+  , n_bases = sapply(ss$dna, function(x) x@table$length %>% sum)
+  , n_prot = sapply(initialRes, sum) %>% unname
+  , GC = sapply(genComp, function(x) ((x['G'] + x['C']) * 100) %>% round)
+  , n_oddstart = sapply(initialRes, function(x) { sum(x) - x['M'] }) %>% unname
+  , n_oddstop = sapply(finalRes, function(x) { sum(x) - x['*'] }) %>% unname
+  , p_N = sapply(genComp, function(x) x['N'] %>% signif(3))
+  , n_stop = hasStop %>% unlist %>% unname
+) %>%
+    dplyr::arrange(species) %>%
+    knitr::kable(caption="Genomic statistics")
 ```
 
-```{r}
-ss$aa %>% lapply(function(x) x@has_internal_stop %>% sum)
+```{r, echo=FALSE, result='asis'}
+num_sum_as_table <- function(nd){
+    data.frame(
+        min    = sapply(nd, function(x) x@min)
+      , q25    = sapply(nd, function(x) x@q25)
+      , median = sapply(nd, function(x) x@median)
+      , q75    = sapply(nd, function(x) x@q75)
+      , max    = sapply(nd, function(x) x@max)
+      , mean   = sapply(nd, function(x) x@mean)
+      , sd     = sapply(nd, function(x) x@sd)
+      , n      = sapply(nd, function(x) x@n)
+    )
+}
+
+d1@synmaps %>%
+    lapply(function(x) x@synmap.summary@width) %>%
+    num_sum_as_table %>%
+    knitr::kable(caption="Summary of the lengths of homologous links in each synteny map")
 ```
 
-```{r}
-ss$dna %>% lapply(function(x) x@table %>% nrow)
-ss$dna %>% lapply(function(x) x@comp %>% colSums %>% { . / sum(.) })
-```
+## `synder` search interval summaries
 
-
-```{r}
+```{r, echo=FALSE, results='asis'}
 load('ARCHIVE/d2.Rda')
+lapply(d2, function(x){
+    x$si %>%
+        GenomicAlignments::second() %>%
+        GenomicRanges::width() %>%
+        fagin::summarize_numeric()
+  }) %>%
+    num_sum_as_table %>%
+    knitr::kable(caption="Summary of search interval widths")
 ```
 
-```{r}
-# load the binary feature table
-load('ARCHIVE/d3.Rda')
+## Species-to-species classifications
+
+```{r, echo=FALSE}
+load('ARCHIVE/d3.Rda') # the binary feature table
 ```
 
-```{r}
-load('ARCHIVE/d4.Rda')
-d4$labels %>% lapply(function(x) { dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count() })
+```{r, fig.width=8, fig.height=6, echo=FALSE}
+plotSecondaryLabels(con)
 ```
 
-```{r}
+```{r, fig.width=8, fig.height=4, echo=FALSE}
+plotSecondaryLabels(con, fill='species')
+```
+
+## Orphan origin stories 
+
+```{r, echo=FALSE}
 load('ARCHIVE/d5.Rda')
-```
-
-```{r}
-load('ARCHIVE/final_obj.Rda')
+d5$classSum
 ```

@@ -8,7 +8,7 @@ URL: https://github.com/arendsee/fagin
 BugReports: https://github.com/arendsee/fagin/issues
 Description:
     A pipeline for the classification of orphans into origin classes using a
-    syntenic filter.
+    syntenic filter. This work is funded by NSF grant IOS-1546858.
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.26.0),
@@ -16,6 +16,7 @@ Imports:
     methods,
     devtools,
     magrittr,
+    data.tree,
     CNEr (>= 1.12.1),
     Biostrings,
     GenomicRanges,
@@ -25,7 +26,7 @@ Imports:
     L1pack,
     fitdistrplus,
     ape,
-    rlang,
+    rlang (>= 0.1.2),
     readr,
     tibble,
     tidyr,
@@ -38,10 +39,13 @@ Remotes:
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Suggests: testthat,
+Suggests:
+    testthat,
+    covr,
     knitr,
     rmarkdown,
-    covr
+    ggplot2,
+    reshape2
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
 BiocViews: 

@@ -181,7 +181,7 @@ determine_labels <- function(features, con){
     N1 = 'non-genic: DNA match to CDS',
     N2 = 'non-genic: DNA match to exon',
     N3 = 'non-genic: DNA match to mRNA',
-    N4 = 'non-genic: No DNA match'
+    N4 = 'non-genic: No DNA match to known gene'
   )
 
   labelTrees_ <- lapply(features, function(feat) feat %>>% buildLabelsTree(con) ) %>% rmonad::combine()

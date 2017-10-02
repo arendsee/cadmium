@@ -64,6 +64,29 @@ load_species <- function(species_name, input){
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
 
+      "Ensure all transcripts are named. If any of the names are missing (NA),
+      then the Biostrings::writeXStringSet will report an error as a note,
+      which won't stop processing. By checking here I can stop analysis at the
+      right time.
+      
+      If any transcripts do have missing names, then these are removed with a
+      warning.
+      "
+
+      na_indices <- which(is.na(names(.)))
+
+      if(length(na_indices) > 0){ msg <-
+"%s of %s transcripts had missing names. This is not good. You should look into
+the problem. For now, the offending transcripts have been removed."
+        warning(sprintf(msg, length(na_indices), length(.)))
+        . <- .[-na_indices] 
+      }
+
+      .
+
+    } %>>%
+    {
+
       "Print the transcripts to a temporary file"
 
       filepath <- paste0(".", species_name, "_trans.fna")

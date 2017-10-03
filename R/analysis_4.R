@@ -15,6 +15,7 @@ by_secondary <- function(node_labels){
 
 classify <- function(
   node,
+  labels,
   get_classifier = by_primary,
   class_rule     = default_class_rule
 ){
@@ -82,13 +83,16 @@ setAncestor <- function(node, ...){
       if(child$visited == 0){
         stopifnot(names(node$cls) == names(classify(child, ...)))
         node$cls <- child$cls
-        node$gen <- sum(node$cls == 'gen')
-        node$non <- sum(node$cls == 'non')
-        node$unk <- sum(node$cls == 'unk')
+        node$gen <- sum(child$cls == 'ORFic')
+        node$non <- sum(child$cls == 'Non-ORFic')
+        node$unk <- sum(child$cls == 'Unknown')
       }
     }
   }
+
+  # the `visited` field should never be greater than 1
   node$visited <- node$visited + 1
+
   if(!node$isRoot){
     setAncestor(node$parent, ...)
   }
@@ -97,6 +101,9 @@ setAncestor <- function(node, ...){
 
 #' Given a species tree and a set of labels, determine orphan origin
 #'
+#' @param labels A list of data that includes a \code{labels} field
+#' @param con A Config object
+#' @param ... Arguments that will be passed to \code{classify}
 #' @export
 determine_origins <- function(labels, con, ...){
 
@@ -109,7 +116,7 @@ determine_origins <- function(labels, con, ...){
 
   fs <- findFocalSpecies(root)
   root$Set(visited=0)
-  setAncestor(fs, ...)
+  setAncestor(fs, labels=labels, ...)
 
   d <- fs$Get('cls', traversal='ancestor')
   d[[1]] <- NULL

@@ -11,7 +11,7 @@ Description:
     syntenic filter. This work is funded by NSF grant IOS-1546858.
 Depends: R (>= 3.4.0)
 Imports:
-    synder (>= 0.26.0),
+    synder (>= 0.27.0),
     rmonad (>= 0.3.0.9003),
     methods,
     devtools,

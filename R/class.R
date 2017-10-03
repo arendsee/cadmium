@@ -117,7 +117,7 @@ config_synder <- setClass(
     trans   = "character"
   ),
   prototype(
-    offsets = c(1L,1L,1L,1L,1L,1L),
+    offsets = c(1L,1L),
     k       = 0L,
     r       = 0,
     trans   = "i"

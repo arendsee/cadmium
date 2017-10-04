@@ -30,15 +30,15 @@ compare_target_to_focal <- function(
   
   tgff_ <- ttxdb_ %>>%
     GenomicFeatures::transcripts %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='mRNA')
+    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, type='mRNA')
 
   tcds_ <- ttxdb_ %>>%
     GenomicFeatures::cds %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='CDS')
+    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, type='CDS')
 
   texons_ <- ttxdb_ %>>%
     GenomicFeatures::exons %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, 'exon')
+    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, 'exon')
 
   synmap_ <- rmonad::as_monad( from_cache(synmap@synmap.file) )
 
@@ -261,7 +261,9 @@ compare_target_to_focal <- function(
       DNA file: [%s]. Here are the first 5 from the synteny map: [%s]."
 
       stop(sprintf(
-        msg, ngood, ntotal,
+        msg,
+        ngood,
+        ntotal,
         paste0(head(names(quedna), 5), collapse=", "),
         paste0(head(qids, 5), collapse=", ")
       ))
@@ -339,7 +341,7 @@ secondary_data <- function(primary_input, con){
 
   focal_gff_ <- from_cache(f_primary@files@gff.file, type='sqlite') %>>%
     GenomicFeatures::transcripts %>>%
-    get_gff_from_txdb(seqinfo=f_primary@seqinfo, type='mRNA') %>_%
+    get_gff_from_txdb(seqinfo_=f_primary@seqinfo, type='mRNA') %>_%
     {
       "Assert query ids match the names in the GFF file"
 

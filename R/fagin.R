@@ -152,6 +152,12 @@ run_fagin <- function(con){
   
   } %__% {
 
+    "Store the configuration"
+
+    con
+
+  } %__% {
+
     "Create the archival directory"
 
     dir.create(con@archive)

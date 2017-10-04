@@ -32,7 +32,7 @@ classify <- function(
         names(node$cls) <- node_labels$seqid
       }
     } else {
-      child_cls <- lapply(node$children, classify)
+      child_cls <- lapply(node$children, classify, labels, get_classifier, class_rule)
       if(length(child_cls) != 2){
         warning('Species tree must be bifurcating')
       }

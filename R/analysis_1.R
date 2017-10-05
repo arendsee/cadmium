@@ -46,7 +46,8 @@ load_species <- function(species_name, input){
       gff = orfgff_
     ) %*>%
     extractWithComplements %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    Biostrings::translate(if.fuzzy.codon="solve") %>%
+    collate_translation_warnings(species_name)
 
   aa_ <-
     rmonad::funnel(
@@ -55,34 +56,7 @@ load_species <- function(species_name, input){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     Biostrings::translate(if.fuzzy.codon="solve") %>%
-    {
-      # analyze the warnings of the preceding node
-      node <- .
-      if(m_OK(node)){
-        # If any CDS are not multiples of 3, then a warning is emitted from
-        # `translate` with the form:
-        # "in 'x[[5152]]': last 2 bases were ignored"
-        # Here I collect all such warnings and collate them into one.
-        node_ids <- which(grepl("base.*ignored", rmonad::m_warnings(node)))
-        model_ids <- as.integer(sub(
-          "in 'x\\[\\[(\\d+)\\]\\]': .*base.*ignored",
-          "\\1",
-          rmonad::m_warnings(node)[node_ids],
-          perl=TRUE
-        ))
-        if(length(model_ids) > 0){ 
-          msg <- "%s of %s gene models are truncated (CDS length is not a multiple of 3): [%s]"
-          msg <- sprintf(
-            msg,
-            length(model_ids),
-            length(m_value(node)),
-            paste0(names(m_value(node)[model_ids]), collapse=', ')
-          )
-          rmonad::m_warnings(node) <- c(msg, rmonad::m_warnings(node)[-node_ids])
-        }
-      }
-      node
-    }
+    collate_translation_warnings(species_name)
 
   trans_ <-
     rmonad::funnel(
@@ -112,8 +86,7 @@ the problem. For now, the offending transcripts have been removed."
 
       .
 
-    } %>>%
-    {
+    } %>>% {
 
       "Print the transcripts to a temporary file"
 
@@ -171,8 +144,8 @@ the problem. For now, the offending transcripts have been removed."
       total <- length(stops)
       offenders <- tab[stops, ]$seqids %>% as.character %>%
         paste0(collapse=", ")
-      msg <- "%s of %s proteins have internal stops, offending genes: %s"
-      warning(sprintf(msg, n, total, offenders))
+      msg <- "%s of %s proteins in %s have internal stops: %s"
+      warning(sprintf(msg, n, total, species_name, offenders))
     }
 
   } %>_% {
@@ -188,7 +161,7 @@ the problem. For now, the offending transcripts have been removed."
       not_in_aa <- setdiff(trids, aaids)
 
       msg <- paste(
-        "Protein and transcript names do not match:",
+        "Protein and transcript names in %s do not match:",
         "transcript ids missing in proteins: %s",
         "protein ids missing in transcript: %s",
         sep="\n"
@@ -196,6 +169,7 @@ the problem. For now, the offending transcripts have been removed."
 
       warning(sprintf(
         msg,
+        species_name,
         paste(not_in_aa, collapse=", "),
         paste(not_in_tr, collapse=", ")
       ))

@@ -54,7 +54,35 @@ load_species <- function(species_name, input){
       transcripts = txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    Biostrings::translate(if.fuzzy.codon="solve") %>%
+    {
+      # analyze the warnings of the preceding node
+      node <- .
+      if(m_OK(node)){
+        # If any CDS are not multiples of 3, then a warning is emitted from
+        # `translate` with the form:
+        # "in 'x[[5152]]': last 2 bases were ignored"
+        # Here I collect all such warnings and collate them into one.
+        node_ids <- which(grepl("base.*ignored", rmonad::m_warnings(node)))
+        model_ids <- as.integer(sub(
+          "in 'x\\[\\[(\\d+)\\]\\]': .*base.*ignored",
+          "\\1",
+          rmonad::m_warnings(node)[node_ids],
+          perl=TRUE
+        ))
+        if(length(model_ids) > 0){ 
+          msg <- "%s of %s gene models are truncated (CDS length is not a multiple of 3): [%s]"
+          msg <- sprintf(
+            msg,
+            length(model_ids),
+            length(m_value(node)),
+            paste0(names(m_value(node)[model_ids]), collapse=', ')
+          )
+          rmonad::m_warnings(node) <- c(msg, rmonad::m_warnings(node)[-node_ids])
+        }
+      }
+      node
+    }
 
   trans_ <-
     rmonad::funnel(

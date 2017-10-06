@@ -144,7 +144,7 @@ the problem. For now, the offending transcripts have been removed."
       total <- length(stops)
       offenders <- tab[stops, ]$seqids %>% as.character %>%
         paste0(collapse=", ")
-      msg <- "%s of %s proteins in %s have internal stops: %s"
+      msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
       warning(sprintf(msg, n, total, species_name, offenders))
     }
 

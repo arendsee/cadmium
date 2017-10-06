@@ -49,14 +49,76 @@ load_species <- function(species_name, input){
     Biostrings::translate(if.fuzzy.codon="solve") %>%
     collate_translation_warnings(species_name)
 
+  transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
+
+  aa_model_phase_ <- transcripts_ %>>% {
+
+    "Find the phase of the first CDS in each model. This will be zero if the
+    model is complete."
+
+    unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+
+  } %>_% {
+
+    "Warn if there are any incomplete models"
+
+    incomplete <- sum(. != 0)
+    total <- length(.)
+
+    if(incomplete > 0){
+      warning(sprintf(
+      "%s of %s gene models in %s are incomplete (the phase of the first CDS is
+      not equal to 0). This does not include partial gene models that happen to
+      begin in-phase. Details are recorded in the species_summary field
+      model_phases.",
+      incomplete, total, species_name))
+    }
+
+  }
+  
+  transcripts_ <- transcripts_ %>>% {
+
+    "Abominable hack. To get around the GenomicFeatures issue reported
+    [here](https://support.bioconductor.org/p/101245/), I encode the phase
+    information in the CDS name. Here I extract that data and offset the
+    reading frame as needed."
+
+    ori <- .
+
+    unlist(ori) %>%
+      {
+        meta <- GenomicRanges::mcols(.)
+        meta$phase <- as.integer(meta$cds_name)
+        GenomicRanges::start(.) <- ifelse(
+          meta$exon_rank == 1,
+          GenomicRanges::start(.) + meta$phase,
+          GenomicRanges::start(.)
+        )
+        .
+      } %>%
+      relist(ori)
+
+  }
+
   aa_ <-
     rmonad::funnel(
       x = dna_,
-      transcripts = txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
+      transcripts = transcripts_
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     Biostrings::translate(if.fuzzy.codon="solve") %>%
     collate_translation_warnings(species_name)
+
+  aa_model_phase_ <- rmonad::funnel(phases = aa_model_phase_, aa = aa_) %*>% {
+    # This should always be true. If it is not, there is a logical problem in
+    # the code, not the data.
+    stopifnot(length(aa) == length(phases)) 
+
+    list(
+      summary = factor(phases) %>% summary,
+      incomplete_models = names(aa)[phases != 0]
+    )
+  }
 
   trans_ <-
     rmonad::funnel(
@@ -129,7 +191,8 @@ the problem. For now, the offending transcripts have been removed."
     orffaa.summary      = orffaa_      %>>% summarize_faa,
     transorfgff.summary = transorfgff_ %>>% summarize_granges,
     transorffaa.summary = transorffaa_ %>>% summarize_faa,
-    nstring.summary     = nstrings_    %>>% summarize_nstring
+    nstring.summary     = nstrings_    %>>% summarize_nstring,
+    model_phases        = aa_model_phase_
   ) %*>%
     new(Class="species_summaries") %>_%
   {

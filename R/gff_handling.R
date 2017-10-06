@@ -16,6 +16,8 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
   g
 }
 
+find_initial_phase <- function(gff){}
+
 #' Load a GFF file as a GenomicFeatures object
 #'
 #' @export
@@ -338,7 +340,7 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       stops     = .$stop,
       scaffolds = .$seqid,
       strands   = .$strand,
-      metadata  = .[,c('ID','Name','Parent')]
+      metadata  = .[,c('phase', 'ID','Name','Parent')]
     )
 
     GenomicRanges::mcols(gi)$type <- .$type
@@ -368,6 +370,16 @@ load_gene_models <- function(filename, seqinfo_=NULL){
     # exons are recorded as direct children of a "gene" feature. So I list as a
     # transcript anything that is the parent of an exon or CDS.
     is_trans <- meta$ID %in% meta$Parent[meta$type %in% c("exon", "CDS")]
+
+    # ************************* Abominable hack!!! ****************************
+    # The TxDb objects do not store phase, see my issue report:
+    # https://support.bioconductor.org/p/101245/
+    # To get around this, I encode the phase in the CDS Name metadata vector.
+    # Then I can extract it later when I need it. This is, of course, an
+    # utterly sinful thing to do. 
+    GenomicRanges::mcols(.)$Name <-
+      ifelse(meta$type == "CDS", as.character(meta$phase), meta$Name)
+    # *************************************************************************
 
     GenomicRanges::mcols(.)$type = ifelse(is_trans, "mRNA", meta$type)
 

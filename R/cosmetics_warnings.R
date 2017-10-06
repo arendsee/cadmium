@@ -22,7 +22,11 @@ collate_translation_warnings <- function(node, species){
       perl=TRUE
     ))
     if(length(model_ids) > 0){ 
-      msg <- "%s of %s gene models in %s are truncated (CDS length is not a multiple of 3): [%s]"
+      msg <- "%s of %s gene models in %s are truncated (CDS length is not a
+      multiple of 3). This is AFTER adjusting for cases where the phase of the
+      first CDS is not 0 (which means that the model is incomplete on the 5'
+      end). So these are cases of 3' truncation. Also note that truncated models
+      that happen to end in phase will not be detected: [%s]"
       msg <- sprintf(
         msg,
         length(model_ids),

@@ -409,7 +409,8 @@ species_summaries <- setClass(
     orffaa.summary      = "faa_summary",
     transorfgff.summary = "granges_summary",
     transorffaa.summary = "faa_summary",
-    nstring.summary     = "numeric"
+    nstring.summary     = "numeric",
+    model_phases        = "list"
   )
 )
 

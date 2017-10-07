@@ -391,11 +391,20 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       ))
     }
 
-    # Stop if any mRNA or gene IDs are duplicated
-    duplicants <- meta$ID[duplicated(.$ID) & meta$type %in% c("mRNA", "gene")]
+    # Stop if any mRNA IDs are duplicated
+    duplicants <- meta$ID[duplicated(.$ID) & meta$type == "mRNA"]
     if(length(duplicants) > 0){
-      msg <- "mRNA and gene IDs are not unique. The following IDs map to multiple entries: [%s]"
+      msg <- "mRNA IDs are not unique. The following IDs map to multiple entries: [%s]"
       gff_stop(sprintf(msg, paste(duplicants, collapse=", ")))
+    }
+
+    # Warn if any gene IDs are duplicated
+    duplicants <- meta$ID[duplicated(.$ID) & meta$type == "gene"]
+    if(length(duplicants) > 0){
+      msg <- "gene IDs are not unique. This may by OK, since mRNA, not gene,
+      IDs are used as unique labels. The following IDs map to multiple entries:
+      [%s]"
+      gff_warning(sprintf(msg, paste(duplicants, collapse=", ")))
     }
 
     GenomicFeatures::makeTxDbFromGRanges(.)

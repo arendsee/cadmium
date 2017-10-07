@@ -327,8 +327,11 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       if( any(is.na(parents)) )
         gff_stop("Found CDS or exon with no parent")
 
-      if(! any(duplicated(.$ID, incomparables=NA)))
-        gff_warning("IDs are not unique, this is probably bad")
+      duplicants <- .$ID[duplicated(.$ID)]
+      if(length(duplicants) > 0){
+        msg <- "IDs are not unique, this is probably bad. The following IDs map to multiple entries: [%s]"
+        gff_warning(sprintf(msg, paste(duplicants, collapse=", ")))
+      }
     }
 
   } %>>% {

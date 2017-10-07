@@ -327,11 +327,6 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       if( any(is.na(parents)) )
         gff_stop("Found CDS or exon with no parent")
 
-      duplicants <- .$ID[duplicated(.$ID)]
-      if(length(duplicants) > 0){
-        msg <- "IDs are not unique, this is probably bad. The following IDs map to multiple entries: [%s]"
-        gff_warning(sprintf(msg, paste(duplicants, collapse=", ")))
-      }
     }
 
   } %>>% {
@@ -369,11 +364,6 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     meta <- GenomicRanges::mcols(.)
 
-    # NOTE: This cannot just be `is_trans <- meta$type == "mRNA"` because some
-    # exons are recorded as direct children of a "gene" feature. So I list as a
-    # transcript anything that is the parent of an exon or CDS.
-    is_trans <- meta$ID %in% meta$Parent[meta$type %in% c("exon", "CDS")]
-
     # ************************* Abominable hack!!! ****************************
     # The TxDb objects do not store phase, see my issue report:
     # https://support.bioconductor.org/p/101245/
@@ -384,7 +374,29 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       ifelse(meta$type == "CDS", as.character(meta$phase), meta$Name)
     # *************************************************************************
 
+    # NOTE: This cannot just be `is_trans <- meta$type == "mRNA"` because some
+    # exons are recorded as direct children of a "gene" feature. So I list as a
+    # transcript anything that is the parent of an exon or CDS.
+    is_trans <- meta$ID %in% meta$Parent[meta$type %in% c("exon", "CDS")]
+
     GenomicRanges::mcols(.)$type = ifelse(is_trans, "mRNA", meta$type)
+
+    # Stop if any mRNA or gene IDs are missing
+    missing_IDs <- is.na(meta$ID) & meta$type %in% c("mRNA", "gene")
+    if(any(missing_IDs)){
+      gff_stop(sprintf(
+        "%s of %s mRNAs or genes are missing an ID",
+        sum(missing_IDs),
+        length(missing_IDs)
+      ))
+    }
+
+    # Stop if any mRNA or gene IDs are duplicated
+    duplicants <- meta$ID[duplicated(.$ID) & meta$type %in% c("mRNA", "gene")]
+    if(length(duplicants) > 0){
+      msg <- "mRNA and gene IDs are not unique. The following IDs map to multiple entries: [%s]"
+      gff_stop(sprintf(msg, paste(duplicants, collapse=", ")))
+    }
 
     GenomicFeatures::makeTxDbFromGRanges(.)
 

@@ -56,7 +56,11 @@ load_species <- function(species_name, input){
     "Find the phase of the first CDS in each model. This will be zero if the
     model is complete."
 
-    unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+    # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
+    # So the code:
+    # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+    # does not work. So instead I have to do the following, which is vastly slower:
+    sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
 
   } %>_% {
 

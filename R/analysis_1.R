@@ -17,6 +17,8 @@ load_species <- function(species_name, input){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
+  format_translation_warning <- make_format_translation_warning(species_name)
+
   dna_ <-
     get_genome_filename(species_name, dir=input@fna_dir) %v>%
     load_dna
@@ -46,8 +48,10 @@ load_species <- function(species_name, input){
       gff = orfgff_
     ) %*>%
     extractWithComplements %>>%
-    Biostrings::translate(if.fuzzy.codon="solve") %>%
-    collate_translation_warnings(species_name)
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(if.fuzzy.codon="solve")
+    }
 
   transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
 
@@ -110,8 +114,10 @@ load_species <- function(species_name, input){
       transcripts = transcripts_
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
-    Biostrings::translate(if.fuzzy.codon="solve") %>%
-    collate_translation_warnings(species_name)
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(if.fuzzy.codon="solve")
+    }
 
   aa_model_phase_ <- rmonad::funnel(phases = aa_model_phase_, aa = aa_) %*>% {
     # This should always be true. If it is not, there is a logical problem in

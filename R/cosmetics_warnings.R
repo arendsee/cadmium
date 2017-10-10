@@ -12,13 +12,16 @@
 #' @param node Rmonad object wrapping the result of a Biostrings::translate function
 #' @param species The species name
 #' @return Rmonad An Rmonad object with a modified warning field
-collate_translation_warnings <- function(node, species){
-  if(m_OK(node)){
-    node_ids <- which(grepl("base.*ignored", rmonad::m_warnings(node)))
+make_format_translation_warning <- function(species){
+  # This function will be used within rmonad as a `format_warnings`
+  # post-processor. Arguments: x - the output value of the Rmonad; ws - the
+  # character vector of warnings.
+  function(x, ws){
+    node_ids <- which(grepl("base.*ignored", ws))
     model_ids <- as.integer(sub(
       "in 'x\\[\\[(\\d+)\\]\\]': .*base.*ignored",
       "\\1",
-      rmonad::m_warnings(node)[node_ids],
+      ws[node_ids],
       perl=TRUE
     ))
     if(length(model_ids) > 0){ 
@@ -32,10 +35,10 @@ collate_translation_warnings <- function(node, species){
         length(model_ids),
         length(m_value(node)),
         species,
-        paste0(names(m_value(node)[model_ids]), collapse=', ')
+        paste0(names(x[model_ids]), collapse=', ')
       )
-      rmonad::m_warnings(node) <- c(msg, rmonad::m_warnings(node)[-node_ids])
+      ws <- c(msg, ws[-node_ids])
     }
+    ws
   }
-  node
 }

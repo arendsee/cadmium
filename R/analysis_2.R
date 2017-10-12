@@ -27,18 +27,30 @@ compare_target_to_focal <- function(
   "
 
   ttxdb_ <- rmonad::as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
-  
-  tgff_ <- ttxdb_ %>>%
-    GenomicFeatures::transcripts %>>%
-    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, type='mRNA')
 
-  tcds_ <- ttxdb_ %>>%
-    GenomicFeatures::cds %>>%
-    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, type='CDS')
+  tgff_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::transcripts(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'mRNA'
+    )
+  }
 
-  texons_ <- ttxdb_ %>>%
-    GenomicFeatures::exons %>>%
-    get_gff_from_txdb(seqinfo_=t_primary@seqinfo, 'exon')
+  tcds_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::cds(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'CDS'
+    )
+  }
+
+  texons_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::exons(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'exon'
+    )
+  }
 
   synmap_ <- rmonad::as_monad( from_cache(synmap@synmap.file) )
 
@@ -112,7 +124,6 @@ compare_target_to_focal <- function(
   indels_ <- rmonad::funnel(fsi_, con@alignment@indel_threshold) %*>% find_indels
 
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
-
 
   gapped_ <- rmonad::funnel(
       x = rmonad::funnel(si = fsi_, gff = nstrings_) %*>% overlapMap
@@ -311,12 +322,12 @@ compare_target_to_focal <- function(
 
   rmonad::funnel(
     queries      = queries,
-    si           = fsi_,
-    flag_summary = synder_flags_summary_,
+    # si           = fsi_,
+    # flag_summary = synder_flags_summary_,
     unassembled  = unassembled_,
     scrambled    = scrambled_,
     indels       = indels_,
-    f_si_map     = f_si_map_,
+    # f_si_map     = f_si_map_,
     # r_si_map     = r_si_map_,
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,

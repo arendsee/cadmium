@@ -417,12 +417,13 @@ species_summaries <- setClass(
 #' Data summaries and references to full data for a given species
 #'
 #' @slot files     species_data_files RData files containing the full data
-#' @slot summaries species_summaries  Detailed summaries of all data
+#' @slot summaries character          Filename for saved detailed summaries of all data
+#' @slot seqinfo   Seqinfo            Genomic info
 species_meta <- setClass(
   "species_meta",
   representation(
     files     = "species_data_files",
-    summaries = "species_summaries",
+    summaries = "character",
     seqinfo   = "Seqinfo"
   )
 )

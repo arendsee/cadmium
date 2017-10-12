@@ -268,7 +268,7 @@ the problem. For now, the offending transcripts have been removed."
 
   rmonad::funnel(
     files     = specfile_,
-    summaries = specsum_,
+    summaries = specsum_ %>>% to_cache( label="summaries", group=species_name ),
     seqinfo   = seqinfo_
   ) %*>%
     new(Class="species_meta")

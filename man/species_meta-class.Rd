@@ -13,6 +13,8 @@ Data summaries and references to full data for a given species
 \describe{
 \item{\code{files}}{species_data_files RData files containing the full data}
 
-\item{\code{summaries}}{species_summaries  Detailed summaries of all data}
+\item{\code{summaries}}{character          Filename for saved detailed summaries of all data}
+
+\item{\code{seqinfo}}{Seqinfo            Genomic info}
 }}
 

@@ -33,7 +33,7 @@ make_format_translation_warning <- function(species){
       msg <- sprintf(
         msg,
         length(model_ids),
-        length(length(x)),
+        length(x),
         species,
         paste0(names(x[model_ids]), collapse=', ')
       )

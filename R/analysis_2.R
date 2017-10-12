@@ -54,48 +54,50 @@ compare_target_to_focal <- function(
     offsets = con@synder@offsets
   )
 
-  esi_ <- rmonad::funnel(
-    syn = synmap_,
-    gff = fsi_ %>>% {
+  ## TODO: resurrect?
+  # esi_ <- rmonad::funnel(
+  #   syn = synmap_,
+  #   gff = fsi_ %>>% {
+  #
+  #     "Echo the search intervals back at the query."
+  #
+  #     synder::as_gff(
+  #       CNEr::second(.),
+  #       id=as.character(seq_along(.))
+  #     )
+  #   }
+  # ) %*>%
+  # synder::search(
+  #   swap    = TRUE,
+  #   trans   = con@synder@trans,
+  #   k       = con@synder@k,
+  #   r       = con@synder@r,
+  #   offsets = con@synder@offsets
+  # )
 
-      "Echo the search intervals back at the query."
-
-      synder::as_gff(
-        CNEr::second(.),
-        id=as.character(seq_along(.))
-      )
-    }
-  ) %*>%
-  synder::search(
-    swap    = TRUE,
-    trans   = con@synder@trans,
-    k       = con@synder@k,
-    r       = con@synder@r,
-    offsets = con@synder@offsets
-  )
-
-  rsi_ <- rmonad::funnel(
-    syn = synmap_,
-    gff = tgff_
-  ) %*>% {
-
-  "
-  Trace target genes to focal genome using the reversed synteny map. This may
-  produce 'SKIPPING ENTRY' warnings. These warnings mean that the GFF
-  contains scaffolds that are missing in the synteny map. This is likely to
-  occur in genomes that are not fully assembled (thousands of scaffolds).
-  "
-
-    synder::search(
-      syn,
-      gff,
-      swap    = TRUE,
-      trans   = con@synder@trans,
-      k       = con@synder@k,
-      r       = con@synder@r,
-      offsets = con@synder@offsets
-    )
-  }
+  ## TODO: resurrect?
+  # rsi_ <- rmonad::funnel(
+  #   syn = synmap_,
+  #   gff = tgff_
+  # ) %*>% {
+  #
+  # "
+  # Trace target genes to focal genome using the reversed synteny map. This may
+  # produce 'SKIPPING ENTRY' warnings. These warnings mean that the GFF
+  # contains scaffolds that are missing in the synteny map. This is likely to
+  # occur in genomes that are not fully assembled (thousands of scaffolds).
+  # "
+  #
+  #   synder::search(
+  #     syn,
+  #     gff,
+  #     swap    = TRUE,
+  #     trans   = con@synder@trans,
+  #     k       = con@synder@k,
+  #     r       = con@synder@r,
+  #     offsets = con@synder@offsets
+  #   )
+  # }
 
   synder_flags_summary_ <-
     rmonad::funnel(
@@ -111,11 +113,11 @@ compare_target_to_focal <- function(
 
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
 
+
   gapped_ <- rmonad::funnel(
-    si = fsi_,
-    gff = nstrings_
-  ) %*>% overlapMap %>%
-  { rmonad::funnel(x=., nstring=nstrings_) } %*>% {
+      x = rmonad::funnel(si = fsi_, gff = nstrings_) %*>% overlapMap
+    , nstrings = nstrings_
+  ) %*>% {
 
     "
     Get a N-string table with the columns
@@ -129,7 +131,7 @@ compare_target_to_focal <- function(
     If there are no N-strings, return an empty dataframe.
     "
 
-    if(is.null(nstring)){
+    if(is.null(nstrings)){
       data.frame(
         query  = character(0),
         siid   = integer(0),
@@ -139,7 +141,7 @@ compare_target_to_focal <- function(
       data.frame(
         query  = x$query,
         siid   = x$qid,
-        length = GenomicRanges::width(nstring)[x$qid]
+        length = GenomicRanges::width(nstrings)[x$qid]
       ) %>% { .[!is.na(.$length), ] }
     }
   }
@@ -158,7 +160,7 @@ compare_target_to_focal <- function(
 
   f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
 
-  r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
+  # r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
   orfgff_ <- t_primary@files@orfgff.file %>>%
     from_cache %>>%
@@ -315,7 +317,7 @@ compare_target_to_focal <- function(
     scrambled    = scrambled_,
     indels       = indels_,
     f_si_map     = f_si_map_,
-    r_si_map     = r_si_map_,
+    # r_si_map     = r_si_map_,
     aa2aa        = aa2aa_,
     aa2orf       = aa2orf_,
     aa2transorf  = aa2transorf_,

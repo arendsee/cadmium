@@ -50,7 +50,7 @@ load_species <- function(species_name, input){
     extractWithComplements %>>%
     {
       list(format_warnings=format_translation_warning)
-      Biostrings::translate(if.fuzzy.codon="solve")
+      Biostrings::translate(., if.fuzzy.codon="solve")
     }
 
   transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
@@ -116,7 +116,7 @@ load_species <- function(species_name, input){
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
       list(format_warnings=format_translation_warning)
-      Biostrings::translate(if.fuzzy.codon="solve")
+      Biostrings::translate(., if.fuzzy.codon="solve")
     }
 
   aa_model_phase_ <- rmonad::funnel(phases = aa_model_phase_, aa = aa_) %*>% {
@@ -190,7 +190,10 @@ the problem. For now, the offending transcripts have been removed."
       gff = transorfgff_
     ) %*>%
     extractWithComplements %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(., if.fuzzy.codon="solve")
+    }
 
   specsum_ <- rmonad::funnel(
     gff.summary         = txdb_        %>>% summarize_gff,

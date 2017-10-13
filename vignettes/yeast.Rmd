@@ -10,8 +10,28 @@ vignette: >
 ---
 
 ```{r, echo=FALSE, message=FALSE}
-document()
-# library(fagin)
+## uncomment to run the analysis
+# document()
+# # library(fagin)
+# library(rmonad)
+# library(ggplot2)
+# library(knitr)
+# library(dplyr)
+# library(magrittr)
+# require(CNEr)
+# require(GenomicRanges)
+# con <- config()
+# file.symlink("../inst/yeast", "INPUT")
+# # file.symlink("/db/fagin-input/brassicaceae", "INPUT")
+# # con@input@focal_species = "Arabidopsis_thaliana"
+# # con@synder@offsets = c(0L,1L) # offsets for Satsuma
+# con@synder@offsets = c(1L,1L) # offsets for Satsuma
+# d <- run_fagin(con)
+```
+
+```{r, echo=FALSE}
+## uncomment to build a vignette based off the archived data
+library(fagin)
 library(rmonad)
 library(ggplot2)
 library(knitr)
@@ -20,20 +40,17 @@ library(magrittr)
 require(CNEr)
 require(GenomicRanges)
 con <- config()
-file.symlink("../inst/yeast", "INPUT")
-# file.symlink("/db/fagin-input/brassicaceae", "INPUT")
-# con@input@focal_species = "Arabidopsis_thaliana"
-# con@synder@offsets = c(0L,1L) # offsets for Satsuma
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
-d <- run_fagin(con)
+load("ARCHIVE/final_obj.Rda")
+d <- m
 ```
 
 ```{r, echo=FALSE}
-as.list(d)[mtabulate(d)$error != 0] -> es
 missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-es <- as.list(d)[sapply(d, function(x) x$has_error())]
-ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
+ms <- as.list(d)
+es <- ms[sapply(ms, function(x) x$has_error())]
+ws <- ms[sapply(ms, function(x) x$has_warnings())]
 ```
 
 ## Input data summaries

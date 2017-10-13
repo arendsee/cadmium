@@ -6,8 +6,6 @@ get_gff_from_txdb <- function(x, ...){
   )
 }
 
-
-
 compare_target_to_focal <- function(
   species,
   fgff,
@@ -17,8 +15,6 @@ compare_target_to_focal <- function(
   queries,
   con
 ){
-
-  # FIXME: factor out functions
 
   "
   Collect secondary data for one species. The main output is a feature table.
@@ -283,9 +279,9 @@ compare_target_to_focal <- function(
     get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries, offset=offset)
 
   } %*>% rmonad::funnel(
-    cds     = tcds_,
-    exon   = texons_,
-    mrna    = tgff_
+    cds  = tcds_,
+    exon = texons_,
+    mrna = tgff_
   ) %*>% {
 
     "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,

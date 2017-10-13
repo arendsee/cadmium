@@ -310,7 +310,7 @@ compare_target_to_focal <- function(
 
   rmonad::funnel(
     queries      = queries,
-    # si           = fsi_,
+    si           = fsi_,
     synder_summary = synder_summary_,
     indels       = indels_,
     # f_si_map     = f_si_map_,

@@ -12,7 +12,7 @@ scanFa_trw <- function(x, ...){
 }
 
 
-load_species <- function(species_name, input){
+load_species <- function(species_name, con){
 
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
@@ -20,7 +20,7 @@ load_species <- function(species_name, input){
   format_translation_warning <- make_format_translation_warning(species_name)
 
   dna_ <-
-    get_genome_filename(species_name, dir=input@fna_dir) %v>%
+    get_genome_filename(species_name, dir=con@input@fna_dir) %v>%
     load_dna
 
   seqinfo_ <- dna_ %>>% scanFa_trw %>>% {
@@ -34,7 +34,7 @@ load_species <- function(species_name, input){
 
   txdb_ <-
     rmonad::funnel(
-      filename = get_gff_filename(species_name, dir=input@gff_dir),
+      filename = get_gff_filename(species_name, dir=con@input@gff_dir),
       seqinfo_ = seqinfo_
     ) %*>% load_gene_models
 
@@ -162,7 +162,7 @@ the problem. For now, the offending transcripts have been removed."
 
       "Print the transcripts to a temporary file"
 
-      filepath <- paste0(".", species_name, "_trans.fna")
+      filepath <- file.path(con@archive, paste0(".", species_name, "_trans.fna"))
       Biostrings::writeXStringSet(., filepath=filepath)
       filepath
 
@@ -365,13 +365,12 @@ primary_data <- function(con){
 
   }
 
-  species_meta_list_ <- con_ %>>% { .@input } %>%
-    rmonad::funnel(specs=species_names_) %*>%
+  species_meta_list_ <- rmonad::funnel(specs=species_names_, con=con_) %*>%
     {
 
       "For each species, collect and cache all required data"
 
-      ss <- lapply(specs, load_species, .)
+      ss <- lapply(specs, load_species, con)
       names(ss) <- specs
 
       rmonad::combine(ss)

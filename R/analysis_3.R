@@ -27,8 +27,6 @@ buildFeatureTable <- function(d, con){
 
     rmonad::funnel(
       seqid = d$queries,
-      # Synteny is scrambled
-      scr = d$queries %in% d$scrambled,
       # matches somewhere in at least one search interval
       nuc = d$queries %in% met$query,
       # matches CDS in at least one search interval
@@ -47,8 +45,10 @@ buildFeatureTable <- function(d, con){
       orf = d$queries %in% subset(d$aa2orf$map, pval < p2a_cutoff)$query ,
       # ORF match to spliced transcript (possibly multi-exonic)
       trn = d$queries %in% subset(d$aa2transorf$map, pval < p2t_cutoff)$query ,
+      # synteny is scrambled
+      scr = d$queries %in% subset(d$synder_summary, incoherent)$attr,
       # at least one search interval maps off scaffold
-      una = d$queries %in% d$unassembled,
+      una = d$queries %in% subset(d$synder_summary, unassembled)$attr,
       # search interval was not processed for technical reasons (e.g. too big)
       tec = d$queries %in% d$gene2genome$skipped
     )

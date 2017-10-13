@@ -111,15 +111,7 @@ compare_target_to_focal <- function(
   #   )
   # }
 
-  synder_flags_summary_ <-
-    rmonad::funnel(
-      si      = fsi_,
-      queries = queries
-    ) %*>% summarize_syntenic_flags
-
-  unassembled_ <- fsi_ %>>% find_unassembled
-
-  scrambled_ <- fsi_ %>>% find_scrambled
+  synder_summary_ <- fsi_ %>>% synder::flag_summary
 
   indels_ <- rmonad::funnel(fsi_, con@alignment@indel_threshold) %*>% find_indels
 
@@ -323,9 +315,7 @@ compare_target_to_focal <- function(
   rmonad::funnel(
     queries      = queries,
     # si           = fsi_,
-    # flag_summary = synder_flags_summary_,
-    unassembled  = unassembled_,
-    scrambled    = scrambled_,
+    synder_summary = synder_summary_,
     indels       = indels_,
     # f_si_map     = f_si_map_,
     # r_si_map     = r_si_map_,

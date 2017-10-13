@@ -34,30 +34,23 @@ NULL
 
 #' @rdname fagin_cache
 #' @export
-to_cache <- function(x, label, group=NULL, cache_dir=".fagin_cache") {
-
-  .setup_cache_folders(group, cache_dir)
-
-  if(class(x) == 'TxDb'){
-
-    cached_filename <- .get_cached_filename(cache_dir, group, label, ext="sqlite")
-    AnnotationDbi::saveDb(x, file=cached_filename)
-
-  } else {
-
-    cached_filename <- .get_cached_filename(cache_dir, group, label, ext="RData")
-    save(x, file=cached_filename)
-
+make_cache_function <- function(cache_dir){
+  function(x, label, group=NULL) {
+    .setup_cache_folders(group, cache_dir)
+    if(class(x) == 'TxDb'){
+      cached_filename <- .get_cached_filename(cache_dir, group, label, ext="sqlite")
+      AnnotationDbi::saveDb(x, file=cached_filename)
+    } else {
+      cached_filename <- .get_cached_filename(cache_dir, group, label, ext="RData")
+      save(x, file=cached_filename)
+    }
+    cached_filename
   }
-
-  cached_filename
-
 }
 
 #' @rdname fagin_cache
 #' @export
 from_cache <- function(file, type='Rdata') {
-
   if(file.exists(file)){
     if(type == 'sqlite'){
       AnnotationDbi::loadDb(file)
@@ -73,5 +66,4 @@ from_cache <- function(file, type='Rdata') {
   } else {
     NULL
   }
-
 }

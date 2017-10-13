@@ -2,22 +2,22 @@
 % Please edit documentation in R/util_cache.R
 \name{fagin_cache}
 \alias{fagin_cache}
-\alias{to_cache}
+\alias{make_cache_function}
 \alias{from_cache}
 \title{Store and retrieve data using groups and labels}
 \usage{
-to_cache(x, label, group = NULL, cache_dir = ".fagin_cache")
+make_cache_function(cache_dir)
 
 from_cache(file, type = "Rdata")
 }
 \arguments{
-\item{x}{Data to be cached}
+\item{cache_dir}{The directory in which to cache the results}
 
-\item{label}{The base label under which to store the data}
+\item{x}{Data to be cached}
 
 \item{group}{A caching group (e.g. a species name)}
 
-\item{cache_dir}{The directory in which to cache the results}
+\item{label}{The base label under which to store the data}
 }
 \description{
 Currently I am caching by saving the files in as RData objects in a local

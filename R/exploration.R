@@ -99,44 +99,55 @@ plotSecondaryLabels <- function(con, fill='secondary'){
         )
      )
     load(file.path(con@archive, 'd4.Rda'))
-    dat <- d4$labels %>%
-            lapply(
-                function(x) {
-                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-                }
-            ) %>%
-            dplyr::bind_rows(.id='species') %>%
-            {
-                .$species <- factor(.$species, levels=speciesOrder)
-                . <- merge(., desc)
-                .$desc <- paste(.$secondary, .$desc, sep=': ')
-                .
-            }
+
+    parse_labels <- function(labels, group){
+      labels %>%
+        lapply(
+          function(x) {
+              dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+          }
+        ) %>%
+        dplyr::bind_rows(.id='species') %>%
+        {
+          .$species <- factor(.$species, levels=speciesOrder)
+          . <- merge(., desc)
+          .$desc <- paste(.$secondary, .$desc, sep=': ')
+          .
+        }
+    }
+
+    dat <- rbind(
+      parse_labels(d4$query$labels,   group="orphan"),
+      parse_labels(d4$control$labels, group="control")
+    )
+
     if(fill == 'secondary'){
-        ggplot(dat) +
-            geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
-            scale_fill_brewer(palette="Paired") +
-            theme(
-                axis.text.x = element_text(angle=270, hjust=0, vjust=1)
-              , legend.position = 'bottom'
-            ) +
-            guides(fill = guide_legend(ncol = 2)) +
-            labs(
-                fill="Classification",
-                x="Target species",
-                y="# of focal genes"
-            )
+      ggplot(dat) +
+        geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
+        scale_fill_brewer(palette="Paired") +
+        theme(
+          axis.text.x = element_text(angle=270, hjust=0, vjust=1),
+          legend.position = 'bottom'
+        ) +
+        guides(fill = guide_legend(ncol = 2)) +
+        labs(
+          fill="Classification",
+          x="Target species",
+          y="# of focal genes"
+        ) +
+        facet_grid(group ~ .)
     } else {
-        ggplot(dat) +
-            scale_fill_brewer(palette="Paired") +
-            geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
-            theme(
-                axis.text.x = element_text(angle=325, hjust=0, vjust=1)
-            ) +
-            labs(
-                fill="Target species",
-                x="Classification",
-                y="# of focal genes"
-            )
+      ggplot(dat) +
+        scale_fill_brewer(palette="Paired") +
+        geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
+        theme(
+          axis.text.x = element_text(angle=325, hjust=0, vjust=1)
+        ) +
+        labs(
+          fill="Target species",
+          x="Classification",
+          y="# of focal genes"
+        ) +
+        facet_grid(group ~ .)
     }
 }

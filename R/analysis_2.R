@@ -12,7 +12,7 @@ compare_target_to_focal <- function(
   f_primary,
   t_primary,
   synmap,
-  queries,
+  seqids,
   con
 ){
 
@@ -182,7 +182,7 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_faa_,
     map     = f_si_map_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
   # # Run the exact test above, but with the query indices scrambled. For a
@@ -192,7 +192,7 @@ compare_target_to_focal <- function(
   #   queseq  = f_faa_,
   #   tarseq  = t_faa_,
   #   map     = f_si_map_,
-  #   queries = queries
+  #   queries = seqids
   # ) %*>% align_by_map(permute=TRUE)
 
   # - align query protein against ORFs in genomic intervals in SI
@@ -200,14 +200,14 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_orffaa_,
     map     = f_si_map_orf_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
   # rand_aa2orf_ <- rmonad::funnel(
   #   queseq  = f_faa_,
   #   tarseq  = t_orffaa_,
   #   map     = f_si_map_orf_,
-  #   queries = queries
+  #   queries = seqids
   # ) %*>% align_by_map(permute=TRUE)
 
   transorf_map_ <- rmonad::funnel(
@@ -238,7 +238,7 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_transorffaa_,
     map     = transorf_map_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
 
@@ -247,7 +247,7 @@ compare_target_to_focal <- function(
     map     = fsi_,
     quedna  = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
     tardna  = t_primary@files@dna.file %>>% from_cache,
-    queries = queries
+    queries = seqids
   ) %*>% {
 
     qids <- GenomicRanges::mcols(map)$attr
@@ -309,17 +309,17 @@ compare_target_to_focal <- function(
   }
 
   rmonad::funnel(
-    queries      = queries,
-    si           = fsi_,
+    queries        = seqids,
+    si             = fsi_,
     synder_summary = synder_summary_,
-    indels       = indels_,
-    # f_si_map     = f_si_map_,
-    # r_si_map     = r_si_map_,
-    aa2aa        = aa2aa_,
-    aa2orf       = aa2orf_,
-    aa2transorf  = aa2transorf_,
-    gene2genome  = gene2genome_,
-    gapped       = gapped_
+    indels         = indels_,
+    # f_si_map       = f_si_map_,
+    # r_si_map       = r_si_map_,
+    aa2aa          = aa2aa_,
+    aa2orf         = aa2orf_,
+    aa2transorf    = aa2transorf_,
+    gene2genome    = gene2genome_,
+    gapped         = gapped_
   )
 
 }
@@ -342,21 +342,28 @@ secondary_data <- function(primary_input, con){
     GenomicFeatures::transcripts %>>%
     get_gff_from_txdb(seqinfo_=f_primary@seqinfo, type='mRNA') %>_%
     {
-      "Assert query ids match the names in the GFF file"
 
-      queries <- primary_input@queries
-      txnames <- GenomicRanges::mcols(.)$attr
-      matches <- queries %in% txnames
+      "Assert query and control ids match the names in the GFF file"
 
-      if(!all(matches)){
-        msg <- "%s of %s query ids are missing in the GFF. Here is the head: [%s]"
-        stop(sprintf(
-          msg,
-          sum(!matches),
-          length(queries),
-          paste(head(queries[!matches]), collapse=", ")
-        ))
+      check_ids <- function(ids, label){
+        txnames <- GenomicRanges::mcols(.)$attr
+        matches <- ids %in% txnames
+        if(!all(matches)){
+          msg <- "%s of %s %s ids are missing in the focal GFF (%s). Here is the head: [%s]"
+          stop(sprintf(
+            msg,
+            sum(!matches),
+            length(ids),
+            label,
+            focal_species,
+            paste(head(ids[!matches]), collapse=", ")
+          ))
+        }
       }
+
+      check_ids(primary_input@queries, "query")
+      check_ids(primary_input@control, "control")
+
     }
 
   rmonad::funnel(
@@ -370,14 +377,25 @@ secondary_data <- function(primary_input, con){
     ss <- target_species %>%
       lapply(
         function(spec){
-          compare_target_to_focal(
-            species   = spec,
-            fgff      = fgff,
-            f_primary = f_primary,
-            t_primary = prim@species[[spec]],
-            synmap    = prim@synmaps[[spec]],
-            queries   = prim@queries,
-            con       = con
+          list(
+            query_results = compare_target_to_focal(
+              species   = spec,
+              fgff      = fgff,
+              f_primary = f_primary,
+              t_primary = prim@species[[spec]],
+              synmap    = prim@synmaps[[spec]],
+              seqids    = prim@queries,
+              con       = con
+            ),
+            control_results = compare_target_to_focal(
+              species   = spec,
+              fgff      = fgff,
+              f_primary = f_primary,
+              t_primary = prim@species[[spec]],
+              synmap    = prim@synmaps[[spec]],
+              seqids    = prim@control,
+              con       = con
+            )
           )
         }
       )

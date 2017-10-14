@@ -3,13 +3,13 @@
 \name{fagin_io}
 \alias{fagin_io}
 \alias{load_dna}
-\alias{load_queries}
+\alias{load_gene_list}
 \alias{load_tree}
 \title{Input and output}
 \usage{
 load_dna(filename)
 
-load_queries(filename)
+load_gene_list(filename)
 
 load_tree(filename)
 }

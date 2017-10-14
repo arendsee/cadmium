@@ -15,7 +15,9 @@ Class containing all data required for a Fagin run
 
 \item{\code{focal_species}}{The focal species}
 
-\item{\code{queries}}{A character vector of species ids}
+\item{\code{queries}}{A character vector of gene ids (orphan candidates, or whatever)}
+
+\item{\code{control}}{A character vector of gene ids (control)}
 
 \item{\code{species}}{A list of species_meta objects}
 

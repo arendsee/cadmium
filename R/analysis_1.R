@@ -397,12 +397,14 @@ primary_data <- function(con){
       rmonad::combine(ss)
     }
 
-  queries_ <- con_ %>>% { load_queries(.@input@query_gene_list) }
+  queries_ <- con_ %>>% { load_gene_list(.@input@query_gene_list) }
+  control_ <- con_ %>>% { load_gene_list(.@input@control_gene_list) }
 
   rmonad::funnel(
     tree          = tree_,
     focal_species = focal_species_,
     queries       = queries_,
+    control       = control_,
     species       = species_meta_list_,
     synmaps       = synmap_meta_list_
   ) %*>%

@@ -10,7 +10,7 @@ vignette: >
 ---
 
 ```{r, echo=FALSE, message=FALSE}
-## uncomment to run the analysis
+# # uncomment to run the analysis
 # document()
 # # library(fagin)
 # library(rmonad)
@@ -30,7 +30,7 @@ vignette: >
 ```
 
 ```{r, echo=FALSE}
-## uncomment to build a vignette based off the archived data
+# uncomment to build a vignette based off the archived data
 library(fagin)
 library(rmonad)
 library(ggplot2)
@@ -43,9 +43,6 @@ con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
 load("ARCHIVE/final_obj.Rda")
 d <- m
-```
-
-```{r, echo=FALSE}
 missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
 ms <- as.list(d)
@@ -113,7 +110,7 @@ d1@synmaps %>%
 load('ARCHIVE/d2.Rda')
 lapply(d2, function(x){
     x$si %>%
-        GenomicAlignments::second() %>%
+        CNEr::second() %>%
         GenomicRanges::width() %>%
         fagin::summarize_numeric()
   }) %>%

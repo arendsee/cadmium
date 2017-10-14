@@ -377,7 +377,7 @@ secondary_data <- function(primary_input, con){
     ss <- target_species %>%
       lapply(
         function(spec){
-          list(
+          rmonad::funnel(
             query_results = compare_target_to_focal(
               species   = spec,
               fgff      = fgff,

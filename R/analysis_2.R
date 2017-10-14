@@ -337,7 +337,6 @@ secondary_data <- function(primary_input, con){
   focal_species <- con@input@focal_species
   f_primary <- primary_input@species[[focal_species]]
 
-
   focal_gff_ <- from_cache(f_primary@files@gff.file, type='sqlite') %>>%
     GenomicFeatures::transcripts %>>%
     get_gff_from_txdb(seqinfo_=f_primary@seqinfo, type='mRNA') %>_%
@@ -370,6 +369,26 @@ secondary_data <- function(primary_input, con){
     prim = primary_input,
     fgff = focal_gff_
   ) %*>% {
+
+    focal_faa <- f_primary@files@aa.file %>>% from_cache %>% m_value
+
+    die_if_genes_are_missing <- function(whole, part, label){
+      missing <- !(part %in% whole)
+      if(sum(missing) > 0){
+        msg <- "%s of %s %s gene names are missing in the focal species (%s). These may be genes that are not translated (e.g. tRNAs or partial genes with no CDS). To diagnose, check the focal species GFF for the following missing ids: %s"
+        stop(sprintf(
+          msg,
+          sum(missing),
+          length(part),
+          label,
+          focal_species,
+          paste(part[missing], collapse=", ")
+        ))
+      }
+    }
+
+    die_if_genes_are_missing(names(focal_faa), prim@queries, "query")
+    die_if_genes_are_missing(names(focal_faa), prim@control, "control")
 
     species <- names(prim@species)
     target_species <- setdiff(species, focal_species)

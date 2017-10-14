@@ -170,6 +170,12 @@ labelTreeToTable <- function(root, feats){
 #' Merge labels for all species
 #' @export
 determine_labels <- function(features, con){
+  rmonad::funnel(
+    query   = .determine_labels(features$query, con),
+    control = .determine_labels(features$control, con)
+  )
+}
+.determine_labels <- function(features, con){
 
   descriptions <- c(
     O1 = 'genic: known gene',

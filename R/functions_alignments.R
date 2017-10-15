@@ -80,29 +80,44 @@ fit.gumbel <- function(sam){
 # Search sequence - AA-AA - Query genes against target genes
 # ============================================================================
 
-aln_xy <- function(x, y){
-  a <- data.frame(
-    query = names(x),
-    target = names(y),
-    score = Biostrings::pairwiseAlignment(
-      pattern=x,
-      subject=y,
-      type='local',
-      substitutionMatrix='BLOSUM80',
-      scoreOnly=TRUE
-    ),
-    qwidth=width(x),
-    twidth=width(y),
-    stringsAsFactors=FALSE
+nothing <- function(x) NULL
+
+aln_xy <- function(x, y, group, label, simulation=FALSE){
+
+  aln <- Biostrings::pairwiseAlignment(
+    pattern=x,
+    subject=y,
+    type='local',
+    substitutionMatrix='BLOSUM80'
   )
-  dplyr::group_by(a, query) %>%
-    # Calculate adjusted score
-    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-    base::merge(a) %>%
-    dplyr::select(query, target, score, logmn)
+
+  if(simulation){
+    group <- paste0(group, "-sim")
+  }
+
+  alnfile <- to_cache(aln, group=group, label=label)
+
+  a <- data.frame(
+    query  = names(x),
+    target = names(y),
+    score  = score(aln),
+    qwidth = width(x),
+    twidth = width(y),
+    stringsAsFactors = FALSE
+  )
+
+  list(
+      map = dplyr::group_by(a, query) %>%
+        # Calculate adjusted score
+        dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
+        base::merge(a) %>%
+        dplyr::select(query, target, score, logmn)
+    , alnfile = alnfile
+  )
+
 }
 
-AA_aln <- function(queseq, tarseq, nsims=10000){
+AA_aln <- function(queseq, tarseq, species_name, nsims=10000, ...){
 
   # Store the original query to target mapping for later testing.
   # The input and output must have the same mapping.
@@ -113,7 +128,8 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   )
   original.length = length(queseq)
 
-  map <- aln_xy(queseq, tarseq)
+  aln_result <- aln_xy(queseq, tarseq, ...)
+  map <- aln_result$map
 
   # Simulate best hit for each query against randomized and reversed target sequences
   # 1. sample number of target sequences per query
@@ -130,10 +146,15 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   # 4. give each simulated query a unique id
   simnames <- paste0('t', 1:nsims) %>% rep(times=times)
   # 5. align these against random targets
-  sam <- aln_xy(
+  simulation_result <- aln_xy(
     queseq[simids] %>% set_names(simnames),
-    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse
-  ) %>% 
+    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse,
+    simulation=TRUE,
+    ...
+  )
+
+  sam <- simulation_result$map
+
   dplyr::select(-target)
 
   gum <- fit.gumbel(sam)
@@ -159,7 +180,8 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
     map   = map,
     dis   = gum,
     sam   = sam,
-    nsims = nsims
+    nsims = nsims,
+    alnfile = aln_result$alnfile
   )
 }
 
@@ -233,11 +255,15 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
     }
   }
 
-  Biostrings::pairwiseAlignment(
+  aln <- Biostrings::pairwiseAlignment(
     pattern=pattern,
     subject=subject,
     type='local'
-  ) %>>% {
+  )
+
+  alnfile <- to_cache(aln, group=group, label=label)
+
+  map_ <- aln %>>% {
     CNEr::GRangePairs(
       first = GenomicRanges::GRanges(
         seqnames = names(pattern),
@@ -260,6 +286,12 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
       twidth = Biostrings::width(subject)
     )
   }
+
+  rmonad::funnel(
+    map = map_,
+    alnfile = alnfile
+  )
+
 }
 
 
@@ -307,7 +339,10 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
       )
     }
 
+  # TODO: continue from here: need to extract the cached file
   ctrl_ <- truncated_seqs_ %*>% alignToGenome(permute=T) %>>% add_logmn
+    ## TODO: And what the flip is the following commented code? Why is it still
+    ## here? I kept it for some reason ...
     # dplyr::group_by(query) %>%
     # dplyr::filter(.data$score == max(.data$score))
 

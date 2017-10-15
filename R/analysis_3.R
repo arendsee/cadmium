@@ -71,15 +71,22 @@ tertiary_data <- function(secondary_data, con){
 
   buildFeatureTables <- function(d){
     ss <- lapply(d, buildFeatureTable, con=con)
-    names(ss) <- names(secondary_data)
+    names(ss) <- names(d)
     rmonad::combine(ss)
   }
 
-  qss <- buildFeaturesTables(secondary_data$query_results)
-  css <- buildFeaturesTables(secondary_data$control_results)
+  # transpose list from `d->species->group` to `d->group->species`
+  ds <- list(
+    query=lapply(secondary_data, function(x) x$query_results),
+    control=lapply(secondary_data, function(x) x$control_results)
+  )
+  names(ds$query) <- names(secondary_data)
+  names(ds$control) <- names(secondary_data)
+
+  qss <- buildFeatureTables(ds$query)
+  css <- buildFeatureTables(ds$control)
   
   rmonad::funnel(query=qss, control=css)
-  
 }
 
 

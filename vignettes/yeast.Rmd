@@ -32,8 +32,6 @@ vignette: >
 # ms <- as.list(d)
 # es <- ms[sapply(ms, function(x) x$has_error())]
 # ws <- ms[sapply(ms, function(x) x$has_warnings())]
-# load("ARCHIVE/final_obj.Rda")
-# d <- m
 ```
 
 ```{r, echo=FALSE}

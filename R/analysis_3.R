@@ -75,8 +75,8 @@ tertiary_data <- function(secondary_data, con){
     rmonad::combine(ss)
   }
 
-  qss <- buildFeatureTables(ds$query)
-  css <- buildFeatureTables(ds$control)
+  qss <- buildFeatureTables(secondary_data$query)
+  css <- buildFeatureTables(secondary_data$control)
   
   rmonad::funnel(query=qss, control=css)
 }

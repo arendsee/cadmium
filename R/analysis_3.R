@@ -75,14 +75,6 @@ tertiary_data <- function(secondary_data, con){
     rmonad::combine(ss)
   }
 
-  # transpose list from `d->species->group` to `d->group->species`
-  ds <- list(
-    query=lapply(secondary_data, function(x) x$query_results),
-    control=lapply(secondary_data, function(x) x$control_results)
-  )
-  names(ds$query) <- names(secondary_data)
-  names(ds$control) <- names(secondary_data)
-
   qss <- buildFeatureTables(ds$query)
   css <- buildFeatureTables(ds$control)
   

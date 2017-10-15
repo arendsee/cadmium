@@ -22,6 +22,11 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
+  # TODO:
+  # * look into deeper synder analysis
+  # * cache everything
+  # * formalize results in classes
+
   ttxdb_ <- rmonad::as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
 
   tgff_ <- ttxdb_ %>>% {
@@ -421,6 +426,18 @@ secondary_data <- function(primary_input, con){
 
     names(ss) <- target_species
     rmonad::combine(ss)
+
+  } %>>% {
+
+    "transpose list from `d->species->group` to `d->group->species`"
+
+    ds <- list(
+      query   = lapply(., function(x) x$query_results),
+      control = lapply(., function(x) x$control_results)
+    )
+    names(ds$query)   <- names(.)
+    names(ds$control) <- names(.)
+    ds
 
   }
 

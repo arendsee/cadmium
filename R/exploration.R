@@ -112,6 +112,7 @@ plotSecondaryLabels <- function(con, fill='secondary'){
           .$species <- factor(.$species, levels=speciesOrder)
           . <- merge(., desc)
           .$desc <- paste(.$secondary, .$desc, sep=': ')
+          .$group <- group
           .
         }
     }

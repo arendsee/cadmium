@@ -10,23 +10,30 @@ vignette: >
 ---
 
 ```{r, echo=FALSE, message=FALSE}
-# uncomment to run the analysis
-document()
-# library(fagin)
-library(rmonad)
-library(ggplot2)
-library(knitr)
-library(dplyr)
-library(magrittr)
-require(CNEr)
-require(GenomicRanges)
-con <- config()
-file.symlink("../inst/yeast", "INPUT")
-# file.symlink("/db/fagin-input/brassicaceae", "INPUT")
-# con@input@focal_species = "Arabidopsis_thaliana"
-# con@synder@offsets = c(0L,1L) # offsets for Satsuma
-con@synder@offsets = c(1L,1L) # offsets for Satsuma
-d <- run_fagin(con)
+# # uncomment to run the analysis
+# document()
+# # library(fagin)
+# library(rmonad)
+# library(ggplot2)
+# library(knitr)
+# library(dplyr)
+# library(magrittr)
+# require(CNEr)
+# require(GenomicRanges)
+# con <- config()
+# file.symlink("../inst/yeast", "INPUT")
+# # file.symlink("/db/fagin-input/brassicaceae", "INPUT")
+# # con@input@focal_species = "Arabidopsis_thaliana"
+# # con@synder@offsets = c(0L,1L) # offsets for Satsuma
+# con@synder@offsets = c(1L,1L) # offsets for Satsuma
+# d <- run_fagin(con)
+# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+# ms <- as.list(d)
+# es <- ms[sapply(ms, function(x) x$has_error())]
+# ws <- ms[sapply(ms, function(x) x$has_warnings())]
+# load("ARCHIVE/final_obj.Rda")
+# d <- m
 ```
 
 ```{r, echo=FALSE}
@@ -41,13 +48,6 @@ require(CNEr)
 require(GenomicRanges)
 con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
-load("ARCHIVE/final_obj.Rda")
-d <- m
-missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
-mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-ms <- as.list(d)
-es <- ms[sapply(ms, function(x) x$has_error())]
-ws <- ms[sapply(ms, function(x) x$has_warnings())]
 ```
 
 ## Input data summaries
@@ -136,3 +136,11 @@ plotSecondaryLabels(con)
 ```{r, fig.width=8, fig.height=4, echo=FALSE}
 plotSecondaryLabels(con, fill='species')
 ```
+
+## Origin classifications
+
+**TODO - fill this out**
+
+## System info
+
+**TODO - dump the collected session info here**

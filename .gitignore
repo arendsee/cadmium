@@ -7,6 +7,8 @@
 *.fasta
 *.fai
 
+.build.timestamp
+
 ARCHIVE*
 
 vignettes/*Rda

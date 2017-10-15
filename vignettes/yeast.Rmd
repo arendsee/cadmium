@@ -10,23 +10,42 @@ vignette: >
 ---
 
 ```{r, echo=FALSE, message=FALSE}
+# # uncomment to run the analysis
+# document()
+# # library(fagin)
+# library(rmonad)
+# library(ggplot2)
+# library(knitr)
+# library(dplyr)
+# library(magrittr)
+# require(CNEr)
+# require(GenomicRanges)
+# con <- config()
+# file.symlink("../inst/yeast", "INPUT")
+# # file.symlink("/db/fagin-input/brassicaceae", "INPUT")
+# # con@input@focal_species = "Arabidopsis_thaliana"
+# # con@synder@offsets = c(0L,1L) # offsets for Satsuma
+# con@synder@offsets = c(1L,1L) # offsets for Satsuma
+# d <- run_fagin(con)
+# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+# ms <- as.list(d)
+# es <- ms[sapply(ms, function(x) x$has_error())]
+# ws <- ms[sapply(ms, function(x) x$has_warnings())]
+```
+
+```{r, echo=FALSE}
+# uncomment to build a vignette based off the archived data
 library(fagin)
 library(rmonad)
 library(ggplot2)
 library(knitr)
 library(dplyr)
+library(magrittr)
 require(CNEr)
 require(GenomicRanges)
 con <- config()
-# file.symlink("../inst/yeast", "INPUT")
-# d <- run_fagin(con)
-```
-
-```{r, echo=FALSE}
-# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
-# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-# es <- as.list(d)[sapply(d, function(x) x$has_error())]
-# ws <- as.list(d)[sapply(d, function(x) x$has_warnings())]
+con@synder@offsets = c(1L,1L) # offsets for Satsuma
 ```
 
 ## Input data summaries
@@ -87,21 +106,26 @@ d1@synmaps %>%
 
 ```{r, echo=FALSE, results='asis'}
 load('ARCHIVE/d2.Rda')
-lapply(d2, function(x){
-    x$si %>%
-        GenomicAlignments::second() %>%
-        GenomicRanges::width() %>%
-        fagin::summarize_numeric()
-  }) %>%
-    num_sum_as_table %>%
-    knitr::kable(caption="Summary of search interval widths")
+
+summarize_sis <- function(xs, label){
+  lapply(xs, function(x){
+     x$si %>%
+         CNEr::second() %>%
+         GenomicRanges::width() %>%
+         fagin::summarize_numeric()
+   }) %>%
+     num_sum_as_table %>%
+     { .$group = label; . }
+}
+
+rbind(
+  summarize_sis(d2$query, "orphan"),
+  summarize_sis(d2$control, "control")
+) %>%
+  knitr::kable(caption="Summary of search interval widths")
 ```
 
 ## Species-to-species classifications
-
-```{r, echo=FALSE}
-load('ARCHIVE/d3.Rda') # the binary feature table
-```
 
 ```{r, fig.width=8, fig.height=6, echo=FALSE}
 plotSecondaryLabels(con)
@@ -111,9 +135,10 @@ plotSecondaryLabels(con)
 plotSecondaryLabels(con, fill='species')
 ```
 
-## Orphan origin stories 
+## Origin classifications
 
-```{r, echo=FALSE}
-load('ARCHIVE/d5.Rda')
-d5$classSum
-```
+**TODO - fill this out**
+
+## System info
+
+**TODO - dump the collected session info here**

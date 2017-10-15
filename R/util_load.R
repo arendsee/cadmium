@@ -30,7 +30,7 @@ load_dna <- function(filename) {
 
 #' @rdname fagin_io
 #' @export
-load_queries <- function(filename){
+load_gene_list <- function(filename){
   readr::read_table(
     filename,
     col_names=FALSE,

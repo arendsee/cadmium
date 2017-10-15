@@ -6,19 +6,15 @@ get_gff_from_txdb <- function(x, ...){
   )
 }
 
-
-
 compare_target_to_focal <- function(
   species,
   fgff,
   f_primary,
   t_primary,
   synmap,
-  queries,
+  seqids,
   con
 ){
-
-  # FIXME: factor out functions
 
   "
   Collect secondary data for one species. The main output is a feature table.
@@ -26,19 +22,36 @@ compare_target_to_focal <- function(
   side-analyses) and cached.
   "
 
+  # TODO:
+  # * look into deeper synder analysis
+  # * cache everything
+  # * formalize results in classes
+
   ttxdb_ <- rmonad::as_monad(from_cache(t_primary@files@gff.file, type='sqlite'))
-  
-  tgff_ <- ttxdb_ %>>%
-    GenomicFeatures::transcripts %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='mRNA')
 
-  tcds_ <- ttxdb_ %>>%
-    GenomicFeatures::cds %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, type='CDS')
+  tgff_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::transcripts(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'mRNA'
+    )
+  }
 
-  texons_ <- ttxdb_ %>>%
-    GenomicFeatures::exons %>>%
-    get_gff_from_txdb(seqinfo=t_primary@seqinfo, 'exon')
+  tcds_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::cds(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'CDS'
+    )
+  }
+
+  texons_ <- ttxdb_ %>>% {
+    get_gff_from_txdb(
+      x        = GenomicFeatures::exons(.),
+      seqinfo_ = t_primary@seqinfo,
+      type     = 'exon'
+    )
+  }
 
   synmap_ <- rmonad::as_monad( from_cache(synmap@synmap.file) )
 
@@ -54,68 +67,61 @@ compare_target_to_focal <- function(
     offsets = con@synder@offsets
   )
 
-  esi_ <- rmonad::funnel(
-    syn = synmap_,
-    gff = fsi_ %>>% {
+  ## TODO: resurrect?
+  # esi_ <- rmonad::funnel(
+  #   syn = synmap_,
+  #   gff = fsi_ %>>% {
+  #
+  #     "Echo the search intervals back at the query."
+  #
+  #     synder::as_gff(
+  #       CNEr::second(.),
+  #       id=as.character(seq_along(.))
+  #     )
+  #   }
+  # ) %*>%
+  # synder::search(
+  #   swap    = TRUE,
+  #   trans   = con@synder@trans,
+  #   k       = con@synder@k,
+  #   r       = con@synder@r,
+  #   offsets = con@synder@offsets
+  # )
 
-      "Echo the search intervals back at the query."
+  ## TODO: resurrect?
+  # rsi_ <- rmonad::funnel(
+  #   syn = synmap_,
+  #   gff = tgff_
+  # ) %*>% {
+  #
+  # "
+  # Trace target genes to focal genome using the reversed synteny map. This may
+  # produce 'SKIPPING ENTRY' warnings. These warnings mean that the GFF
+  # contains scaffolds that are missing in the synteny map. This is likely to
+  # occur in genomes that are not fully assembled (thousands of scaffolds).
+  # "
+  #
+  #   synder::search(
+  #     syn,
+  #     gff,
+  #     swap    = TRUE,
+  #     trans   = con@synder@trans,
+  #     k       = con@synder@k,
+  #     r       = con@synder@r,
+  #     offsets = con@synder@offsets
+  #   )
+  # }
 
-      synder::as_gff(
-        CNEr::second(.),
-        id=as.character(seq_along(.))
-      )
-    }
-  ) %*>%
-  synder::search(
-    swap    = TRUE,
-    trans   = con@synder@trans,
-    k       = con@synder@k,
-    r       = con@synder@r,
-    offsets = con@synder@offsets
-  )
-
-  rsi_ <- rmonad::funnel(
-    syn = synmap_,
-    gff = tgff_
-  ) %*>% {
-
-  "
-  Trace target genes to focal genome using the reversed synteny map. This may
-  produce 'SKIPPING ENTRY' warnings. These warnings mean that the GFF
-  contains scaffolds that are missing in the synteny map. This is likely to
-  occur in genomes that are not fully assembled (thousands of scaffolds).
-  "
-
-    synder::search(
-      syn,
-      gff,
-      swap    = TRUE,
-      trans   = con@synder@trans,
-      k       = con@synder@k,
-      r       = con@synder@r,
-      offsets = con@synder@offsets
-    )
-  }
-
-  synder_flags_summary_ <-
-    rmonad::funnel(
-      si      = fsi_,
-      queries = queries
-    ) %*>% summarize_syntenic_flags
-
-  unassembled_ <- fsi_ %>>% find_unassembled
-
-  scrambled_ <- fsi_ %>>% find_scrambled
+  synder_summary_ <- fsi_ %>>% synder::flag_summary
 
   indels_ <- rmonad::funnel(fsi_, con@alignment@indel_threshold) %*>% find_indels
 
   nstrings_ <- from_cache(t_primary@files@nstring.file) %>>% synder::as_gff
 
   gapped_ <- rmonad::funnel(
-    si = fsi_,
-    gff = nstrings_
-  ) %*>% overlapMap %>%
-  { rmonad::funnel(x=., nstring=nstrings_) } %*>% {
+      x = rmonad::funnel(si = fsi_, gff = nstrings_) %*>% overlapMap
+    , nstrings = nstrings_
+  ) %*>% {
 
     "
     Get a N-string table with the columns
@@ -129,7 +135,7 @@ compare_target_to_focal <- function(
     If there are no N-strings, return an empty dataframe.
     "
 
-    if(is.null(nstring)){
+    if(is.null(nstrings)){
       data.frame(
         query  = character(0),
         siid   = integer(0),
@@ -139,7 +145,7 @@ compare_target_to_focal <- function(
       data.frame(
         query  = x$query,
         siid   = x$qid,
-        length = GenomicRanges::width(nstring)[x$qid]
+        length = GenomicRanges::width(nstrings)[x$qid]
       ) %>% { .[!is.na(.$length), ] }
     }
   }
@@ -158,7 +164,7 @@ compare_target_to_focal <- function(
 
   f_si_map_ <- rmonad::funnel(si=fsi_, gff=tgff_) %*>% overlapMap
 
-  r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
+  # r_si_map_ <- rmonad::funnel(si=rsi_, gff=fgff) %*>% overlapMap
 
   orfgff_ <- t_primary@files@orfgff.file %>>%
     from_cache %>>%
@@ -181,7 +187,7 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_faa_,
     map     = f_si_map_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
   # # Run the exact test above, but with the query indices scrambled. For a
@@ -191,7 +197,7 @@ compare_target_to_focal <- function(
   #   queseq  = f_faa_,
   #   tarseq  = t_faa_,
   #   map     = f_si_map_,
-  #   queries = queries
+  #   queries = seqids
   # ) %*>% align_by_map(permute=TRUE)
 
   # - align query protein against ORFs in genomic intervals in SI
@@ -199,14 +205,14 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_orffaa_,
     map     = f_si_map_orf_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
   # rand_aa2orf_ <- rmonad::funnel(
   #   queseq  = f_faa_,
   #   tarseq  = t_orffaa_,
   #   map     = f_si_map_orf_,
-  #   queries = queries
+  #   queries = seqids
   # ) %*>% align_by_map(permute=TRUE)
 
   transorf_map_ <- rmonad::funnel(
@@ -237,7 +243,7 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_transorffaa_,
     map     = transorf_map_,
-    queries = queries
+    queries = seqids
   ) %*>% align_by_map
 
 
@@ -246,7 +252,7 @@ compare_target_to_focal <- function(
     map     = fsi_,
     quedna  = f_primary@files@trans.file %>>% from_cache %>>% Rsamtools::scanFa,
     tardna  = t_primary@files@dna.file %>>% from_cache,
-    queries = queries
+    queries = seqids
   ) %*>% {
 
     qids <- GenomicRanges::mcols(map)$attr
@@ -261,7 +267,9 @@ compare_target_to_focal <- function(
       DNA file: [%s]. Here are the first 5 from the synteny map: [%s]."
 
       stop(sprintf(
-        msg, ngood, ntotal,
+        msg,
+        ngood,
+        ntotal,
         paste0(head(names(quedna), 5), collapse=", "),
         paste0(head(qids, 5), collapse=", ")
       ))
@@ -276,9 +284,9 @@ compare_target_to_focal <- function(
     get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries, offset=offset)
 
   } %*>% rmonad::funnel(
-    cds     = tcds_,
-    exon   = texons_,
-    mrna    = tgff_
+    cds  = tcds_,
+    exon = texons_,
+    mrna = tgff_
   ) %*>% {
 
     "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,
@@ -306,19 +314,17 @@ compare_target_to_focal <- function(
   }
 
   rmonad::funnel(
-    queries      = queries,
-    si           = fsi_,
-    flag_summary = synder_flags_summary_,
-    unassembled  = unassembled_,
-    scrambled    = scrambled_,
-    indels       = indels_,
-    f_si_map     = f_si_map_,
-    r_si_map     = r_si_map_,
-    aa2aa        = aa2aa_,
-    aa2orf       = aa2orf_,
-    aa2transorf  = aa2transorf_,
-    gene2genome  = gene2genome_,
-    gapped       = gapped_
+    queries        = seqids,
+    si             = fsi_,
+    synder_summary = synder_summary_,
+    indels         = indels_,
+    # f_si_map       = f_si_map_,
+    # r_si_map       = r_si_map_,
+    aa2aa          = aa2aa_,
+    aa2orf         = aa2orf_,
+    aa2transorf    = aa2transorf_,
+    gene2genome    = gene2genome_,
+    gapped         = gapped_
   )
 
 }
@@ -336,26 +342,32 @@ secondary_data <- function(primary_input, con){
   focal_species <- con@input@focal_species
   f_primary <- primary_input@species[[focal_species]]
 
-
   focal_gff_ <- from_cache(f_primary@files@gff.file, type='sqlite') %>>%
     GenomicFeatures::transcripts %>>%
-    get_gff_from_txdb(seqinfo=f_primary@seqinfo, type='mRNA') %>_%
+    get_gff_from_txdb(seqinfo_=f_primary@seqinfo, type='mRNA') %>_%
     {
-      "Assert query ids match the names in the GFF file"
 
-      queries <- primary_input@queries
-      txnames <- GenomicRanges::mcols(.)$attr
-      matches <- queries %in% txnames
+      "Assert query and control ids match the names in the GFF file"
 
-      if(!all(matches)){
-        msg <- "%s of %s query ids are missing in the GFF. Here is the head: [%s]"
-        stop(sprintf(
-          msg,
-          sum(!matches),
-          length(queries),
-          paste(head(queries[!matches]), collapse=", ")
-        ))
+      check_ids <- function(ids, label){
+        txnames <- GenomicRanges::mcols(.)$attr
+        matches <- ids %in% txnames
+        if(!all(matches)){
+          msg <- "%s of %s %s ids are missing in the focal GFF (%s). Here is the head: [%s]"
+          stop(sprintf(
+            msg,
+            sum(!matches),
+            length(ids),
+            label,
+            focal_species,
+            paste(head(ids[!matches]), collapse=", ")
+          ))
+        }
       }
+
+      check_ids(primary_input@queries, "query")
+      check_ids(primary_input@control, "control")
+
     }
 
   rmonad::funnel(
@@ -363,26 +375,69 @@ secondary_data <- function(primary_input, con){
     fgff = focal_gff_
   ) %*>% {
 
+    focal_faa <- f_primary@files@aa.file %>>% from_cache %>% m_value
+
+    die_if_genes_are_missing <- function(whole, part, label){
+      missing <- !(part %in% whole)
+      if(sum(missing) > 0){
+        msg <- "%s of %s %s gene names are missing in the focal species (%s). These may be genes that are not translated (e.g. tRNAs or partial genes with no CDS). To diagnose, check the focal species GFF for the following missing ids: %s"
+        stop(sprintf(
+          msg,
+          sum(missing),
+          length(part),
+          label,
+          focal_species,
+          paste(part[missing], collapse=", ")
+        ))
+      }
+    }
+
+    die_if_genes_are_missing(names(focal_faa), prim@queries, "query")
+    die_if_genes_are_missing(names(focal_faa), prim@control, "control")
+
     species <- names(prim@species)
     target_species <- setdiff(species, focal_species)
 
     ss <- target_species %>%
       lapply(
         function(spec){
-          compare_target_to_focal(
-            species   = spec,
-            fgff      = fgff,
-            f_primary = f_primary,
-            t_primary = prim@species[[spec]],
-            synmap    = prim@synmaps[[spec]],
-            queries   = prim@queries,
-            con       = con
+          rmonad::funnel(
+            query_results = compare_target_to_focal(
+              species   = spec,
+              fgff      = fgff,
+              f_primary = f_primary,
+              t_primary = prim@species[[spec]],
+              synmap    = prim@synmaps[[spec]],
+              seqids    = prim@queries,
+              con       = con
+            ),
+            control_results = compare_target_to_focal(
+              species   = spec,
+              fgff      = fgff,
+              f_primary = f_primary,
+              t_primary = prim@species[[spec]],
+              synmap    = prim@synmaps[[spec]],
+              seqids    = prim@control,
+              con       = con
+            )
           )
         }
       )
 
     names(ss) <- target_species
     rmonad::combine(ss)
+
+  } %>>% {
+
+    "transpose list from `d->species->group` to `d->group->species`"
+
+    ds <- list(
+      query   = lapply(., function(x) x$query_results),
+      control = lapply(., function(x) x$control_results)
+    )
+    names(ds$query)   <- names(.)
+    names(ds$control) <- names(.)
+    ds
 
   }
 

@@ -1,3 +1,6 @@
+#' Transpose the species data summaries
+#'
+#' @export
 invertSummaries <- function(x){
   xs <- list(
     gff         = list(),
@@ -11,39 +14,57 @@ invertSummaries <- function(x){
     nstring     = list()
   )
   for(s in names(x@species)){
-    xs$gff         = append(xs$gff         , x@species[[s]]@summaries@gff.summary         )
-    xs$dna         = append(xs$dna         , x@species[[s]]@summaries@dna.summary         )
-    xs$aa          = append(xs$aa          , x@species[[s]]@summaries@aa.summary          )
-    xs$trans       = append(xs$trans       , x@species[[s]]@summaries@trans.summary       )
-    xs$orfgff      = append(xs$orfgff      , x@species[[s]]@summaries@orfgff.summary      )
-    xs$orffaa      = append(xs$orffaa      , x@species[[s]]@summaries@orffaa.summary      )
-    xs$transorfgff = append(xs$transorfgff , x@species[[s]]@summaries@transorfgff.summary )
-    xs$transorffaa = append(xs$transorffaa , x@species[[s]]@summaries@transorffaa.summary )
-    xs$nstring     = append(xs$nstring     , x@species[[s]]@summaries@nstring.summary     )
+    xs$gff         = append(xs$gff         , from_cache(x@species[[s]]@summaries)@gff.summary         )
+    xs$dna         = append(xs$dna         , from_cache(x@species[[s]]@summaries)@dna.summary         )
+    xs$aa          = append(xs$aa          , from_cache(x@species[[s]]@summaries)@aa.summary          )
+    xs$trans       = append(xs$trans       , from_cache(x@species[[s]]@summaries)@trans.summary       )
+    xs$orfgff      = append(xs$orfgff      , from_cache(x@species[[s]]@summaries)@orfgff.summary      )
+    xs$orffaa      = append(xs$orffaa      , from_cache(x@species[[s]]@summaries)@orffaa.summary      )
+    xs$transorfgff = append(xs$transorfgff , from_cache(x@species[[s]]@summaries)@transorfgff.summary )
+    xs$transorffaa = append(xs$transorffaa , from_cache(x@species[[s]]@summaries)@transorffaa.summary )
+    xs$nstring     = append(xs$nstring     , from_cache(x@species[[s]]@summaries)@nstring.summary     )
   }
   lapply(xs, function(xx) { names(xx) <- names(x@species); xx } )
 }
 
+#' Get a table listing the scaffold count for each species
+#'
+#' @export
 number_of_chromosomes <- function(x){
     lapply(x$dna, function(s) nrow(s@table))
 }
 
+#' Get a table listing the first protein residue proportions for each species
+#'
+#' @export
 initial_protein_residue_counts <- function(x){
     lapply(x$aa, function(s) s@initial_residue)
 }
 
+#' Get a table listing the last protein residue proportions for each species
+#'
+#' @export
 final_protein_residue_counts <- function(x){
     lapply(x$aa, function(s) s@final_residue)
 }
 
+#' Count the internal stop codons in each species protein models
+#'
+#' @export
 protein_has_internal_stop <- function(x){
     lapply(x$aa, function(s) s@has_internal_stop %>% sum)
 }
 
+#' Summarize the genomic composition of each species
+#'
+#' @export
 genomic_composition <- function(x){
     x$dna %>% lapply(function(s) s@comp %>% colSums %>% { . / sum(.) })
 }
 
+#' Plot the secondary labels
+#'
+#' @export
 plotSecondaryLabels <- function(con, fill='secondary'){
      desc <- data.frame(
         desc = c(
@@ -78,44 +99,56 @@ plotSecondaryLabels <- function(con, fill='secondary'){
         )
      )
     load(file.path(con@archive, 'd4.Rda'))
-    dat <- d4$labels %>%
-            lapply(
-                function(x) {
-                    dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-                }
-            ) %>%
-            dplyr::bind_rows(.id='species') %>%
-            {
-                .$species <- factor(.$species, levels=speciesOrder)
-                . <- merge(., desc)
-                .$desc <- paste(.$secondary, .$desc, sep=': ')
-                .
-            }
+
+    parse_labels <- function(labels, group){
+      labels %>%
+        lapply(
+          function(x) {
+              dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+          }
+        ) %>%
+        dplyr::bind_rows(.id='species') %>%
+        {
+          .$species <- factor(.$species, levels=speciesOrder)
+          . <- merge(., desc)
+          .$desc <- paste(.$secondary, .$desc, sep=': ')
+          .$group <- group
+          .
+        }
+    }
+
+    dat <- rbind(
+      parse_labels(d4$query$labels,   group="orphan"),
+      parse_labels(d4$control$labels, group="control")
+    )
+
     if(fill == 'secondary'){
-        ggplot(dat) +
-            geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
-            scale_fill_brewer(palette="Paired") +
-            theme(
-                axis.text.x = element_text(angle=270, hjust=0, vjust=1)
-              , legend.position = 'bottom'
-            ) +
-            guides(fill = guide_legend(ncol = 2)) +
-            labs(
-                fill="Classification",
-                x="Target species",
-                y="# of focal genes"
-            )
+      ggplot(dat) +
+        geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
+        scale_fill_brewer(palette="Paired") +
+        theme(
+          axis.text.x = element_text(angle=270, hjust=0, vjust=1),
+          legend.position = 'bottom'
+        ) +
+        guides(fill = guide_legend(ncol = 2)) +
+        labs(
+          fill="Classification",
+          x="Target species",
+          y="# of focal genes"
+        ) +
+        facet_grid(group ~ .)
     } else {
-        ggplot(dat) +
-            scale_fill_brewer(palette="Paired") +
-            geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
-            theme(
-                axis.text.x = element_text(angle=325, hjust=0, vjust=1)
-            ) +
-            labs(
-                fill="Target species",
-                x="Classification",
-                y="# of focal genes"
-            )
+      ggplot(dat) +
+        scale_fill_brewer(palette="Paired") +
+        geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
+        theme(
+          axis.text.x = element_text(angle=325, hjust=0, vjust=1)
+        ) +
+        labs(
+          fill="Target species",
+          x="Classification",
+          y="# of focal genes"
+        ) +
+        facet_grid(group ~ .)
     }
 }

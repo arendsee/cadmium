@@ -6,6 +6,13 @@
 \usage{
 determine_origins(labels, con, ...)
 }
+\arguments{
+\item{labels}{A list of data that includes a \code{labels} field}
+
+\item{con}{A Config object}
+
+\item{...}{Arguments that will be passed to \code{classify}}
+}
 \description{
 Given a species tree and a set of labels, determine orphan origin
 }

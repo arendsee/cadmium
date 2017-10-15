@@ -21,6 +21,8 @@ For details on input requirements, see the main package documentation
 
 \item{\code{focal_species}}{name of the focal species}
 
-\item{\code{query_gene_list}}{file containing query genes}
+\item{\code{query_gene_list}}{file containing query genes (e.g. orphan candidates)}
+
+\item{\code{control_gene_list}}{file containing control genes}
 }}
 

@@ -148,79 +148,79 @@ extractWithComplements <- function(dna, gff){
 
 }
 
-mergeSeqs <- function(dna, gff, tag){
-
-  "Extract all entries from `gff` that have type `tag` (for example, CDS or
-  exon). Then extract these matching intervals from `dna`. All extracted
-  sequences that share a common parent, are then merged. If they are on the
-  negative strang, the reverse complement is taken."
-
-  g <- gff %>_% {
-
-    "Assert that the GFF file has the required columns"
-
-    # TODO: need to standardize the case across columns
-
-    if(is.null(.$type) || is.null(.$Parent))
-      stop("GFF must have the meta-columns 'type' and 'Parent'")
-  
-  } %>>% {
-
-    "Extract elements of type `tag` from the `gff`"
-
-    .[.$type == tag]
-
-  } %>>% {
-
-    "Sort the elements by start this is required, since they will be
-    concatenated by order"
-
-    .[order(GenomicRanges::start(.))]
-
-  }
-
-  revpar_ <- g %>>% {
-
-    "Get all unique parents on the reverse strand"
-
-    .[GenomicRanges::strand(.) == '-']$Parent %>% unique
-
-  }
-
-  forpar_ <- g %>>% { GenomicRanges::mcols(.)$Parent }
-
-  # TODO: assert no elements within a group overlap
-
-  g %>>% {
-
-    "Extract DNA sequences based on the GFF"
-
-    # this is slow -- 5s
-    dna[.]
-
-  } %>% rmonad::funnel(forpar=forpar_) %*>% {
-
-    "Collapse the sequences together, aggregating on the Parent"
-
-    q <- .
-    base::split(seq_len(length(forpar)), forpar) %>%
-    sapply(function(ids) paste(q[ids], collapse=""))
-
-  } %>>% {
-
-    "Convert list of strings back into a DNAStringSet object"
-
-    Biostrings::DNAStringSet(.)
-
-  } %>% rmonad::funnel(revpar=revpar_) %*>% {
-
-    "Take the reverse complement of all elements on the reverse strand"
-
-    .[names(.) %in% revpar] <-
-      Biostrings::reverseComplement(.[names(.) %in% revpar])
-
-    .
-
-  }
-
-}
+# mergeSeqs <- function(dna, gff, tag){
+#
+#   "Extract all entries from `gff` that have type `tag` (for example, CDS or
+#   exon). Then extract these matching intervals from `dna`. All extracted
+#   sequences that share a common parent, are then merged. If they are on the
+#   negative strang, the reverse complement is taken."
+#
+#   g <- gff %>_% {
+#
+#     "Assert that the GFF file has the required columns"
+#
+#     # TODO: need to standardize the case across columns
+#
+#     if(is.null(.$type) || is.null(.$Parent))
+#       stop("GFF must have the meta-columns 'type' and 'Parent'")
+#
+#   } %>>% {
+#
+#     "Extract elements of type `tag` from the `gff`"
+#
+#     .[.$type == tag]
+#
+#   } %>>% {
+#
+#     "Sort the elements by start this is required, since they will be
+#     concatenated by order"
+#
+#     .[order(GenomicRanges::start(.))]
+#
+#   }
+#
+#   revpar_ <- g %>>% {
+#
+#     "Get all unique parents on the reverse strand"
+#
+#     .[GenomicRanges::strand(.) == '-']$Parent %>% unique
+#
+#   }
+#
+#   forpar_ <- g %>>% { GenomicRanges::mcols(.)$Parent }
+#
+#   # TODO: assert no elements within a group overlap
+#
+#   g %>>% {
+#
+#     "Extract DNA sequences based on the GFF"
+#
+#     # this is slow -- 5s
+#     dna[.]
+#
+#   } %>% rmonad::funnel(forpar=forpar_) %*>% {
+#
+#     "Collapse the sequences together, aggregating on the Parent"
+#
+#     q <- .
+#     base::split(seq_len(length(forpar)), forpar) %>%
+#     sapply(function(ids) paste(q[ids], collapse=""))
+#
+#   } %>>% {
+#
+#     "Convert list of strings back into a DNAStringSet object"
+#
+#     Biostrings::DNAStringSet(.)
+#
+#   } %>% rmonad::funnel(revpar=revpar_) %*>% {
+#
+#     "Take the reverse complement of all elements on the reverse strand"
+#
+#     .[names(.) %in% revpar] <-
+#       Biostrings::reverseComplement(.[names(.) %in% revpar])
+#
+#     .
+#
+#   }
+#
+# }

@@ -136,6 +136,9 @@ NULL
 #' @param con A fagin_config object
 #' @return An rmonad object containing all results
 run_fagin <- function(con){
+
+  to_cache <- NULL
+
   {
 
     "Set random seed for the analysis, the choice of 210 is arbitrary. The
@@ -152,9 +155,21 @@ run_fagin <- function(con){
   
   } %__% {
 
+    "Store the configuration"
+
+    con
+
+  } %__% {
+
     "Create the archival directory"
 
     dir.create(con@archive)
+
+  } %__% {
+
+    "Set the cache function"
+
+    to_cache <<- make_cache_function(file.path(con@archive, "cache"))
 
   } %__%
   primary_data(con=con)      %>_% archive_1(con@archive) %>>%

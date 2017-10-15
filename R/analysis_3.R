@@ -27,8 +27,6 @@ buildFeatureTable <- function(d, con){
 
     rmonad::funnel(
       seqid = d$queries,
-      # Synteny is scrambled
-      scr = d$queries %in% d$scrambled,
       # matches somewhere in at least one search interval
       nuc = d$queries %in% met$query,
       # matches CDS in at least one search interval
@@ -47,8 +45,10 @@ buildFeatureTable <- function(d, con){
       orf = d$queries %in% subset(d$aa2orf$map, pval < p2a_cutoff)$query ,
       # ORF match to spliced transcript (possibly multi-exonic)
       trn = d$queries %in% subset(d$aa2transorf$map, pval < p2t_cutoff)$query ,
+      # synteny is scrambled
+      scr = d$queries %in% subset(d$synder_summary, incoherent)$attr,
       # at least one search interval maps off scaffold
-      una = d$queries %in% d$unassembled,
+      una = d$queries %in% subset(d$synder_summary, unassembled)$attr,
       # search interval was not processed for technical reasons (e.g. too big)
       tec = d$queries %in% d$gene2genome$skipped
     )
@@ -69,103 +69,112 @@ tertiary_data <- function(secondary_data, con){
 
   "For each species, build a feature table"
 
-  ss <- lapply(secondary_data, buildFeatureTable, con=con)
-  names(ss) <- names(secondary_data)
+  buildFeatureTables <- function(d){
+    ss <- lapply(d, buildFeatureTable, con=con)
+    names(ss) <- names(d)
+    rmonad::combine(ss)
+  }
 
-  rmonad::combine(ss)
+  qss <- buildFeatureTables(secondary_data$query)
+  css <- buildFeatureTables(secondary_data$control)
   
+  rmonad::funnel(query=qss, control=css)
 }
 
+
+buildLabelsTree <- function(feats, con){
+
+  "Merge all features into the feature decision tree. Each node contains a
+  logical vector specifying which queries are members of the node. The names
+  in the decision tree must match the names in the feature table."
+
+  root <- con@decision_tree %>%
+    data.tree::as.Node(replaceUnderscores=FALSE)
+  classify <- function(node, membership=logical(0)){
+    if(length(membership) == 0){
+      membership <- rep(TRUE, nrow(feats))
+    }
+    node$membership <- membership
+    node$N <- sum(membership)
+    if(node$name %in% names(feats)){
+      kids <- node$children
+      if(length(kids) == 2){
+        yes <-  feats[[node$name]] & membership
+        no  <- !feats[[node$name]] & membership
+        classify(kids[[1]], yes)
+        classify(kids[[2]], no)
+      } else if (length(kids) != 0) {
+        stop("Nodes have either 0 or 2 children")
+      }
+    } else if(node$isRoot){
+      classify(node$children[[1]], membership)
+    }
+  }
+  classify(root)
+  root
+}
+
+labelTreeToTable <- function(root, feats){
+
+  "
+  Build a dataframe for each node
+  For example:
+          seqid primary secondary
+  1 AT1G29418.1   ORFic        O1
+  2 AT3G15909.1   ORFic        O1
+
+  Then bind the rows of the dataframes for each node.
+  "
+
+  toTable <- function(node) {
+    if(!is.null(node$N) && node$N > 0){
+      seqid     <- feats$seqid[node$membership]
+      primary   <- node$primary
+      secondary <- node$secondary
+    # If there are no members in the class
+    } else {
+      seqid     <- character(0)
+      primary   <- character(0)
+      secondary <- character(0)
+    }
+    data.frame(
+      seqid     = seqid,
+      primary   = primary,
+      secondary = secondary,
+      stringsAsFactors=FALSE
+    )
+  }
+  # Get a table for each class
+  # --- NOTE: Without simplify=FALSE something truly dreadful happens.
+  # The proper output (where a,b,c ... are dataframe columns):
+  #   <Node_1> a b c
+  #   <Node_2> d e f
+  #   <Node_3> g h i
+  #   <Node_4> j k l
+  # The automagically borken output
+  #   <Node_1> a
+  #   <Node_2> b
+  #   <Node_3> c
+  #   <Node_4> d
+  # The columns are recast as vectors, fed to the wrong children, and the
+  # leftovers are tossed.
+  root$Get(toTable, filterFun = data.tree::isLeaf, simplify=FALSE) %>%
+    # Bind all tables into one
+    do.call(what=rbind) %>%
+    # Remove rownames
+    set_rownames(NULL)
+}
 
 
 #' Merge labels for all species
 #' @export
 determine_labels <- function(features, con){
-
-  buildLabelsTree <- function(feats, con){
-
-    "Merge all features into the feature decision tree. Each node contains a
-    logical vector specifying which queries are members of the node. The names
-    in the decision tree must match the names in the feature table."
-
-    root <- con@decision_tree %>%
-      data.tree::as.Node(replaceUnderscores=FALSE)
-    classify <- function(node, membership=logical(0)){
-      if(length(membership) == 0){
-        membership <- rep(TRUE, nrow(feats))
-      }
-      node$membership <- membership
-      node$N <- sum(membership)
-      if(node$name %in% names(feats)){
-        kids <- node$children
-        if(length(kids) == 2){
-          yes <-  feats[[node$name]] & membership
-          no  <- !feats[[node$name]] & membership
-          classify(kids[[1]], yes)
-          classify(kids[[2]], no)
-        } else if (length(kids) != 0) {
-          stop("Nodes have either 0 or 2 children")
-        }
-      } else if(node$isRoot){
-        classify(node$children[[1]], membership)
-      }
-    }
-    classify(root)
-    root
-  }
-
-  labelTreeToTable <- function(root, feats){
-
-    "
-    Build a dataframe for each node
-    For example:
-            seqid primary secondary
-    1 AT1G29418.1   ORFic        O1
-    2 AT3G15909.1   ORFic        O1
-
-    Then bind the rows of the dataframes for each node.
-    "
-
-    toTable <- function(node) {
-      if(!is.null(node$N) && node$N > 0){
-        seqid     <- feats$seqid[node$membership]
-        primary   <- node$primary
-        secondary <- node$secondary
-      # If there are no members in the class
-      } else {
-        seqid     <- character(0)
-        primary   <- character(0)
-        secondary <- character(0)
-      }
-      data.frame(
-        seqid     = seqid,
-        primary   = primary,
-        secondary = secondary,
-        stringsAsFactors=FALSE
-      )
-    }
-    # Get a table for each class
-    # --- NOTE: Without simplify=FALSE something truly dreadful happens.
-    # The proper output (where a,b,c ... are dataframe columns):
-    #   <Node_1> a b c
-    #   <Node_2> d e f
-    #   <Node_3> g h i
-    #   <Node_4> j k l
-    # The automagically borken output
-    #   <Node_1> a
-    #   <Node_2> b
-    #   <Node_3> c
-    #   <Node_4> d
-    # The columns are recast as vectors, fed to the wrong children, and the
-    # leftovers are tossed.
-    root$Get(toTable, filterFun = data.tree::isLeaf, simplify=FALSE) %>%
-      # Bind all tables into one
-      do.call(what=rbind) %>%
-      # Remove rownames
-      set_rownames(NULL)
-  }
-
-
+  rmonad::funnel(
+    query   = .determine_labels(features$query, con),
+    control = .determine_labels(features$control, con)
+  )
+}
+.determine_labels <- function(features, con){
 
   descriptions <- c(
     O1 = 'genic: known gene',
@@ -193,8 +202,6 @@ determine_labels <- function(features, con){
         function(i) .[[i]] %>>% labelTreeToTable(features[[i]])
       ) %>% magrittr::set_names(names(features))
     } %>>% rmonad::combine()
-
-
 
   label.summary_ <- labels_ %>>%
   {

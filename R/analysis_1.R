@@ -12,13 +12,15 @@ scanFa_trw <- function(x, ...){
 }
 
 
-load_species <- function(species_name, input){
+load_species <- function(species_name, con){
 
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
+  format_translation_warning <- make_format_translation_warning(species_name)
+
   dna_ <-
-    get_genome_filename(species_name, dir=input@fna_dir) %v>%
+    get_genome_filename(species_name, dir=con@input@fna_dir) %v>%
     load_dna
 
   seqinfo_ <- dna_ %>>% scanFa_trw %>>% {
@@ -32,7 +34,7 @@ load_species <- function(species_name, input){
 
   txdb_ <-
     rmonad::funnel(
-      filename = get_gff_filename(species_name, dir=input@gff_dir),
+      filename = get_gff_filename(species_name, dir=con@input@gff_dir),
       seqinfo_ = seqinfo_
     ) %*>% load_gene_models
 
@@ -46,15 +48,87 @@ load_species <- function(species_name, input){
       gff = orfgff_
     ) %*>%
     extractWithComplements %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(., if.fuzzy.codon="solve")
+    }
+
+  transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
+
+  aa_model_phase_ <- transcripts_ %>>% {
+
+    "Find the phase of the first CDS in each model. This will be zero if the
+    model is complete."
+
+    # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
+    # So the code:
+    # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+    # does not work. So instead I have to do the following, which is vastly slower:
+    sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
+
+  } %>_% {
+
+    "Warn if there are any incomplete models"
+
+    incomplete <- sum(. != 0)
+    total <- length(.)
+
+    if(incomplete > 0){
+      warning(sprintf(
+      "%s of %s gene models in %s are incomplete (the phase of the first CDS is
+      not equal to 0). This does not include partial gene models that happen to
+      begin in-phase. Details are recorded in the species_summary field
+      model_phases.",
+      incomplete, total, species_name))
+    }
+
+  }
+  
+  transcripts_ <- transcripts_ %>>% {
+
+    "Abominable hack. To get around the GenomicFeatures issue reported
+    [here](https://support.bioconductor.org/p/101245/), I encode the phase
+    information in the CDS name. Here I extract that data and offset the
+    reading frame as needed."
+
+    ori <- .
+
+    unlist(ori) %>%
+      {
+        meta <- GenomicRanges::mcols(.)
+        meta$phase <- as.integer(meta$cds_name)
+        GenomicRanges::start(.) <- ifelse(
+          meta$exon_rank == 1,
+          GenomicRanges::start(.) + meta$phase,
+          GenomicRanges::start(.)
+        )
+        .
+      } %>%
+      relist(ori)
+
+  }
 
   aa_ <-
     rmonad::funnel(
       x = dna_,
-      transcripts = txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
+      transcripts = transcripts_
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(., if.fuzzy.codon="solve")
+    }
+
+  aa_model_phase_ <- rmonad::funnel(phases = aa_model_phase_, aa = aa_) %*>% {
+    # This should always be true. If it is not, there is a logical problem in
+    # the code, not the data.
+    stopifnot(length(aa) == length(phases)) 
+
+    list(
+      summary = factor(phases) %>% summary,
+      incomplete_models = names(aa)[phases != 0]
+    )
+  }
 
   trans_ <-
     rmonad::funnel(
@@ -64,9 +138,31 @@ load_species <- function(species_name, input){
     GenomicFeatures::extractTranscriptSeqs %>>%
     {
 
+      "Ensure all transcripts are named. If any of the names are missing (NA),
+      then the Biostrings::writeXStringSet will report an error as a note,
+      which won't stop processing. By checking here I can stop analysis at the
+      right time.
+      
+      If any transcripts do have missing names, then these are removed with a
+      warning.
+      "
+
+      na_indices <- which(is.na(names(.)))
+
+      if(length(na_indices) > 0){ msg <-
+"%s of %s transcripts had missing names. This is not good. You should look into
+the problem. For now, the offending transcripts have been removed."
+        warning(sprintf(msg, length(na_indices), length(.)))
+        . <- .[-na_indices] 
+      }
+
+      .
+
+    } %>>% {
+
       "Print the transcripts to a temporary file"
 
-      filepath <- paste0(".", species_name, "_trans.fna")
+      filepath <- file.path(con@archive, paste0(".", species_name, "_trans.fna"))
       Biostrings::writeXStringSet(., filepath=filepath)
       filepath
 
@@ -94,7 +190,10 @@ load_species <- function(species_name, input){
       gff = transorfgff_
     ) %*>%
     extractWithComplements %>>%
-    Biostrings::translate(if.fuzzy.codon="solve")
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(., if.fuzzy.codon="solve")
+    }
 
   specsum_ <- rmonad::funnel(
     gff.summary         = txdb_        %>>% summarize_gff,
@@ -105,7 +204,8 @@ load_species <- function(species_name, input){
     orffaa.summary      = orffaa_      %>>% summarize_faa,
     transorfgff.summary = transorfgff_ %>>% summarize_granges,
     transorffaa.summary = transorffaa_ %>>% summarize_faa,
-    nstring.summary     = nstrings_    %>>% summarize_nstring
+    nstring.summary     = nstrings_    %>>% summarize_nstring,
+    model_phases        = aa_model_phase_
   ) %*>%
     new(Class="species_summaries") %>_%
   {
@@ -120,8 +220,8 @@ load_species <- function(species_name, input){
       total <- length(stops)
       offenders <- tab[stops, ]$seqids %>% as.character %>%
         paste0(collapse=", ")
-      msg <- "%s of %s proteins have internal stops, offending genes: %s"
-      warning(sprintf(msg, n, total, offenders))
+      msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
+      warning(sprintf(msg, n, total, species_name, offenders))
     }
 
   } %>_% {
@@ -137,7 +237,7 @@ load_species <- function(species_name, input){
       not_in_aa <- setdiff(trids, aaids)
 
       msg <- paste(
-        "Protein and transcript names do not match:",
+        "Protein and transcript names in %s do not match:",
         "transcript ids missing in proteins: %s",
         "protein ids missing in transcript: %s",
         sep="\n"
@@ -145,6 +245,7 @@ load_species <- function(species_name, input){
 
       warning(sprintf(
         msg,
+        species_name,
         paste(not_in_aa, collapse=", "),
         paste(not_in_tr, collapse=", ")
       ))
@@ -167,7 +268,7 @@ load_species <- function(species_name, input){
 
   rmonad::funnel(
     files     = specfile_,
-    summaries = specsum_,
+    summaries = specsum_ %>>% to_cache( label="summaries", group=species_name ),
     seqinfo   = seqinfo_
   ) %*>%
     new(Class="species_meta")
@@ -264,13 +365,12 @@ primary_data <- function(con){
 
   }
 
-  species_meta_list_ <- con_ %>>% { .@input } %>%
-    rmonad::funnel(specs=species_names_) %*>%
+  species_meta_list_ <- rmonad::funnel(specs=species_names_, con=con_) %*>%
     {
 
       "For each species, collect and cache all required data"
 
-      ss <- lapply(specs, load_species, .)
+      ss <- lapply(specs, load_species, con)
       names(ss) <- specs
 
       rmonad::combine(ss)
@@ -297,12 +397,14 @@ primary_data <- function(con){
       rmonad::combine(ss)
     }
 
-  queries_ <- con_ %>>% { load_queries(.@input@query_gene_list) }
+  queries_ <- con_ %>>% { load_gene_list(.@input@query_gene_list) }
+  control_ <- con_ %>>% { load_gene_list(.@input@control_gene_list) }
 
   rmonad::funnel(
     tree          = tree_,
     focal_species = focal_species_,
     queries       = queries_,
+    control       = control_,
     species       = species_meta_list_,
     synmaps       = synmap_meta_list_
   ) %*>%

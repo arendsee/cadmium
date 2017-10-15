@@ -71,12 +71,13 @@ setMethod("show", "config_alignment",
 #' @rdname fagin_printer
 #' @export 
 print.config_input <- function(x, ...){
-  prettyCat("gff_dir"         , x@gff_dir         , 2)
-  prettyCat("fna_dir"         , x@fna_dir         , 2)
-  prettyCat("syn_dir"         , x@syn_dir         , 2)
-  prettyCat("tree"            , x@tree            , 2)
-  prettyCat("focal_species"   , x@focal_species   , 2)
-  prettyCat("query_gene_list" , x@query_gene_list , 2)
+  prettyCat("gff_dir"           , x@gff_dir           , 2)
+  prettyCat("fna_dir"           , x@fna_dir           , 2)
+  prettyCat("syn_dir"           , x@syn_dir           , 2)
+  prettyCat("tree"              , x@tree              , 2)
+  prettyCat("focal_species"     , x@focal_species     , 2)
+  prettyCat("query_gene_list"   , x@query_gene_list   , 2)
+  prettyCat("control_gene_list" , x@control_gene_list , 2)
 }
 setMethod("show", "config_input",
   function(object) print(object)

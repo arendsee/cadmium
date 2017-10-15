@@ -81,24 +81,27 @@ config_alignment <- setClass(
 #' @slot syn_dir           directory of synteny maps
 #' @slot tree              directory of phylogenetic tree
 #' @slot focal_species     name of the focal species
-#' @slot query_gene_list   file containing query genes
+#' @slot query_gene_list   file containing query genes (e.g. orphan candidates)
+#' @slot control_gene_list file containing control genes
 config_input <- setClass(
   "config_input",
   representation(
-    gff_dir         = "character",
-    fna_dir         = "character",
-    syn_dir         = "character",
-    tree            = "character",
-    focal_species   = "character",
-    query_gene_list = "character"
+    gff_dir           = "character",
+    fna_dir           = "character",
+    syn_dir           = "character",
+    tree              = "character",
+    focal_species     = "character",
+    query_gene_list   = "character",
+    control_gene_list = "character"
   ),
   prototype(
-    gff_dir         = "INPUT/gff",
-    fna_dir         = "INPUT/fna",
-    syn_dir         = "INPUT/syn",
-    tree            = "INPUT/tree",
-    focal_species   = "Saccharomyces_cerevisiae",
-    query_gene_list = "INPUT/orphan-list.txt"
+    gff_dir           = "INPUT/gff",
+    fna_dir           = "INPUT/fna",
+    syn_dir           = "INPUT/syn",
+    tree              = "INPUT/tree",
+    focal_species     = "Saccharomyces_cerevisiae",
+    query_gene_list   = "INPUT/orphan-list.txt",
+    control_gene_list = "INPUT/control-list.txt"
   )
 )
 
@@ -117,7 +120,7 @@ config_synder <- setClass(
     trans   = "character"
   ),
   prototype(
-    offsets = c(1L,1L,1L,1L,1L,1L),
+    offsets = c(1L,1L),
     k       = 0L,
     r       = 0,
     trans   = "i"
@@ -212,11 +215,11 @@ gen:
 fagin_config <- setClass(
   "fagin_config",
   representation(
-    input     = "config_input",
-    synder    = "config_synder",
-    alignment = "config_alignment",
+    input         = "config_input",
+    synder        = "config_synder",
+    alignment     = "config_alignment",
     decision_tree = "list",
-    archive = "character"
+    archive       = "character"
   ),
   prototype(
     input         = config_input(),
@@ -409,19 +412,21 @@ species_summaries <- setClass(
     orffaa.summary      = "faa_summary",
     transorfgff.summary = "granges_summary",
     transorffaa.summary = "faa_summary",
-    nstring.summary     = "numeric"
+    nstring.summary     = "numeric",
+    model_phases        = "list"
   )
 )
 
 #' Data summaries and references to full data for a given species
 #'
 #' @slot files     species_data_files RData files containing the full data
-#' @slot summaries species_summaries  Detailed summaries of all data
+#' @slot summaries character          Filename for saved detailed summaries of all data
+#' @slot seqinfo   Seqinfo            Genomic info
 species_meta <- setClass(
   "species_meta",
   representation(
     files     = "species_data_files",
-    summaries = "species_summaries",
+    summaries = "character",
     seqinfo   = "Seqinfo"
   )
 )
@@ -442,7 +447,8 @@ synteny_meta <- setClass(
 #'
 #' @slot tree          Phologenetic tree of all species in the analysis
 #' @slot focal_species The focal species
-#' @slot queries       A character vector of species ids
+#' @slot queries       A character vector of gene ids (orphan candidates, or whatever)
+#' @slot control       A character vector of gene ids (control)
 #' @slot species       A list of species_meta objects
 #' @slot synteny_maps  A list of synteny maps
 derived_input <- setClass(
@@ -451,6 +457,7 @@ derived_input <- setClass(
     tree          = "phylo",
     focal_species = "character",
     queries       = "character",
+    control       = "character",
     species       = "list",
     synmaps       = "list"
   )

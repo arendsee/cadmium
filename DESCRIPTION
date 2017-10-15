@@ -1,7 +1,7 @@
 Package: fagin
 Type: Package
 Title: Annotate Orphan Genes
-Version: 0.9.2
+Version: 0.10.0
 Author: Zebulun Arendsee
 Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
 URL: https://github.com/arendsee/fagin
@@ -11,8 +11,8 @@ Description:
     syntenic filter. This work is funded by NSF grant IOS-1546858.
 Depends: R (>= 3.4.0)
 Imports:
-    synder (>= 0.26.0),
-    rmonad (>= 0.3.0.9003),
+    synder (>= 0.27.2),
+    rmonad (>= 0.4.0.9002),
     methods,
     devtools,
     magrittr,

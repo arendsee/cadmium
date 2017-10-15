@@ -16,6 +16,8 @@ MakeGI <- function(starts, stops, scaffolds, strands=NULL, metadata=NULL, seqinf
   g
 }
 
+find_initial_phase <- function(gff){}
+
 #' Load a GFF file as a GenomicFeatures object
 #'
 #' @export
@@ -37,8 +39,21 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
   * check GFF types (character, integer or float) 
   * unify type synonyms
-  
   "
+
+  if(is.null(seqinfo_)){
+    seqinfo_ <- Seqinfo() 
+  }
+
+  species_name <- GenomeInfoDb::genome(seqinfo_) %>% unique
+
+  if(length(species_name) == 0 || is.null(species_name)){
+    gff_stop <- function(msg) stop("In GFF: ", msg)
+    gff_warning <- function(msg) warning("In GFF: ", msg)
+  } else {
+    gff_stop <- function(msg) stop(sprintf("In GFF of %s: %s", species_name, msg))
+    gff_warning <- function(msg) warning(sprintf("In GFF of %s: %s", species_name, msg))
+  }
 
   raw_gff_ <-
     {
@@ -68,7 +83,7 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
       for(col in c("seqid", "type", "start", "stop")){
         if(any(is.na(.[[col]])))
-          stop("GFFError: Column '", col, "' may not have missing values")
+          gff_stop(sprintf("Column '%s' may not have missing values", col))
       }
 
   } %>>% {
@@ -115,12 +130,12 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     if(any(.$type %in% mRNA_near_synonyms)){
         .$type <- ifelse(.$type %in% mRNA_near_synonyms, 'mRNA', .$type)
-        warning("Substituting transcript types for mRNA types, this is probably OK")
+        gff_warning("Substituting transcript types for mRNA types, this is probably OK")
     }
 
     if(any(.$type %in% exon_near_synonyms)){
         .$type <- ifelse(.$type %in% exon_near_synonyms, 'exon', .$type)
-        warning("Substituting transcript types for exon types, this is probably OK")
+        gff_warning("Substituting transcript types for exon types, this is probably OK")
     }
 
     .
@@ -147,7 +162,7 @@ load_gene_models <- function(filename, seqinfo_=NULL){
     }
 
     if(length(.) == 0){
-      stop("No tags selected for extraction")
+      gff_stop("No tags selected for extraction")
     }
 
     .
@@ -195,16 +210,16 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     if('Other' %in% .$tag){
       if('AUGUSTUS' %in% src){
-        warning("Replacing the tag 'Other' with 'Parent'. This file appears to be
-        an AUGUSTUS-produced GFF, and AUGUSTUS uses the tag Other to refer to a
-        Parent relationship. To avoid this warning, you may replace Other with
-        Parent in the GFF files. You should confirm that Other is being used only
-        to link to parents.")
+        gff_warning("Replacing the tag 'Other' with 'Parent'. This file appears
+        to be an AUGUSTUS-produced GFF, and AUGUSTUS uses the tag Other to refer
+        to a Parent relationship. To avoid this warning, you may replace Other
+        with Parent in the GFF files. You should confirm that Other is being
+        used only to link to parents.")
         .$tag <- ifelse(.$tag == "Other", "Parent", .$tag)
       } else {
-        warning("This GFF file contains the tag 'Other'. This may be fine. But
-        some programs, like AUGUSTUS, use this tag to refer to a Parent. Your
-        file does not appear to be from AUGUSTUS (based on source column),
+        gff_warning("This GFF file contains the tag 'Other'. This may be fine.
+        But some programs, like AUGUSTUS, use this tag to refer to a Parent.
+        Your file does not appear to be from AUGUSTUS (based on source column),
         however you may want to double check the GFF. If it is using the tag
         Other as a Parent link, just replace Other with Parent and rerun fagin.
         If this file is from AUGUSTUS, you may want to change the source column
@@ -227,7 +242,7 @@ load_gene_models <- function(filename, seqinfo_=NULL){
     legal according to the GFF spec, but I do not yet support them."
 
     if(any(grepl(",", .$value))){
-      stop("GFFError: commas not supported in attribute tags")
+      gff_stop("Commas not supported in attribute tags")
     }
 
   } %>% rmonad::funnel(tags=tags_) %*>% {
@@ -301,19 +316,17 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       parent_types <- subset(., ID %in% parents)$type
 
       if(any(parent_types == "gene"))
-        warning("Found CDS or exon directly inheriting from a gene, this may be fine.")
+        gff_warning("Found CDS or exon directly inheriting from a gene, this may be fine.")
 
       if(! all(parent_types %in% c("gene", "mRNA"))){
         offenders <- parent_types[!(parent_types %in% c("gene", "mRNA"))]
         msg <- "Found CDS or exon with unexpected parent: [%s]"
-        warning(sprintf(msg, paste0(unique(offenders), collapse=", ")))
+        gff_warning(sprintf(msg, paste0(unique(offenders), collapse=", ")))
       }
 
       if( any(is.na(parents)) )
-        stop("Found CDS or exon with no parent")
+        gff_stop("Found CDS or exon with no parent")
 
-      if(! any(duplicated(.$ID, incomparables=NA)))
-        warning("IDs are not unique, this is probably bad")
     }
 
   } %>>% {
@@ -325,7 +338,7 @@ load_gene_models <- function(filename, seqinfo_=NULL){
       stops     = .$stop,
       scaffolds = .$seqid,
       strands   = .$strand,
-      metadata  = .[,c('ID','Name','Parent')]
+      metadata  = .[,c('phase', 'ID','Name','Parent')]
     )
 
     GenomicRanges::mcols(gi)$type <- .$type
@@ -351,12 +364,48 @@ load_gene_models <- function(filename, seqinfo_=NULL){
 
     meta <- GenomicRanges::mcols(.)
 
+    # ************************* Abominable hack!!! ****************************
+    # The TxDb objects do not store phase, see my issue report:
+    # https://support.bioconductor.org/p/101245/
+    # To get around this, I encode the phase in the CDS Name metadata vector.
+    # Then I can extract it later when I need it. This is, of course, an
+    # utterly sinful thing to do. 
+    GenomicRanges::mcols(.)$Name <-
+      ifelse(meta$type == "CDS", as.character(meta$phase), meta$Name)
+    # *************************************************************************
+
     # NOTE: This cannot just be `is_trans <- meta$type == "mRNA"` because some
     # exons are recorded as direct children of a "gene" feature. So I list as a
     # transcript anything that is the parent of an exon or CDS.
     is_trans <- meta$ID %in% meta$Parent[meta$type %in% c("exon", "CDS")]
 
     GenomicRanges::mcols(.)$type = ifelse(is_trans, "mRNA", meta$type)
+
+    # Stop if any mRNA or gene IDs are missing
+    missing_IDs <- is.na(meta$ID) & meta$type %in% c("mRNA", "gene")
+    if(any(missing_IDs)){
+      gff_stop(sprintf(
+        "%s of %s mRNAs or genes are missing an ID",
+        sum(missing_IDs),
+        length(missing_IDs)
+      ))
+    }
+
+    # Stop if any mRNA IDs are duplicated
+    duplicants <- meta$ID[duplicated(.$ID) & meta$type == "mRNA"]
+    if(length(duplicants) > 0){
+      msg <- "mRNA IDs are not unique. The following IDs map to multiple entries: [%s]"
+      gff_stop(sprintf(msg, paste(duplicants, collapse=", ")))
+    }
+
+    # Warn if any gene IDs are duplicated
+    duplicants <- meta$ID[duplicated(.$ID) & meta$type == "gene"]
+    if(length(duplicants) > 0){
+      msg <- "gene IDs are not unique. This may by OK, since mRNA, not gene,
+      IDs are used as unique labels. The following IDs map to multiple entries:
+      [%s]"
+      gff_warning(sprintf(msg, paste(duplicants, collapse=", ")))
+    }
 
     GenomicFeatures::makeTxDbFromGRanges(.)
 

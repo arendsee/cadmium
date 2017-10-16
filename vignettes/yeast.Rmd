@@ -34,7 +34,7 @@ vignette: >
 # ws <- ms[sapply(ms, function(x) x$has_warnings())]
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE}
 # uncomment to build a vignette based off the archived data
 library(fagin)
 library(rmonad)
@@ -104,30 +104,18 @@ d1@synmaps %>%
 
 ## `synder` output
 
-```{r, echo=FALSE, results='asis'}
+```{r, echo=FALSE, results='asis', message=FALSE}
 load('ARCHIVE/d2.Rda')
 
-summarize_sis <- function(xs, label){
-  lapply(xs, function(x){
+d2$query %>%
+  lapply(function(x){
      x$si %>%
          CNEr::second() %>%
          GenomicRanges::width() %>%
          fagin::summarize_numeric()
    }) %>%
      num_sum_as_table %>%
-     { .$group = label; . }
-}
-
-qsissum <- summarize_sis(d2$query, "orphan"),
-tsissum <- summarize_sis(d2$control, "control")
-
-# FIXME: The following relationship should always hold. The fact that it does
-# hold is a bit dubious, since it is not usually good to hold multiple copies
-# of data.
-stopifnot(qsissum == tsissum)
-
-qsissum %>%
-  knitr::kable(caption="Search interval widths")
+     knitr::kable(caption="Search interval widths")
 ```
 
 ## Fagin output

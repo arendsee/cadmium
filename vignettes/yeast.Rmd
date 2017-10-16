@@ -48,14 +48,14 @@ con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
 ```
 
-## Input data summaries
+## Input data summary
 
 ```{r, echo=FALSE}
 load('ARCHIVE/d1.Rda')
 ss <- invertSummaries(d1)
 ```
 
-```{r, fig.width=8, fig.height=6, echo=FALSE, message=FALSE}
+```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE}
 require(ape)
 plot(d1@tree)
 speciesOrder <- d1@tree$tip.label
@@ -69,17 +69,17 @@ hasStop <- protein_has_internal_stop(ss)
 genComp <- genomic_composition(ss)
 data.frame(
     species = names(nscaf) %>% factor(levels=speciesOrder)
-  , n_scaffolds = nscaf %>% unlist %>% unname
-  , n_bases = sapply(ss$dna, function(x) x@table$length %>% sum)
-  , n_prot = sapply(initialRes, sum) %>% unname
+  , scafs = nscaf %>% unlist %>% unname
+  , bases = sapply(ss$dna, function(x) x@table$length %>% sum)
+  , prots = sapply(initialRes, sum) %>% unname
   , GC = sapply(genComp, function(x) ((x['G'] + x['C']) * 100) %>% round)
-  , n_oddstart = sapply(initialRes, function(x) { sum(x) - x['M'] }) %>% unname
-  , n_oddstop = sapply(finalRes, function(x) { sum(x) - x['*'] }) %>% unname
+  , oddstart = sapply(initialRes, function(x) { sum(x) - x['M'] }) %>% unname
+  , oddstop = sapply(finalRes, function(x) { sum(x) - x['*'] }) %>% unname
   , p_N = sapply(genComp, function(x) x['N'] %>% signif(3))
   , n_stop = hasStop %>% unlist %>% unname
 ) %>%
     dplyr::arrange(species) %>%
-    knitr::kable(caption="Genomic statistics")
+    knitr::kable(caption="**Genomic statistics**. *scafs* - number of scaffolds in the genome. *bases* - total number of bases in the genome. *prots* - total number of protein coding models. *GC* - the percent of G and C nucleotides in the genome. *oddstart* - number of coding sequences that do not begin with M. *oddstop* - number of coding sequences that do not end with a stop (\\*). *p_N* - number of unknown nucleotides (N) in the genome. *n_stop* - number of coding sequences with an internal stop.")
 ```
 
 ```{r, echo=FALSE, result='asis'}
@@ -99,10 +99,10 @@ num_sum_as_table <- function(nd){
 d1@synmaps %>%
     lapply(function(x) x@synmap.summary@width) %>%
     num_sum_as_table %>%
-    knitr::kable(caption="Summary of the lengths of homologous links in each synteny map")
+    knitr::kable(caption="Lengths of homologous links in each synteny map.")
 ```
 
-## `synder` search interval summaries
+## `synder` output
 
 ```{r, echo=FALSE, results='asis'}
 load('ARCHIVE/d2.Rda')
@@ -118,14 +118,19 @@ summarize_sis <- function(xs, label){
      { .$group = label; . }
 }
 
-rbind(
-  summarize_sis(d2$query, "orphan"),
-  summarize_sis(d2$control, "control")
-) %>%
-  knitr::kable(caption="Summary of search interval widths")
+qsissum <- summarize_sis(d2$query, "orphan"),
+tsissum <- summarize_sis(d2$control, "control")
+
+# FIXME: The following relationship should always hold. The fact that it does
+# hold is a bit dubious, since it is not usually good to hold multiple copies
+# of data.
+stopifnot(qsissum == tsissum)
+
+qsissum %>%
+  knitr::kable(caption="Search interval widths")
 ```
 
-## Species-to-species classifications
+## Fagin output
 
 ```{r, fig.width=8, fig.height=6, echo=FALSE}
 plotSecondaryLabels(con)

@@ -62,6 +62,93 @@ genomic_composition <- function(x){
     x$dna %>% lapply(function(s) s@comp %>% colSums %>% { . / sum(.) })
 }
 
+#' Get the phylogenetic order of species (mostly useful for plotting)
+#'
+#' @param con Config object
+#' @export
+getSpeciesPhylogeneticOrder <- function(con){
+  # FIXME: loading everything like this is an ugly hack
+  load(file.path(con@archive, 'd1.Rda'))
+  d1@tree$tip.label
+}
+
+#' Tabulate states for each genome
+#'
+#' @param list  Summarized data as output by \code{invertSummaries}
+#' @export
+makeGenomeTable <- function(ss, speciesOrder){
+  nscaf <- number_of_chromosomes(ss)
+  initialRes <- initial_protein_residue_counts(ss)
+  finalRes <- final_protein_residue_counts(ss)
+  hasStop <- protein_has_internal_stop(ss)
+  genComp <- genomic_composition(ss)
+  data.frame(
+      species = names(nscaf) %>% factor(levels=speciesOrder)
+    , scafs = nscaf %>% unlist %>% unname
+    , bases = sapply(ss$dna, function(x) x@table$length %>% sum)
+    , prots = sapply(initialRes, sum) %>% unname
+    , GC = sapply(genComp, function(x) ((x['G'] + x['C']) * 100) %>% round)
+    , oddstart = sapply(initialRes, function(x) { sum(x) - x['M'] }) %>% unname
+    , oddstop = sapply(finalRes, function(x) { sum(x) - x['*'] }) %>% unname
+    , p_N = sapply(genComp, function(x) x['N'] %>% signif(3))
+    , n_stop = hasStop %>% unlist %>% unname
+  ) %>% dplyr::arrange(species)
+}
+
+
+# Summarize a list numeric vectors
+makeNumericSummaryTable <- function(nd){
+    data.frame(
+        min    = sapply(nd, function(x) x@min)
+      , q25    = sapply(nd, function(x) x@q25)
+      , median = sapply(nd, function(x) x@median)
+      , q75    = sapply(nd, function(x) x@q75)
+      , max    = sapply(nd, function(x) x@max)
+      , mean   = sapply(nd, function(x) x@mean)
+      , sd     = sapply(nd, function(x) x@sd)
+      , n      = sapply(nd, function(x) x@n)
+    )
+}
+
+# Given a data.frame with species as rownames: 1) create a new 'species'
+# column, 2) remove the rownames, 3) sort by the vector 'levels' (this will
+# normally be the phylogenetic order).
+rownamesAsSpecies <- function(x, levels){
+  x$species <- rownames(x) %>% factor(levels=levels)
+  rownames(x) <- NULL
+  dplyr::arrange(x, species) %>%
+    { .[c(ncol(.), 1:(ncol(.)-1))] } # put species first
+}
+
+#' Tabulate states for each genome
+#'
+#' @param con Config object
+#' @export
+makeSynmapTable <- function(con, speciesOrder){
+  load(file.path(con@archive, 'd1.Rda'))
+  d1@synmaps %>%
+    lapply(function(x) x@synmap.summary@width) %>%
+    makeNumericSummaryTable %>%
+    rownamesAsSpecies(speciesOrder)
+}
+
+#' Tabulate states for each genome
+#'
+#' @param con Config object
+#' @export
+makeSynderTable <- function(con, speciesOrder){
+  load('ARCHIVE/d2.Rda')
+  d2$query %>%
+    lapply(function(x){
+       x$si %>%
+           CNEr::second() %>%
+           GenomicRanges::width() %>%
+           fagin::summarize_numeric()
+     }) %>%
+       makeNumericSummaryTable %>%
+       rownamesAsSpecies(speciesOrder)
+}
+
 #' Plot the secondary labels
 #'
 #' @export
@@ -126,11 +213,7 @@ plotSecondaryLabels <- function(con, fill='secondary'){
       ggplot(dat) +
         geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
         scale_fill_brewer(palette="Paired") +
-        theme(
-          axis.text.x = element_text(angle=270, hjust=0, vjust=1),
-          legend.position = 'bottom'
-        ) +
-        guides(fill = guide_legend(ncol = 2)) +
+        theme(axis.text.x = element_text(angle=270, hjust=0, vjust=1)) +
         labs(
           fill="Classification",
           x="Target species",
@@ -141,9 +224,7 @@ plotSecondaryLabels <- function(con, fill='secondary'){
       ggplot(dat) +
         scale_fill_brewer(palette="Paired") +
         geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
-        theme(
-          axis.text.x = element_text(angle=325, hjust=0, vjust=1)
-        ) +
+        theme(axis.text.x = element_text(angle=325, hjust=0, vjust=1)) +
         labs(
           fill="Target species",
           x="Classification",

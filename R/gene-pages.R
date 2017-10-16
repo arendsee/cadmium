@@ -17,3 +17,7 @@ makeGenePage <- function(x){
   # synder plot
 
 }
+
+makeAllGenePages <- function(con){
+
+}

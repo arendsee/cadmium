@@ -253,38 +253,59 @@ makeResultArchive <- function(con){
 #' @export
 #' @param con Config object
 makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
-  load(file.path(con@archive, "d5.Rda"))
-  wb <- XLConnect::loadWorkbook(filename, create=TRUE)
-
-  s1 <- "query_origins"
-  t1 <- d5$query
-  test_img <- "test_img"
-
   # TODO: if I can save the image as an EMF, it can be edited in Excel (at
   # least on windows), but currently there seems to be a bug in XLConnect (or
   # some dependency) that prevents this. See
   # https://github.com/miraisolutions/xlconnect issue #22
 
-  # test_img_filename <- paste0(test_img, ".emf")
-  test_img_filename <- paste0(test_img, ".png")
+  load(file.path(con@archive, "d5.Rda"))
+  load(file.path(con@archive, "d1.Rda"))
+  ss <- invertSummaries(d1)
+  speciesOrder <- getSpeciesPhylogeneticOrder(con)
 
-  XLConnect::createSheet(wb, s1)
-  XLConnect::writeWorksheet(wb, data=t1, sheet=s1) 
+  wb <- XLConnect::loadWorkbook(filename, create=TRUE)
 
-  # devEMF::emf(file=test_img_filename)
-  png(file=test_img_filename)
-  qplot(rnorm(100))
+  gentab <- makeGenomeTable(ss, speciesOrder)
+  XLConnect::createSheet(wb, "Genome Summaries")
+  XLConnect::writeWorksheet(wb, data=gentab, sheet="Genome Summaries")
+
+  maptab <- makeSynmapTable(con, speciesOrder)
+  XLConnect::createSheet(wb, "Synmap Summaries")
+  XLConnect::writeWorksheet(wb, data=maptab, sheet="Synmap Summaries")
+
+  syntab <- makeSynderTable(con, speciesOrder)
+  XLConnect::createSheet(wb, "Synder Summaries")
+  XLConnect::writeWorksheet(wb, data=syntab, sheet="Synder Summaries")
+
+  png(filename='fig1.png')
+    plotSecondaryLabels(con)
   dev.off()
-
+  XLConnect::createSheet(wb, "Fig1")
   XLConnect::createName(
     wb,
-    name    = test_img,
-    formula = paste(s1, XLConnect::idx2cref(c(5, ncol(t1)) + 2), sep="!")
+    name    = 'Fig1',
+    formula = paste('Fig1', XLConnect::idx2cref(c(1, 1)), sep="!")
   )
   XLConnect::addImage(
     wb,
-    filename     = test_img_filename,
-    name         = test_img,
+    filename     = 'fig1.png',
+    name         = 'Fig1',
+    originalSize = TRUE
+  )
+
+  png(filename='fig2.png')
+    plotSecondaryLabels(con, fill='species')
+  dev.off()
+  XLConnect::createSheet(wb, "Fig2")
+  XLConnect::createName(
+    wb,
+    name    = 'Fig2',
+    formula = paste('Fig2', XLConnect::idx2cref(c(1, 1)), sep="!")
+  )
+  XLConnect::addImage(
+    wb,
+    filename     = 'fig2.png',
+    name         = 'Fig2',
     originalSize = TRUE
   )
 

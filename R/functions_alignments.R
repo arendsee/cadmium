@@ -49,7 +49,8 @@ fit.gumbel <- function(sam){
     data   = scores,
     distr  = "gumbel",
     start  = list(mu=mean(scores), s=sd(scores)),
-    method = "mge",gof="CvM" # mge distance method 
+    method = "mge",
+    gof    = "CvM" # mge distance method 
   )
 
   mu <- gumbel.fit$estimate['mu']
@@ -117,7 +118,7 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
 
 }
 
-AA_aln <- function(queseq, tarseq, species_name, nsims=10000, ...){
+AA_aln <- function(queseq, tarseq, nsims=10000, ...){
 
   # Store the original query to target mapping for later testing.
   # The input and output must have the same mapping.
@@ -177,10 +178,10 @@ AA_aln <- function(queseq, tarseq, species_name, nsims=10000, ...){
   stopifnot(nrow(map) == original.length)
 
   list(
-    map   = map,
-    dis   = gum,
-    sam   = sam,
-    nsims = nsims,
+    map     = map,
+    dis     = gum,
+    sam     = sam,
+    nsims   = nsims,
     alnfile = aln_result$alnfile
   )
 }
@@ -222,7 +223,7 @@ align_by_map <- function(
   queseq <- queseq[ match(map$query,  names(queseq)) ]
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
-  AA_aln(queseq, tarseq, nsims=1000)
+  AA_aln(queseq, tarseq, nsims=1000, ...)
 
 }
 
@@ -242,7 +243,15 @@ add_logmn <- function(d){
 
 
 
-alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
+alignToGenome <- function(
+  queseq,
+  tarseq,
+  group,
+  label,
+  simulation = FALSE,
+  offset     = 0,
+  permute    = FALSE
+){
   # Search + and - strands
   pattern <- c(queseq, Biostrings::reverseComplement(queseq))
   subject <- c(tarseq, tarseq)
@@ -261,6 +270,9 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
     type='local'
   )
 
+  if(simulation){
+    label = paste0(label, "-sim")
+  }
   alnfile <- to_cache(aln, group=group, label=label)
 
   map_ <- aln %>>% {
@@ -288,8 +300,8 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
   }
 
   rmonad::funnel(
-    map = map_,
-    alnfile = alnfile
+      map = map_
+    , alnfile = alnfile
   )
 
 }
@@ -304,7 +316,7 @@ add_logmn <- function(d){
 }
 
 
-get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
+get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
 
   skipped_ <- rmonad::as_monad({
 
@@ -340,17 +352,26 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
     }
 
   # TODO: continue from here: need to extract the cached file
-  ctrl_ <- truncated_seqs_ %*>% alignToGenome(permute=T) %>>% add_logmn
+  ctrl_ <- truncated_seqs_ %*>%
+    alignToGenome(
+      permute    = TRUE,
+      simulation = TRUE,
+      ...
+    ) %>>% { .$map <- add_logmn(.$map); . }
     ## TODO: And what the flip is the following commented code? Why is it still
     ## here? I kept it for some reason ...
     # dplyr::group_by(query) %>%
     # dplyr::filter(.data$score == max(.data$score))
 
-  hits_ <- truncated_seqs_ %*>% alignToGenome(permute=F) %>>% add_logmn 
+  hits_ <- truncated_seqs_ %*>%
+    alignToGenome(
+      permute = FALSE,
+      ...
+    ) %>>% { .$map <- add_logmn(.$map); . }
 
   gum_ <- ctrl_ %>>%
     {
-      GenomicRanges::mcols(.) %>%
+      GenomicRanges::mcols(.$map) %>%
       as.data.frame %>%
       dplyr::select(.data$query, .data$score, .data$logmn)
     } %>>%
@@ -359,18 +380,19 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
   rmonad::funnel(
     ctrl = ctrl_,
     hits = hits_,
-    gum = gum_
+    gum  = gum_
   ) %*>% {
 
-    GenomicRanges::mcols(hits)$pval <- 1 - gum$p(GenomicRanges::mcols(hits)$score,
-                                                 GenomicRanges::mcols(hits)$logmn)
-    GenomicRanges::mcols(ctrl)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl)$score,
-                                                 GenomicRanges::mcols(ctrl)$logmn)
+    GenomicRanges::mcols(hits$map)$pval <- 1 - gum$p(GenomicRanges::mcols(hits$map)$score,
+                                                     GenomicRanges::mcols(hits$map)$logmn)
+    GenomicRanges::mcols(ctrl$map)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl$map)$score,
+                                                     GenomicRanges::mcols(ctrl$map)$logmn)
 
     list(
-      map=hits,
-      sam=ctrl,
-      dis=gum
+      map=hits$map,
+      sam=ctrl$map,
+      dis=gum,
+      alnfile=hits$alnfile
     )
   } %*>%
   rmonad::funnel(

@@ -95,7 +95,7 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
   metadata(aln)$target <- names(y) 
 
   if(simulation){
-    group <- paste0(group, "-sim")
+    label <- paste0(label, "-sim")
   }
 
   alnfile <- to_cache(aln, group=group, label=label)
@@ -274,7 +274,7 @@ alignToGenome <- function(
   metadata(aln)$target <- names(tarseq) 
 
   if(simulation){
-    group = paste0(group, "-sim")
+    label = paste0(label, "-sim")
   }
   alnfile <- to_cache(aln, group=group, label=label)
 

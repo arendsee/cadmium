@@ -152,3 +152,60 @@ plotSecondaryLabels <- function(con, fill='secondary'){
         facet_grid(group ~ .)
     }
 }
+
+#' Organize output data into a small archive
+#'
+#' Running \code{run_fagin} will produce a large archive with cached data and
+#' many intermediate files. This function digests that archive into a clean,
+#' succinct, well-organized folder.
+#'
+#' @param con Config object
+#' @return filename of the output archive
+makeResultArchive <- function(con){
+  stop("This function is a stub")
+}
+
+#' Create an excel spreadsheet of fagin results
+#'
+#' Contains all the tabular data created by the \code{makeResultArchive} function.
+#'
+#' @export
+#' @param con Config object
+makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
+  load(file.path(con@archive, "d5.Rda"))
+  wb <- XLConnect::loadWorkbook(filename, create=TRUE)
+
+  s1 <- "query_origins"
+  t1 <- d5$query
+  test_img <- "test_img"
+
+  # TODO: if I can save the image as an EMF, it can be edited in Excel (at
+  # least on windows), but currently there seems to be a bug in XLConnect (or
+  # some dependency) that prevents this. See
+  # https://github.com/miraisolutions/xlconnect issue #22
+
+  # test_img_filename <- paste0(test_img, ".emf")
+  test_img_filename <- paste0(test_img, ".png")
+
+  XLConnect::createSheet(wb, s1)
+  XLConnect::writeWorksheet(wb, data=t1, sheet=s1) 
+
+  # devEMF::emf(file=test_img_filename)
+  png(file=test_img_filename)
+  qplot(rnorm(100))
+  dev.off()
+
+  XLConnect::createName(
+    wb,
+    name    = test_img,
+    formula = paste(s1, XLConnect::idx2cref(c(5, ncol(t1)) + 2), sep="!")
+  )
+  XLConnect::addImage(
+    wb,
+    filename     = test_img_filename,
+    name         = test_img,
+    originalSize = TRUE
+  )
+
+  XLConnect::saveWorkbook(wb)
+}

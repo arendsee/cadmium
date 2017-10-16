@@ -91,6 +91,8 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
     type='local',
     substitutionMatrix='BLOSUM80'
   )
+  metadata(aln)$query  <- names(x) 
+  metadata(aln)$target <- names(y) 
 
   if(simulation){
     group <- paste0(group, "-sim")
@@ -154,9 +156,7 @@ AA_aln <- function(queseq, tarseq, nsims=10000, ...){
     ...
   )
 
-  sam <- simulation_result$map
-
-  dplyr::select(-target)
+  sam <- simulation_result$map %>% dplyr::select(-target)
 
   gum <- fit.gumbel(sam)
 
@@ -191,7 +191,8 @@ align_by_map <- function(
   tarseq,
   map,
   queries = names(queseq),
-  permute = FALSE
+  permute = FALSE,
+  ...
 ){
 
   "Queries may be missing from the map if there are no target genes in any of
@@ -269,9 +270,11 @@ alignToGenome <- function(
     subject=subject,
     type='local'
   )
+  metadata(aln)$query  <- names(queseq) 
+  metadata(aln)$target <- names(tarseq) 
 
   if(simulation){
-    label = paste0(label, "-sim")
+    group = paste0(group, "-sim")
   }
   alnfile <- to_cache(aln, group=group, label=label)
 

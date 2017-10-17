@@ -95,7 +95,6 @@ makeGenomeTable <- function(ss, speciesOrder){
   ) %>% dplyr::arrange(species)
 }
 
-
 # Summarize a list numeric vectors
 makeNumericSummaryTable <- function(nd){
     data.frame(
@@ -149,7 +148,6 @@ makeSynderTable <- function(con, speciesOrder){
        rownamesAsSpecies(speciesOrder)
 }
 
-
 label_desc <- data.frame(
    desc = c(
        "AA match to known protein"          , #O1
@@ -186,7 +184,7 @@ label_desc <- data.frame(
 #' Plot the secondary labels
 #'
 #' @export
-plotSecondaryLabels <- function(con, fill='secondary'){
+plotSecondaryLabels <- function(con, speciesOrder, fill='secondary'){
     load(file.path(con@archive, 'd4.Rda'))
 
     parse_labels <- function(labels, group){
@@ -299,8 +297,14 @@ makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
   XLConnect::createSheet(wb, "Labels")
   XLConnect::writeWorksheet(wb, data=labtab, sheet="Labels")
 
-  png(filename='fig1.png')
-    plotSecondaryLabels(con)
+  dir <- dirname(filename)
+  dir.create(file.path(dir, 'figures'), recursive=TRUE)
+
+  fig1_path <- file.path(dir, 'figures', 'fig1.png')
+  fig2_path <- file.path(dir, 'figures', 'fig2.png')
+
+  png(filename=fig1_path)
+    plotSecondaryLabels(con, speciesOrder)
   dev.off()
   XLConnect::createSheet(wb, "Fig1")
   XLConnect::createName(
@@ -310,13 +314,13 @@ makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
   )
   XLConnect::addImage(
     wb,
-    filename     = 'fig1.png',
+    filename     = fig1_path,
     name         = 'Fig1',
     originalSize = TRUE
   )
 
-  png(filename='fig2.png')
-    plotSecondaryLabels(con, fill='species')
+  png(filename=fig2_path)
+    plotSecondaryLabels(con, speciesOrder, fill='species')
   dev.off()
   XLConnect::createSheet(wb, "Fig2")
   XLConnect::createName(
@@ -326,7 +330,7 @@ makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
   )
   XLConnect::addImage(
     wb,
-    filename     = 'fig2.png',
+    filename     = fig2_path,
     name         = 'Fig2',
     originalSize = TRUE
   )

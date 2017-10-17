@@ -32,6 +32,7 @@ vignette: >
 # ms <- as.list(d)
 # es <- ms[sapply(ms, function(x) x$has_error())]
 # ws <- ms[sapply(ms, function(x) x$has_warnings())]
+# makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 ```
 
 ```{r, echo=FALSE, message=FALSE}
@@ -87,11 +88,11 @@ knitr::kable(
 ## Fagin output
 
 ```{r, fig.width=8, fig.height=6, echo=FALSE}
-plotSecondaryLabels(con)
+plotSecondaryLabels(con, speciesOrder)
 ```
 
 ```{r, fig.width=8, fig.height=4, echo=FALSE}
-plotSecondaryLabels(con, fill='species')
+plotSecondaryLabels(con, speciesOrder, fill='species')
 ```
 
 ## Origin classifications

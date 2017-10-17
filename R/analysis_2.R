@@ -187,7 +187,9 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_faa_,
     map     = f_si_map_,
-    queries = seqids
+    queries = seqids,
+    group   = species,
+    label   = "aa2aa_aln"
   ) %*>% align_by_map
 
   # # Run the exact test above, but with the query indices scrambled. For a
@@ -205,7 +207,9 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_orffaa_,
     map     = f_si_map_orf_,
-    queries = seqids
+    queries = seqids,
+    group   = species,
+    label   = "aa2orf_aln"
   ) %*>% align_by_map
 
   # rand_aa2orf_ <- rmonad::funnel(
@@ -243,7 +247,9 @@ compare_target_to_focal <- function(
     queseq  = f_faa_,
     tarseq  = t_transorffaa_,
     map     = transorf_map_,
-    queries = seqids
+    queries = seqids,
+    group   = species,
+    label   = "aa2transorf_aln"
   ) %*>% align_by_map
 
 
@@ -281,7 +287,14 @@ compare_target_to_focal <- function(
     offset <- GenomicRanges::start(CNEr::second(map)) - 1
 
     # An rmonad bound list with elements: map | sam | dis | skipped
-    get_dna2dna(tarseq=tarseq, queseq=queseq, queries=queries, offset=offset)
+    get_dna2dna(
+      tarseq  = tarseq,
+      queseq  = queseq,
+      queries = queries,
+      offset  = offset,
+      group   = species,
+      label   = "dna2dna"
+    )
 
   } %*>% rmonad::funnel(
     cds  = tcds_,

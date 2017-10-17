@@ -1,7 +1,7 @@
 Package: fagin
 Type: Package
 Title: Annotate Orphan Genes
-Version: 0.10.0
+Version: 0.10.1
 Author: Zebulun Arendsee
 Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
 URL: https://github.com/arendsee/fagin
@@ -45,7 +45,8 @@ Suggests:
     knitr,
     rmarkdown,
     ggplot2,
-    reshape2
+    reshape2,
+    XLConnect
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
 BiocViews: 

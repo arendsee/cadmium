@@ -49,7 +49,8 @@ fit.gumbel <- function(sam){
     data   = scores,
     distr  = "gumbel",
     start  = list(mu=mean(scores), s=sd(scores)),
-    method = "mge",gof="CvM" # mge distance method 
+    method = "mge",
+    gof    = "CvM" # mge distance method 
   )
 
   mu <- gumbel.fit$estimate['mu']
@@ -80,29 +81,46 @@ fit.gumbel <- function(sam){
 # Search sequence - AA-AA - Query genes against target genes
 # ============================================================================
 
-aln_xy <- function(x, y){
-  a <- data.frame(
-    query = names(x),
-    target = names(y),
-    score = Biostrings::pairwiseAlignment(
-      pattern=x,
-      subject=y,
-      type='local',
-      substitutionMatrix='BLOSUM80',
-      scoreOnly=TRUE
-    ),
-    qwidth=width(x),
-    twidth=width(y),
-    stringsAsFactors=FALSE
+nothing <- function(x) NULL
+
+aln_xy <- function(x, y, group, label, simulation=FALSE){
+
+  aln <- Biostrings::pairwiseAlignment(
+    pattern=x,
+    subject=y,
+    type='local',
+    substitutionMatrix='BLOSUM80'
   )
-  dplyr::group_by(a, query) %>%
-    # Calculate adjusted score
-    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-    base::merge(a) %>%
-    dplyr::select(query, target, score, logmn)
+  metadata(aln)$query  <- names(x) 
+  metadata(aln)$target <- names(y) 
+
+  if(simulation){
+    label <- paste0(label, "-sim")
+  }
+
+  alnfile <- to_cache(aln, group=group, label=label)
+
+  a <- data.frame(
+    query  = names(x),
+    target = names(y),
+    score  = score(aln),
+    qwidth = width(x),
+    twidth = width(y),
+    stringsAsFactors = FALSE
+  )
+
+  list(
+      map = dplyr::group_by(a, query) %>%
+        # Calculate adjusted score
+        dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
+        base::merge(a) %>%
+        dplyr::select(query, target, score, logmn)
+    , alnfile = alnfile
+  )
+
 }
 
-AA_aln <- function(queseq, tarseq, nsims=10000){
+AA_aln <- function(queseq, tarseq, nsims=10000, ...){
 
   # Store the original query to target mapping for later testing.
   # The input and output must have the same mapping.
@@ -113,7 +131,8 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   )
   original.length = length(queseq)
 
-  map <- aln_xy(queseq, tarseq)
+  aln_result <- aln_xy(queseq, tarseq, ...)
+  map <- aln_result$map
 
   # Simulate best hit for each query against randomized and reversed target sequences
   # 1. sample number of target sequences per query
@@ -130,11 +149,14 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   # 4. give each simulated query a unique id
   simnames <- paste0('t', 1:nsims) %>% rep(times=times)
   # 5. align these against random targets
-  sam <- aln_xy(
+  simulation_result <- aln_xy(
     queseq[simids] %>% set_names(simnames),
-    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse
-  ) %>% 
-  dplyr::select(-target)
+    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse,
+    simulation=TRUE,
+    ...
+  )
+
+  sam <- simulation_result$map %>% dplyr::select(-target)
 
   gum <- fit.gumbel(sam)
 
@@ -156,10 +178,11 @@ AA_aln <- function(queseq, tarseq, nsims=10000){
   stopifnot(nrow(map) == original.length)
 
   list(
-    map   = map,
-    dis   = gum,
-    sam   = sam,
-    nsims = nsims
+    map     = map,
+    dis     = gum,
+    sam     = sam,
+    nsims   = nsims,
+    alnfile = aln_result$alnfile
   )
 }
 
@@ -168,7 +191,8 @@ align_by_map <- function(
   tarseq,
   map,
   queries = names(queseq),
-  permute = FALSE
+  permute = FALSE,
+  ...
 ){
 
   "Queries may be missing from the map if there are no target genes in any of
@@ -200,7 +224,7 @@ align_by_map <- function(
   queseq <- queseq[ match(map$query,  names(queseq)) ]
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
-  AA_aln(queseq, tarseq, nsims=1000)
+  AA_aln(queseq, tarseq, nsims=1000, ...)
 
 }
 
@@ -220,7 +244,15 @@ add_logmn <- function(d){
 
 
 
-alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
+alignToGenome <- function(
+  queseq,
+  tarseq,
+  group,
+  label,
+  simulation = FALSE,
+  offset     = 0,
+  permute    = FALSE
+){
   # Search + and - strands
   pattern <- c(queseq, Biostrings::reverseComplement(queseq))
   subject <- c(tarseq, tarseq)
@@ -233,11 +265,20 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
     }
   }
 
-  Biostrings::pairwiseAlignment(
+  aln <- Biostrings::pairwiseAlignment(
     pattern=pattern,
     subject=subject,
     type='local'
-  ) %>>% {
+  )
+  metadata(aln)$query  <- names(queseq) 
+  metadata(aln)$target <- names(tarseq) 
+
+  if(simulation){
+    label = paste0(label, "-sim")
+  }
+  alnfile <- to_cache(aln, group=group, label=label)
+
+  map_ <- aln %>>% {
     CNEr::GRangePairs(
       first = GenomicRanges::GRanges(
         seqnames = names(pattern),
@@ -260,6 +301,12 @@ alignToGenome <- function(queseq, tarseq, offset=0, permute=FALSE){
       twidth = Biostrings::width(subject)
     )
   }
+
+  rmonad::funnel(
+      map = map_
+    , alnfile = alnfile
+  )
+
 }
 
 
@@ -272,7 +319,7 @@ add_logmn <- function(d){
 }
 
 
-get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
+get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
 
   skipped_ <- rmonad::as_monad({
 
@@ -307,15 +354,27 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
       )
     }
 
-  ctrl_ <- truncated_seqs_ %*>% alignToGenome(permute=T) %>>% add_logmn
+  # TODO: continue from here: need to extract the cached file
+  ctrl_ <- truncated_seqs_ %*>%
+    alignToGenome(
+      permute    = TRUE,
+      simulation = TRUE,
+      ...
+    ) %>>% { .$map <- add_logmn(.$map); . }
+    ## TODO: And what the flip is the following commented code? Why is it still
+    ## here? I kept it for some reason ...
     # dplyr::group_by(query) %>%
     # dplyr::filter(.data$score == max(.data$score))
 
-  hits_ <- truncated_seqs_ %*>% alignToGenome(permute=F) %>>% add_logmn 
+  hits_ <- truncated_seqs_ %*>%
+    alignToGenome(
+      permute = FALSE,
+      ...
+    ) %>>% { .$map <- add_logmn(.$map); . }
 
   gum_ <- ctrl_ %>>%
     {
-      GenomicRanges::mcols(.) %>%
+      GenomicRanges::mcols(.$map) %>%
       as.data.frame %>%
       dplyr::select(.data$query, .data$score, .data$logmn)
     } %>>%
@@ -324,18 +383,19 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
   rmonad::funnel(
     ctrl = ctrl_,
     hits = hits_,
-    gum = gum_
+    gum  = gum_
   ) %*>% {
 
-    GenomicRanges::mcols(hits)$pval <- 1 - gum$p(GenomicRanges::mcols(hits)$score,
-                                                 GenomicRanges::mcols(hits)$logmn)
-    GenomicRanges::mcols(ctrl)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl)$score,
-                                                 GenomicRanges::mcols(ctrl)$logmn)
+    GenomicRanges::mcols(hits$map)$pval <- 1 - gum$p(GenomicRanges::mcols(hits$map)$score,
+                                                     GenomicRanges::mcols(hits$map)$logmn)
+    GenomicRanges::mcols(ctrl$map)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl$map)$score,
+                                                     GenomicRanges::mcols(ctrl$map)$logmn)
 
     list(
-      map=hits,
-      sam=ctrl,
-      dis=gum
+      map=hits$map,
+      sam=ctrl$map,
+      dis=gum,
+      alnfile=hits$alnfile
     )
   } %*>%
   rmonad::funnel(

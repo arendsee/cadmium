@@ -149,42 +149,44 @@ makeSynderTable <- function(con, speciesOrder){
        rownamesAsSpecies(speciesOrder)
 }
 
+
+label_desc <- data.frame(
+   desc = c(
+       "AA match to known protein"          , #O1
+       "AA match to genic ORF"              , #O2
+       "AA match to inter-genic ORF"        , #O3
+       "maps off the scaffold"              , #U1
+       "possible indel"                     , #U2
+       "possible N-string"                  , #U3
+       "syntenically scrambled"             , #U5
+       "seriously unknown"                  , #U6
+       "skipped for technical reasons"      , #U7
+       "DNA match to CDS"                   , #N1
+       "DNA match to exon"                  , #N2
+       "DNA match to gene"                  , #N3
+       "DNA match to inter-genic region"      #N4
+   ),
+   secondary = c(
+       "O1" ,
+       "O2" ,
+       "O3" ,
+       "U1" ,
+       "U2" ,
+       "U3" ,
+       "U5" ,
+       "U6" ,
+       "U7" ,
+       "N1" ,
+       "N2" ,
+       "N3" ,
+       "N4"  
+   )
+)
+
 #' Plot the secondary labels
 #'
 #' @export
 plotSecondaryLabels <- function(con, fill='secondary'){
-     desc <- data.frame(
-        desc = c(
-            "AA match to known protein"          , #O1
-            "AA match to genic ORF"              , #O2
-            "AA match to inter-genic ORF"        , #O3
-            "maps off the scaffold"              , #U1
-            "possible indel"                     , #U2
-            "possible N-string"                  , #U3
-            "syntenically scrambled"             , #U5
-            "seriously unknown"                  , #U6
-            "skipped for technical reasons"      , #U7
-            "DNA match to CDS"                   , #N1
-            "DNA match to exon"                  , #N2
-            "DNA match to gene"                  , #N3
-            "DNA match to inter-genic region"      #N4
-        ),
-        secondary = c(
-            "O1" ,
-            "O2" ,
-            "O3" ,
-            "U1" ,
-            "U2" ,
-            "U3" ,
-            "U5" ,
-            "U6" ,
-            "U7" ,
-            "N1" ,
-            "N2" ,
-            "N3" ,
-            "N4"  
-        )
-     )
     load(file.path(con@archive, 'd4.Rda'))
 
     parse_labels <- function(labels, group){
@@ -197,7 +199,7 @@ plotSecondaryLabels <- function(con, fill='secondary'){
         dplyr::bind_rows(.id='species') %>%
         {
           .$species <- factor(.$species, levels=speciesOrder)
-          . <- merge(., desc)
+          . <- merge(., label_desc)
           .$desc <- paste(.$secondary, .$desc, sep=': ')
           .$group <- group
           .
@@ -246,6 +248,17 @@ makeResultArchive <- function(con){
   stop("This function is a stub")
 }
 
+makeSecondaryTable <- function(con, speciesOrder){
+  load(file.path(con@archive, "d4.Rda"))
+  lapply(
+    names(d4$query$labels),
+    function(x) {
+      dplyr::select(d4$query$labels[[x]], seqid, secondary) %>%
+        { names(.)[2] <- x; . }
+    }
+  ) %>% Reduce(f=merge) %>% { .[, c('seqid', speciesOrder[-1])] } 
+}
+
 #' Create an excel spreadsheet of fagin results
 #'
 #' Contains all the tabular data created by the \code{makeResultArchive} function.
@@ -276,6 +289,15 @@ makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
   syntab <- makeSynderTable(con, speciesOrder)
   XLConnect::createSheet(wb, "Synder Summaries")
   XLConnect::writeWorksheet(wb, data=syntab, sheet="Synder Summaries")
+
+  key <- label_desc[, c(2,1)]
+  names(key) <- c("label", "description")
+  XLConnect::createSheet(wb, "Key")
+  XLConnect::writeWorksheet(wb, data=key, sheet="Key")
+
+  labtab <- makeSecondaryTable(con, speciesOrder)
+  XLConnect::createSheet(wb, "Labels")
+  XLConnect::writeWorksheet(wb, data=labtab, sheet="Labels")
 
   png(filename='fig1.png')
     plotSecondaryLabels(con)

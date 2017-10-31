@@ -11,7 +11,6 @@ scanFa_trw <- function(x, ...){
   seq
 }
 
-
 load_species <- function(species_name, con){
 
   "Generate, summarize and merge all derived data for one species. The only
@@ -40,6 +39,10 @@ load_species <- function(species_name, con){
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
+  nstring.file_ <- nstrings_ %>>% to_cache(label="nstring", group=species_name)
+  nstring.summary_ <- nstrings_ %>>% summarize_nstring
+  rm(nstrings_); base::gc()
+
   orfgff_ <- dna_ %>>% scanFa_trw %>>% derive_orfgff
 
   orffaa_ <-
@@ -52,6 +55,10 @@ load_species <- function(species_name, con){
       list(format_warnings=format_translation_warning)
       Biostrings::translate(., if.fuzzy.codon="solve")
     }
+
+  orfgff.file_ <- orfgff_ %>>% to_cache(label="orfgff", group=species_name)
+  orfgff.summary_ <- orfgff_ %>>% summarize_granges
+  rm(orfgff_); gc()
 
   transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
 
@@ -130,6 +137,10 @@ load_species <- function(species_name, con){
     )
   }
 
+  aa.file_ <- aa_ %>>% to_cache(label="aa", group=species_name)
+  aa.summary_ <- aa_ %>>% summarize_faa
+  rm(aa_); gc()
+
   trans_ <-
     rmonad::funnel(
       x = dna_,
@@ -182,6 +193,13 @@ the problem. For now, the offending transcripts have been removed."
 
     }
 
+  dna.file_ <- dna_ %>>% to_cache(label="dna", group=species_name)
+  dna.summary_ <- dna_ %>>% summarize_dna
+  rm(dna_); gc()
+
+  gff.file_ <- txdb_ %>>% to_cache(label="gff", group=species_name)
+  gff.summary_ <- txdb_ %>>% summarize_gff
+
   transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff
 
   transorffaa_ <-
@@ -195,16 +213,28 @@ the problem. For now, the offending transcripts have been removed."
       Biostrings::translate(., if.fuzzy.codon="solve")
     }
 
+  trans.file_       <- trans_       %>>% to_cache( label="trans"       , group=species_name )
+  orffaa.file_      <- orffaa_      %>>% to_cache( label="orffaa"      , group=species_name )
+  transorfgff.file_ <- transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name )
+  transorffaa.file_ <- transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name )
+
+  trans.summary_       <- trans_       %>>% summarize_dna
+  orffaa.summary_      <- orffaa_      %>>% summarize_faa
+  transorfgff.summary_ <- transorfgff_ %>>% summarize_granges
+  transorffaa.summary_ <- transorffaa_ %>>% summarize_faa
+
+  rm(trans_, orffaa_, transorfgff_, transorffaa_); gc()
+
   specsum_ <- rmonad::funnel(
-    gff.summary         = txdb_        %>>% summarize_gff,
-    dna.summary         = dna_         %>>% summarize_dna,
-    aa.summary          = aa_          %>>% summarize_faa,
-    trans.summary       = trans_       %>>% summarize_dna,
-    orfgff.summary      = orfgff_      %>>% summarize_granges,
-    orffaa.summary      = orffaa_      %>>% summarize_faa,
-    transorfgff.summary = transorfgff_ %>>% summarize_granges,
-    transorffaa.summary = transorffaa_ %>>% summarize_faa,
-    nstring.summary     = nstrings_    %>>% summarize_nstring,
+    gff.summary         = gff.summary_,
+    dna.summary         = dna.summary_,
+    aa.summary          = aa.summary_,
+    trans.summary       = trans.summary_,
+    orfgff.summary      = orfgff.summary_,
+    orffaa.summary      = orffaa.summary_,
+    transorfgff.summary = transorfgff.summary_,
+    transorffaa.summary = transorffaa.summary_,
+    nstring.summary     = nstring.summary_,
     model_phases        = aa_model_phase_
   ) %*>%
     new(Class="species_summaries") %>_%
@@ -254,15 +284,15 @@ the problem. For now, the offending transcripts have been removed."
   }
 
   specfile_ <- rmonad::funnel(
-    gff.file         = txdb_        %>>% to_cache( label="gff"         , group=species_name ),
-    dna.file         = dna_         %>>% to_cache( label="dna"         , group=species_name ),
-    aa.file          = aa_          %>>% to_cache( label="aa"          , group=species_name ),
-    trans.file       = trans_       %>>% to_cache( label="trans"       , group=species_name ),
-    orfgff.file      = orfgff_      %>>% to_cache( label="orfgff"      , group=species_name ),
-    orffaa.file      = orffaa_      %>>% to_cache( label="orffaa"      , group=species_name ),
-    transorfgff.file = transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name ),
-    transorffaa.file = transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name ),
-    nstring.file     = nstrings_    %>>% to_cache( label="nstring"     , group=species_name )
+    gff.file         = gff.file_,
+    dna.file         = dna.file_,
+    aa.file          = aa.file_,
+    trans.file       = trans.file_,
+    orfgff.file      = orfgff.file_,
+    orffaa.file      = orffaa.file_,
+    transorfgff.file = transorfgff.file_,
+    transorffaa.file = transorffaa.file_,
+    nstring.file     = nstring.file_
   ) %*>%
     new(Class="species_data_files")
 

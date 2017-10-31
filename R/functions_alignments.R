@@ -2,20 +2,6 @@
 # Statistics
 # ============================================================================
 
-dgumbel <- function(x, mu, s){
-  z <- (mu - x) / s
-  exp( z-exp(z) ) / s
-}
-
-pgumbel <- function(q, mu, s){
-  z <- (q - mu) / s
-  exp(-exp(-z))
-}
-
-qgumbel <- function(p, mu, s){
-  mu - s*log(-log(p))
-}
-
 fit.gumbel <- function(sam){
 
   stopifnot(c('query', 'score', 'logmn') %in% names(sam))
@@ -45,6 +31,18 @@ fit.gumbel <- function(sam){
 
   scores <- get.adj.from.score(sam$score, sam$logmn)
 
+
+  dgumbel <- function(x, mu, s){
+    z <- (mu - x) / s
+    exp( z-exp(z) ) / s
+  }
+  pgumbel <- function(q, mu, s){
+    z <- (q - mu) / s
+    exp(-exp(-z))
+  }
+  qgumbel <- function(p, mu, s){
+    mu - s*log(-log(p))
+  }
   gumbel.fit <- fitdistrplus::fitdist(
     data   = scores,
     distr  = "gumbel",

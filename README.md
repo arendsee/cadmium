@@ -94,16 +94,13 @@ Implementation
  - [x] * replace all shellscripts
  - [x] * add test suite
  - [ ] parallelize everything (divide-analyze-recombine)
- - [ ] integrate BLAST orphan identification
- - [ ] integrate phylostratigraphy
  - [x] toss knitr, modularize for interactive exploration
- - [ ] integrate with Trelliscope and datadr
 
 Final Destination
- - [ ] Fagin will include everything needed for orphan analysis
+ - [ ] Handle phylostratigraphy
+ - [ ] Handle synteny map creation (MUMmer?)
  - [ ] Incorporate BLAST and manage its results (or something better than BLAST)
- - [ ] Phylostratigraphic contextualization using NCBI common tree
- - [ ] Syntenic map creation
+ - [ ] Incorporate RNAseq data
  - [ ] Visualize the results genewise with Trelliscope
 
 Report

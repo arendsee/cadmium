@@ -388,7 +388,8 @@ secondary_data <- function(primary_input, con){
     fgff = focal_gff_
   ) %*>% {
 
-    focal_faa <- f_primary@files@aa.file %>>% from_cache %>% m_value
+    # FIXME: need to use cache instead of this hack
+    focal_faa <- f_primary@files@aa.file %>>% from_cache %>% rmonad::get_value() %>% tail(1)
 
     die_if_genes_are_missing <- function(whole, part, label){
       missing <- !(part %in% whole)

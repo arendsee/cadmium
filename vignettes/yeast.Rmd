@@ -11,15 +11,14 @@ vignette: >
 
 ```{r, echo=FALSE, message=FALSE}
 # uncomment to run the analysis
-# document()
 library(fagin)
 library(rmonad)
 library(ggplot2)
 library(knitr)
 library(dplyr)
 library(magrittr)
-require(CNEr)
-require(GenomicRanges)
+library(CNEr)
+library(GenomicRanges)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
 # file.symlink("/db/fagin-input/brassicaceae", "INPUT")

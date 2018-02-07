@@ -45,7 +45,7 @@ fit.gumbel <- function(sam){
   }
   gumbel.fit <- fitdistrplus::fitdist(
     data   = scores,
-    distr  = "gumbel",
+    distr  = dgumbel,
     start  = list(mu=mean(scores), s=sd(scores)),
     method = "mge",
     gof    = "CvM" # mge distance method 
@@ -96,7 +96,7 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
     label <- paste0(label, "-sim")
   }
 
-  alnfile <- to_cache(aln, group=group, label=label)
+  alnfile <- cacher(aln, c(group, label))
 
   a <- data.frame(
     query  = names(x),
@@ -274,7 +274,7 @@ alignToGenome <- function(
   if(simulation){
     label = paste0(label, "-sim")
   }
-  alnfile <- to_cache(aln, group=group, label=label)
+  alnfile <- cacher(aln, c(group, label))
 
   map_ <- aln %>>% {
     CNEr::GRangePairs(

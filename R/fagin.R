@@ -137,7 +137,7 @@ NULL
 #' @return An rmonad object containing all results
 run_fagin <- function(con){
 
-  to_cache <- NULL
+  cacher <- NULL
 
   {
 
@@ -167,15 +167,16 @@ run_fagin <- function(con){
 
   } %__% {
 
-    "Set the cache function"
+    "Set the cache function. There is one cache system for TxDb objects and
+    everything else is saved as Rdata."
 
-    to_cache <<- make_cache_function(file.path(con@archive, "cache"))
+    cacher <<- make_fagin_cacher(con@archive, "cache")
 
   } %__%
-  primary_data(con=con)      %>_% archive_1(con@archive) %>>%
-  secondary_data(con=con)    %>_% archive_2(con@archive) %>>%
-  tertiary_data(con=con)     %>_% archive_3(con@archive) %>>%
-  determine_labels(con=con)  %>_% archive_4(con@archive) %>>%
-  determine_origins(con=con) %>_% archive_5(con@archive) %T>%
-                                  archive_rmonad(con@archive)
+  primary_data(con=con)      %>% cacher('primary')   %>>%
+  secondary_data(con=con)    %>% cacher('secondary') %>>%
+  tertiary_data(con=con)     %>% cacher('tertiary')  %>>%
+  determine_labels(con=con)  %>% cacher('labels')    %>>%
+  determine_origins(con=con) %>% cacher('origins')   %>%
+                                 saveRDS(file.path(con@archive, "pipeline.Rda"))
 }

@@ -39,7 +39,7 @@ load_species <- function(species_name, con){
 
   nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
 
-  nstring.file_ <- nstrings_ %>>% to_cache(label="nstring", group=species_name)
+  nstring.file_ <- nstrings_ %>% cacher(c("nstring", species_name))
   nstring.summary_ <- nstrings_ %>>% summarize_nstring
   rm(nstrings_); base::gc()
 
@@ -56,7 +56,7 @@ load_species <- function(species_name, con){
       Biostrings::translate(., if.fuzzy.codon="solve")
     }
 
-  orfgff.file_ <- orfgff_ %>>% to_cache(label="orfgff", group=species_name)
+  orfgff.file_ <- orfgff_ %>% cacher(c("orfgff", species_name))
   orfgff.summary_ <- orfgff_ %>>% summarize_granges
   rm(orfgff_); gc()
 
@@ -137,7 +137,7 @@ load_species <- function(species_name, con){
     )
   }
 
-  aa.file_ <- aa_ %>>% to_cache(label="aa", group=species_name)
+  aa.file_ <- aa_ %>% cache(c("aa", species_name))
   aa.summary_ <- aa_ %>>% summarize_faa
   rm(aa_); gc()
 
@@ -193,11 +193,11 @@ the problem. For now, the offending transcripts have been removed."
 
     }
 
-  dna.file_ <- dna_ %>>% to_cache(label="dna", group=species_name)
+  dna.file_ <- dna_ %>% cacher(c("dna", species_name))
   dna.summary_ <- dna_ %>>% summarize_dna
   rm(dna_); gc()
 
-  gff.file_ <- txdb_ %>>% to_cache(label="gff", group=species_name)
+  gff.file_ <- txdb_ %>% cacher(c("gff", species_name))
   gff.summary_ <- txdb_ %>>% summarize_gff
 
   transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff
@@ -213,10 +213,10 @@ the problem. For now, the offending transcripts have been removed."
       Biostrings::translate(., if.fuzzy.codon="solve")
     }
 
-  trans.file_       <- trans_       %>>% to_cache( label="trans"       , group=species_name )
-  orffaa.file_      <- orffaa_      %>>% to_cache( label="orffaa"      , group=species_name )
-  transorfgff.file_ <- transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name )
-  transorffaa.file_ <- transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name )
+  trans.file_       <- trans_       %>% cacher(c("trans",       species_name))
+  orffaa.file_      <- orffaa_      %>% cacher(c("orffaa",      species_name))
+  transorfgff.file_ <- transorfgff_ %>% cacher(c("transorfgff", species_name))
+  transorffaa.file_ <- transorffaa_ %>% cacher(c("transorffaa", species_name))
 
   trans.summary_       <- trans_       %>>% summarize_dna
   orffaa.summary_      <- orffaa_      %>>% summarize_faa
@@ -298,7 +298,7 @@ the problem. For now, the offending transcripts have been removed."
 
   rmonad::funnel(
     files     = specfile_,
-    summaries = specsum_ %>>% to_cache( label="summaries", group=species_name ),
+    summaries = specsum_ %>% cacher(c("summaries", species_name)),
     seqinfo   = seqinfo_
   ) %*>%
     new(Class="species_meta")
@@ -335,7 +335,7 @@ load_synmap_meta <- function(tspec, fspec, syndir){
     ) %>%
     {
       rmonad::funnel(
-        synmap.file = . %>>% to_cache(label="synmap", group=target_species),
+        synmap.file = . %>% cache(c("synmap", target_species)),
         synmap.summary = . %>>% summarize_syn
       )
     } %*>%

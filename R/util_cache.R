@@ -13,17 +13,20 @@ make_fagin_cacher <- function(archive_dir, cache_dir){
       }
     },
     get = function(filename) {
-      if(class(x) == 'TxDb') {
-        AnnotationDbi::saveDb(x, filename)
+      ext <- sub(".*\\.", "", filename)
+      if(ext == 'sqlite') {
+        AnnotationDbi::loadDb(filename)
+      } else if(ext == 'Rdata') {
+        readRDS(filename)
       } else {
-        saveRDS(x, filename)
+        stop("Illegal cache extension: ", filename)
       }
     },
     ext = function(cls) {
       if(cls == 'TxDb') {
-        'sqlite'
+        '.sqlite'
       } else {
-        'Rdata'
+        '.Rdata'
       }
     }
   ))

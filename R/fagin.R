@@ -141,6 +141,13 @@ run_fagin <- function(con){
 
   {
 
+    "Set the cache function. There is one cache system for TxDb objects and
+    everything else is saved as Rdata."
+
+    cacher <<- make_fagin_cacher(con@archive, "cache")
+
+  } %__% {
+
     "Set random seed for the analysis, the choice of 210 is arbitrary. The
     random seed mainly affects the p-value estimates for alignments."
 
@@ -153,30 +160,23 @@ run_fagin <- function(con){
 
     devtools::session_info()
   
-  } %__% {
+  } %>% cacher('session_info') %__% {
 
     "Store the configuration"
 
     con
 
-  } %__% {
+  } %>% cacher('config') %__% {
 
     "Create the archival directory"
 
     dir.create(con@archive)
 
-  } %__% {
-
-    "Set the cache function. There is one cache system for TxDb objects and
-    everything else is saved as Rdata."
-
-    cacher <<- make_fagin_cacher(con@archive, "cache")
-
-  } %__%
-  primary_data(con=con)      %>% cacher('primary')   %>>%
-  secondary_data(con=con)    %>% cacher('secondary') %>>%
-  tertiary_data(con=con)     %>% cacher('tertiary')  %>>%
-  determine_labels(con=con)  %>% cacher('labels')    %>>%
-  determine_origins(con=con) %>% cacher('origins')   %>%
-                                 saveRDS(file.path(con@archive, "pipeline.Rda"))
+  } #%__%
+  # primary_data(con=con)      %>% cacher('primary')   %>>%
+  # secondary_data(con=con)    %>% cacher('secondary') %>>%
+  # tertiary_data(con=con)     %>% cacher('tertiary')  %>>%
+  # determine_labels(con=con)  %>% cacher('labels')    %>>%
+  # determine_origins(con=con) %>% cacher('origins')   %>%
+  #                                saveRDS(file.path(con@archive, "pipeline.Rda"))
 }

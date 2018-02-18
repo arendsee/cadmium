@@ -172,8 +172,8 @@ run_fagin <- function(con){
 
     dir.create(con@archive)
 
-  } #%__%
-  # primary_data(con=con)      %>% cacher('primary')   %>>%
+  } %__%
+  primary_data(con=con)   #%>>%
   # secondary_data(con=con)    %>% cacher('secondary') %>>%
   # tertiary_data(con=con)     %>% cacher('tertiary')  %>>%
   # determine_labels(con=con)  %>% cacher('labels')    %>>%

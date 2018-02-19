@@ -11,13 +11,8 @@ scanFa_trw <- function(x, ...){
   seq
 }
 
-get_trans <- function(m){
-  rmonad::funnel(
-    x = m,
-    transcripts = view(m, 'transcript') %>>%
-                  GenomicFeatures::exonsBy(by="tx", use.names=TRUE)
-  ) %*>%
-  GenomicFeatures::extractTranscriptSeqs %>>%
+get_trans_dna <- function(x, transcripts){
+  GenomicFeatures::extractTranscriptSeqs(x, transcripts) %>>%
   {
 
     "Ensure all transcripts are named. If any of the names are missing (NA),
@@ -65,10 +60,114 @@ the problem. For now, the offending transcripts have been removed."
   }
 }
 
+check_for_internal_stops <- function(aa_summary){
+  "Warn if any proteins have internal stop codons"
+
+  stops <- aa_summary@has_internal_stop
+  tab <- aa_summary@table
+
+  if(any(stops)){
+    n <- sum(stops)
+    total <- length(stops)
+    offenders <- tab[stops, ]$seqids %>% as.character %>%
+      paste0(collapse=", ")
+    msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
+    warning(sprintf(msg, n, total, species_name, offenders))
+  }
+}
+
+check_protein_transcript_match <- function(aa_summary, trans_summary){
+  "Warn if names used in the protein file do not match those of the transcripts"
+
+  aaids <- aa_summary@table$seqids
+  trids <- trans_summary@table$seqids
+
+  if(! setequal(aaids, trids)){
+
+    not_in_tr <- setdiff(aaids, trids)
+    not_in_aa <- setdiff(trids, aaids)
+
+    msg <- paste(
+      "Protein and transcript names in %s do not match:",
+      "transcript ids missing in proteins: %s",
+      "protein ids missing in transcript: %s",
+      sep="\n"
+    )
+
+    warning(sprintf(
+      msg,
+      species_name,
+      paste(not_in_aa, collapse=", "),
+      paste(not_in_tr, collapse=", ")
+    ))
+  }
+}
+
 load_species <- function(species_name, con){
 
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
+
+  # Type descriptions
+  #- SpeciesName :: character
+  #- FolderPath :: character
+  #- Genome :: FaFile
+  #- Transcriptome :: FaFile
+  #- TranscriptomeSeq :: DNAStringSet
+  #- GenomeSeq :: DNAStringSet
+  #- CDS :: DnaStringSet
+  #- GenomeSeqinfo :: Seqinfo
+  #- Length :: integer | numeric
+  #- Count :: integer
+  #- NString :: GRanges
+  #- ORFRanges :: GRanges
+  #- GeneModels :: TxDb
+  #- GeneModelList :: GeneModelList
+  #- NStringSummary :: [Length]
+  #- Density :: density
+  #- AA :: A | C | D | E | ... | X  -- enum of amino acids 
+  #- Phase :: 0 | 1 | 2
+
+  #- DNASummary :: {
+  #-   n_triple      = [Count],
+  #-   initial_codon = [Count],
+  #-   final_codon   = [Count]
+  #- }
+  #- AASummary :: {
+  #-   initial_residue   = PairList (AA, Count),
+  #-   final_residue     = PairList (AA, Count),
+  #-   has_internal_stop = Bool,
+  #-   comp              = Matrix Count,
+  #-   table             = Table {
+  #-     seqids = Seqid, 
+  #-     length = Length
+  #-   }
+  #- }
+  #- GFFSummary :: {
+  #-   seqstats    = data.frame,
+  #-   mRNA_length = NumericSummary,
+  #-   CDS_length  = NumericSummary,
+  #-   exon_length = NumericSummary
+  #- }
+  #- NumericSummary :: {
+  #-   min     = [Num],
+  #-   q25     = [Num],
+  #-   median  = [Num],
+  #-   q75     = [Num],
+  #-   max     = [Num],
+  #-   mean    = [Num],
+  #-   sd      = [Num],
+  #-   n       = Int,
+  #-   density = Density
+  #- }
+  #- GRangesSummary :: {
+  #-   seqstats = Table {
+  #-     seqid = Seqid,
+  #-     min   = Int,
+  #-     max   = Int
+  #-   },
+  #-   width = NumericSummary
+  #- }
 
   format_translation_warning <- make_format_translation_warning(species_name)
 
@@ -85,17 +184,22 @@ load_species <- function(species_name, con){
     rmonad::tag(m, c(tag, species_name))
   }
 
-  # load genome
+  # genome and summary_genome
+  #- _ :: SpeciesName -> FolderPath -> FilePath
   get_genome_filename(species_name, dir=con@input@fna_dir) %>%
       .cacher('genome_filename') %>>%
+      #- _ :: FilePath -> Genome
       load_dna %>%
         .cacher('genome') %>>%
+        #- _ :: Genome -> DNASummary
         summarize_dna %>%
         .cacher('summary_genome') %>%
 
-    # make Seqinfo
+    # seqinfo
     .view('genome') %>>%
+      #- _ :: Genome -> GenomeSeq
       scanFa_trw %>>%
+      #- _ :: Seqid -> SeqLength -> isCircular -> SpeciesName -> GenomeSeqinfo 
       {GenomeInfoDb::Seqinfo(
         seqnames   = names(.),
         seqlengths = IRanges::width(.),
@@ -104,186 +208,210 @@ load_species <- function(species_name, con){
       )} %>%
       .cacher('seqinfo') %>%
 
-    # nstring
+    # nstring and summary_nstring
     .view('genome') %>>%
-      scanFa_trw %>>% derive_nstring %>%
+      #- _ :: Genome -> GenomeSeq
+      scanFa_trw %>>%
+      #- _ :: GenomeSeq -> NString
+      derive_nstring %>%
       .cacher('nstring') %>>%
+      #- _ :: NString -> NStringSummary
       summarize_nstring %>%
       .cacher('summary_nstring') %>%
     .view('genome') %__%
 
-    # GFF
+    # gff and summary_gff
+    #- _ :: SpeciesName -> FolderPath -> FilePath
     get_gff_filename(species_name, dir=con@input@gff_dir) %>%
       .tag('gff_filename') %>%
+      #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
       rmonad::funnel(
-        filename = .,
+        file = .,
         seqinfo_ = .view(., 'seqinfo')
       ) %*>% load_gene_models %>% .cacher("gff") %>>%
+      #- _ :: GeneModels -> GFFSummary
       summarize_gff %>% .cacher("summary_gff") %>%
 
-    # ngORF GFF
+    # orfgff and summary_orfgff
     .view('genome') %>>%
+      #- _ :: Genome -> GenomeSeq
       scanFa_trw %>>%
+      #- _ :: GenomeSeq -> ORFRanges 
       derive_orfgff %>%
       .cacher('orfgff') %>>%
+      #- _ :: GRanges -> GRangesSummary
       summarize_granges %>%
       .cacher('summary_orfgff') %>%
 
-    # ngORF faa
+    # orffaa and summary_orffaa
     .view('genome') %>%
+      #- Genome -> ORFRanges -> DNASeqs
       rmonad::funnel(
         dna = .,
         gff = .view(., 'orfgff')
       ) %*>%
       extractWithComplements %>>%
+      #- DNASeqs -> AASeqs
       {
         list(format_warnings=format_translation_warning)
         Biostrings::translate(., if.fuzzy.codon="solve")
       } %>%
       .cacher('orffaa') %>>%
-      summarize_faa %>% .cacher("summary_orffaa")
+      #- AASeqs -> AASummary
+      summarize_faa %>% .cacher("summary_orffaa") %>%
 
-    # .view('gff') %>>%
-    #   GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
-    #   .cacher('transcripts') %>>% {
-    #
-    #     "Find the phase of the first CDS in each model. This will be zero if the
-    #     model is complete."
-    #
-    #     # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
-    #     # So the code:
-    #     # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
-    #     # does not work. So instead I have to do the following, which is vastly slower:
-    #     sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
-    #
-    #   } %>_% {
-    #
-    #     "Warn if there are any incomplete models"
-    #
-    #     incomplete <- sum(. != 0)
-    #     total <- length(.)
-    #
-    #     if(incomplete > 0){
-    #       warning(sprintf(
-    #       "%s of %s gene models in %s are incomplete (the phase of the first CDS is
-    #       not equal to 0). This does not include partial gene models that happen to
-    #       begin in-phase. Details are recorded in the species_summary field
-    #       model_phases.",
-    #       incomplete, total, species_name))
-    #     }
-    #
-    #   } %>% .cacher('aa_model_phase') %>%
-    # .view('transcript') %>>% {
-    #
-    #     "Abominable hack. To get around the GenomicFeatures issue reported
-    #     [here](https://support.bioconductor.org/p/101245/), I encode the phase
-    #     information in the CDS name. Here I extract that data and offset the
-    #     reading frame as needed."
-    #
-    #     ori <- .
-    #
-    #     unlist(ori) %>%
-    #       {
-    #         meta <- GenomicRanges::mcols(.)
-    #         meta$phase <- as.integer(meta$cds_name)
-    #         GenomicRanges::start(.) <- ifelse(
-    #           meta$exon_rank == 1,
-    #           GenomicRanges::start(.) + meta$phase,
-    #           GenomicRanges::start(.)
-    #         )
-    #         .
-    #       } %>%
-    #       relist(ori)
-    #
-    #   } %>%
-    #   .cacher('transcript') %>%
+    # transgff
+    .view('gff') %>>%
+      #- GeneModels ->
+      #- GeneModelList {
+      #-   cds_id    = Int,
+      #-   cds_name  = String,
+      #-   exon_rank = Int
+      #- }
+      GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
+      .cacher('pre_transcript') %>>%
+      #- GeneModelList -> [Phase]
+      {
 
-    # # aa
-    # .view('genome') %>%
-    #   rmonad::funnel(
-    #     x = .,
-    #     transcripts = .view('transcript')
-    #   ) %*>%
-    # GenomicFeatures::extractTranscriptSeqs %>>%
-    # {
-    #   list(format_warnings=format_translation_warning)
-    #   Biostrings::translate(., if.fuzzy.codon="solve")
-    # } %>%
-    # .cacher('aa') %>>%
-    # summarize_faa %>% .cacher('summary_aa') %>%
-    #
-    # # aa model phase
-    # .view('aa') %>%
-    #   rmonad::funnel(phases = view(., 'aa_model_phase', aa = .) %*>% {
-    #     # This should always be true. If it is not, there is a logical problem
-    #     # in the code, not the data.
-    #     stopifnot(length(aa) == length(phases))
-    #     list(
-    #       summary = factor(phases) %>% summary,
-    #       incomplete_models = names(aa)[phases != 0]
-    #     )
-    #   } %>% .cacher('aa_model_phase') %>%
-    #
-    # # trans
-    # .view('genome') %>% get_trans %>% cacher('trans')
+        "Find the phase of the first CDS in each model. This will be zero if the
+        model is complete."
 
-  ### TODO: revive this
-  # transorffaa_ <-
-  #   rmonad::funnel(
-  #     dna = trans_,
-  #     gff = transorfgff_
-  #   ) %*>%
-  #   extractWithComplements %>>%
-  #   {
-  #     list(format_warnings=format_translation_warning)
-  #     Biostrings::translate(., if.fuzzy.codon="solve")
-  #   }
 
-  ##### TODO: add these warnings in the appropriate places
-  # {
-  #
-  #   "Warn if any proteins have internal stop codons"
-  #
-  #   stops <- .@aa.summary@has_internal_stop
-  #   tab <- .@aa.summary@table
-  #
-  #   if(any(stops)){
-  #     n <- sum(stops)
-  #     total <- length(stops)
-  #     offenders <- tab[stops, ]$seqids %>% as.character %>%
-  #       paste0(collapse=", ")
-  #     msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
-  #     warning(sprintf(msg, n, total, species_name, offenders))
-  #   }
-  #
-  # } %>_% {
-  #
-  #   "Warn if names used in the protein file do not match those of the transcripts"
-  #
-  #   aaids <- .@aa.summary@table$seqids
-  #   trids <- .@trans.summary@table$seqids
-  #
-  #   if(! setequal(aaids, trids)){
-  #
-  #     not_in_tr <- setdiff(aaids, trids)
-  #     not_in_aa <- setdiff(trids, aaids)
-  #
-  #     msg <- paste(
-  #       "Protein and transcript names in %s do not match:",
-  #       "transcript ids missing in proteins: %s",
-  #       "protein ids missing in transcript: %s",
-  #       sep="\n"
-  #     )
-  #
-  #     warning(sprintf(
-  #       msg,
-  #       species_name,
-  #       paste(not_in_aa, collapse=", "),
-  #       paste(not_in_tr, collapse=", ")
-  #     ))
-  #   }
-  #
-  # }
+        # NOTE: in load_gene_models, I set the 'cds_name' to 'phase'.
+        # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
+        # So the code:
+        # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+        # does not work. So instead I have to do the following, which is vastly slower:
+        sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
+
+      } %>_%
+      #- [Phase] -> *Warning
+      {
+
+        "Warn if there are any incomplete models"
+
+        incomplete <- sum(. != 0)
+        total <- length(.)
+
+        if(incomplete > 0){
+          warning(sprintf(
+          "%s of %s gene models in %s are incomplete (the phase of the first CDS is
+          not equal to 0). This does not include partial gene models that happen to
+          begin in-phase. Details are recorded in the species_summary field
+          model_phases.",
+          incomplete, total, species_name))
+        }
+
+      } %>% .cacher('aa_model_phase') %>%
+    .view('pre_transcript') %>>%
+      #- GeneModelList -> GeneModelList  -- trim starts
+      {
+
+        "Offset start based on phase.
+        
+        WARNING: Abominable hack. To get around the GenomicFeatures issue
+        reported [here](https://support.bioconductor.org/p/101245/), I encode
+        the phase information in the CDS name. Here I extract that data and
+        offset the reading frame as needed."
+
+        ori <- .
+
+        unlist(ori) %>%
+          {
+            meta <- GenomicRanges::mcols(.)
+            meta$phase <- as.integer(meta$cds_name)
+            GenomicRanges::start(.) <- ifelse(
+              meta$exon_rank == 1,
+              GenomicRanges::start(.) + meta$phase,
+              GenomicRanges::start(.)
+            )
+            .
+          } %>%
+          relist(ori)
+
+      } %>%
+      .cacher('transgff') %>%
+
+    # aa and summary_aa
+    .view('genome') %>%
+      #- Genome -> GeneModelList -> CDS
+      rmonad::funnel(
+        x = .,
+        transcripts = .view(., 'transgff')
+      ) %*>%
+      GenomicFeatures::extractTranscriptSeqs %>>%
+      #- CDS -> AASeqs
+      {
+        list(format_warnings=format_translation_warning)
+        Biostrings::translate(., if.fuzzy.codon="solve")
+      } %>%
+      .cacher('aa') %>>% 
+      #- AASeqs -> AASummary
+      summarize_faa %>% .cacher('summary_aa') %>_%
+      #- AASummary -> *Warning
+      check_for_internal_stops %>%
+
+    # aa_model_phase
+    .view('aa') %>%
+      #- [Phase] -> AASeqs -> {
+      #-   summary = NamedList (0 = Count, 1 = Count, 2 = Count),
+      #-   incomplete_models = [Seqid]
+      #- }
+      rmonad::funnel(phases = .view(., 'aa_model_phase'), aa = .) %*>% {
+        # This should always be true. If it is not, there is a logical problem
+        # in the code, not the data.
+        stopifnot(length(aa) == length(phases))
+        list(
+          summary = factor(phases) %>% table,
+          incomplete_models = names(aa)[phases != 0]
+        )
+      } %>% .cacher('aa_model_phase') %>%
+
+    # transfna
+    .view('gff') %>>%
+      #- GeneModels -> GenomicRanges
+      GenomicFeatures::exonsBy(by="tx", use.names=TRUE) %>%
+      #- Genome -> GenomicRanges -> Transcriptome
+      rmonad::funnel(
+        x = .view(., 'genome'),
+        transcripts = .
+      ) %*>%
+      get_trans_dna %>% .cacher('transfna') %>>%
+      #- Transcriptome -> DNASummary
+      summarize_dna %>% .cacher('summary_transfna') %>%
+
+    # transorfgff
+    .view('transfna') %>>%
+      #- Transcriptome -> TranscriptomeSeq
+      scanFa_trw %>>%
+      #- TranscriptomeSeq -> ORFRange
+      derive_orfgff %>%
+      .cacher('transorfgff') %>>%
+      #- ORFRange -> GRangesSummary
+      summarize_granges %>%
+      .cacher('summary_transorfgff') %>%
+      #- AASummary -> GRangesSummary -> *Warning
+      rmonad::funnel(
+        aa_summary = .view(., 'summary_aa'),
+        trans_summary = .,
+      ) %*>%
+      check_protein_transcript_match %>%
+
+    # transorfaa and summary_transorfaa
+    .view('transfna') %>%
+      #- Transcriptome -> ORFRange -> CDS
+      rmonad::funnel(
+        dna = .,
+        gff = .view(., 'transorfgff')
+      ) %*>%
+      extractWithComplements %>>%
+      #- CDS -> AASeqs
+      {
+        list(format_warnings=format_translation_warning)
+        Biostrings::translate(., if.fuzzy.codon="solve")
+      } %>% .cacher('transorfaa') %>>%
+      #- AASeqs -> AASummary
+      summarize_faa %>% .cacher('summary_transorfaa')
 
 }
 
@@ -339,7 +467,7 @@ primary_data <- function(con){
   role of the `validate_derived_inputs` function.
   "
 
-  m <- load_tree(con@input@tree) %>% cacher('tree') %>>%
+  load_tree(con@input@tree) %>% cacher('tree') %>>%
     {
 
       "Extract species list from the species tree. The tree, rather than the

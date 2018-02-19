@@ -22,16 +22,9 @@ find_initial_phase <- function(gff){}
 #'
 #' @export
 #' @param file GFF filename
-#' @param Rmonad wrapped GenomicFeatures object
 #' @param seqinfo_ Seqinfo object
-load_gene_models <- function(filename, seqinfo_=NULL){
-  .load_gff(filename, tags=c("ID", "Name", "Parent"), infer_id=TRUE, seqinfo_=seqinfo_)
-}
-
-# @param tags metadata tags to keep
-# @param get_naked parse untagged attributes as ID if they are they only field
-# @param infer_id if ID is missing, try to create one
-.load_gff <- function(file, tags, get_naked=FALSE, infer_id=FALSE, seqinfo_=NULL){
+#' @param Rmonad wrapped TxDb object describing gene models
+load_gene_models <- function(file, seqinfo_=NULL){
 
   "
   Load a GFF. There are many ways this can go wrong. Below is a summary of the
@@ -41,9 +34,12 @@ load_gene_models <- function(filename, seqinfo_=NULL){
   * unify type synonyms
   "
 
-  if(is.null(seqinfo_)){
-    seqinfo_ <- Seqinfo() 
-  }
+  # metadata tags to keep
+  tags <- c("ID", "Name", "Parent")
+  # if ID is missing, try to create one
+  infer_id <- TRUE
+  # parse untagged attributes as ID if they are they only field
+  get_naked <- TRUE
 
   species_name <- GenomeInfoDb::genome(seqinfo_) %>% unique
 

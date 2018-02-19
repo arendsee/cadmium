@@ -137,16 +137,11 @@ NULL
 #' @return An rmonad object containing all results
 run_fagin <- function(con){
 
-  cacher <- NULL
+  # Set the cache function. There is one cache system for TxDb objects and
+  # everything else is saved as Rdata.
+  cacher <- make_fagin_cacher(con@archive, "cache")
 
   {
-
-    "Set the cache function. There is one cache system for TxDb objects and
-    everything else is saved as Rdata."
-
-    cacher <<- make_fagin_cacher(con@archive, "cache")
-
-  } %__% {
 
     "Set random seed for the analysis, the choice of 210 is arbitrary. The
     random seed mainly affects the p-value estimates for alignments."

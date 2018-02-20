@@ -416,37 +416,35 @@ load_species <- function(species_name, con){
 }
 
 
-# load_synmap_meta <- function(tspec, fspec, syndir){
-#
-#   "Load the synteny map for the given focal and target species. Then cache the
-#   synteny map and return the cached filename and a summary of the map as a
-#   `synteny_meta` object."
-#
-#   target_species <- GenomeInfoDb::genome(tspec@seqinfo) %>% unique
-#   focal_species <- GenomeInfoDb::genome(fspec@seqinfo) %>% unique
-#
-#   if(length(target_species) != 1  ||  length(focal_species) != 1){
-#     stop("More than one species found in Seqinfo file, this should not happen.")
-#   }
-#
-#   if(any(is.na(target_species)) || any(is.na(focal_species))){
-#     stop("Species must be set in each Seqinfo object (must not be NA)")
-#   }
-#
-#   synmap <- rmonad::funnel(
-#     focal_name  = focal_species,
-#     target_name = target_species,
-#     dir         = syndir
-#   ) %*>%
-#     get_synmap_filename %v>%
-#     synder::read_synmap(
-#       seqinfo_a = fspec@seqinfo,
-#       seqinfo_b = tspec@seqinfo
-#     )
-#
-#   synmap %>>% summarize_syn %>% cacher('synmap', tspec) %__%
-#     synmap %>% cacher('synmap_summary', tspec)
-# }
+load_synmap_meta <- function(tspec, fspec, syndir){
+
+  "Load the synteny map for the given focal and target species. Then cache the
+  synteny map and return the cached filename and a summary of the map as a
+  `synteny_meta` object."
+
+  target_species <- GenomeInfoDb::genome(tspec@seqinfo) %>% unique
+  focal_species <- GenomeInfoDb::genome(fspec@seqinfo) %>% unique
+
+  if(length(target_species) != 1  ||  length(focal_species) != 1){
+    stop("More than one species found in Seqinfo file, this should not happen.")
+  }
+
+  if(any(is.na(target_species)) || any(is.na(focal_species))){
+    stop("Species must be set in each Seqinfo object (must not be NA)")
+  }
+
+  get_synmap_filename(
+    focal_name  = focal_species,
+    target_name = target_species,
+    dir         = syndir
+  ) %>% cacher(c('synmap_file', tspec)) %>>%
+    synder::read_synmap(
+      seqinfo_a = fspec@seqinfo,
+      seqinfo_b = tspec@seqinfo
+    ) %>% cacher(c('synmap', tspec)) %>>%
+    summarize_syn %>% cacher('synmap_summary', tspec) %>%
+    view(c('synmap', tspec))
+}
 
 
 #' Load primary data
@@ -501,29 +499,25 @@ primary_data <- function(con){
       ss <- lapply(., load_species, con=con)
       names(ss) <- .
       rmonad::combine(ss)
-      'yolo'
+
     } %__%
     con@input@query_gene_list %>>% load_gene_list   %>% cacher("query_genes") %__%
-    con@input@control_gene_list %>>% load_gene_list %>% cacher("control_genes")
+    con@input@control_gene_list %>>% load_gene_list %>% cacher("control_genes") %__%
 
-  m
+  rmonad::funnel(
+    syndir = con@input@syn_dir,
+    fspec  = view(m, 'focal_species'),
+    tspecs = view(m, 'target_species')
+  ) %*>% {
+    "Load synteny map for focal species against each target species"
 
-  # rmonad::funnel(
-  #   syndir = con@input@syn_dir,
-  #   fspec  = view(m, 'focal_species'),
-  #   tspecs = view(m, 'target_species')
-  # ) %*>% {
-  #   "Load synteny map for focal species against each target species"
-  #
-  #   ss <- lapply(
-  #     tspecs,
-  #     load_synmap_meta,
-  #     fspec  = fspec,
-  #     syndir = syndir
-  #   )
-  #
-  #   rmonad::combine(ss)
-  # } %>>%
-  #   # pass this on as an Rmonad object
-  #   as_monad(lossy=FALSE)
+    ss <- lapply(
+      tspecs,
+      load_synmap_meta,
+      fspec  = fspec,
+      syndir = syndir
+    )
+
+    rmonad::combine(ss)
+  }
 }

@@ -11,7 +11,7 @@ load_gene_models(file, seqinfo_ = NULL)
 
 \item{seqinfo_}{Seqinfo object}
 
-\item{Rmonad}{wrapped GenomicFeatures object}
+\item{Rmonad}{wrapped TxDb object describing gene models}
 }
 \description{
 Load a GFF file as a GenomicFeatures object

@@ -108,6 +108,8 @@ load_species <- function(species_name, con){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
+  return(as_monad(species_name))
+
   # Type descriptions
   #- SpeciesName :: character
   #- FolderPath :: character
@@ -199,7 +201,7 @@ load_species <- function(species_name, con){
     .view('genome') %>>%
       #- _ :: Genome -> GenomeSeq
       scanFa_trw %>>%
-      #- _ :: Seqid -> SeqLength -> isCircular -> SpeciesName -> GenomeSeqinfo 
+      #- _ :: Seqid -> SeqLength -> isCircular -> SpeciesName -> GenomeSeqinfo
       {GenomeInfoDb::Seqinfo(
         seqnames   = names(.),
         seqlengths = IRanges::width(.),
@@ -474,50 +476,36 @@ primary_data <- function(con){
       .$tip.label
 
     } %>_% {
-      targets <- .
-      con@input@focal_species %>% cacher('focal_species') %>>% {
+      "Assert that the focal species is in the phylogenetic tree"
 
-        "Assert that the focal species is in the phylogenetic tree"
-    
-        if(! (. %in% targets)){
-          msg <- "Focal species '%s' is not in the species tree [%s]"
-          stop(sprintf(msg, ., paste(targets, collapse=", ")))
-        }
-
-        NULL
+      if(! (con@input@focal_species %in% .)){
+        msg <- "Focal species '%s' is not in the species tree [%s]"
+        stop(sprintf(msg, ., paste(targets, collapse=", ")))
       }
     } %>>% {
-  
+
       "Remove spaces in the species names."
-  
+
       gsub(" ", "_", .)
-  
-    } %>% cacher('target_species') %>>% {
 
-      "For each species, collect and cache all required data"
+    } %>% cacher('target_species') %>>%
+    lapply(
+      FUN = load_species,
+      con = con
+    ) %>>% rmonad::combine() %__%
 
-      ss <- lapply(., load_species, con=con)
-      names(ss) <- .
-      rmonad::combine(ss)
+    con@input@query_gene_list %>>%
+      load_gene_list %>% cacher("query_genes") %__%
 
-    } %__%
-    con@input@query_gene_list %>>% load_gene_list   %>% cacher("query_genes") %__%
-    con@input@control_gene_list %>>% load_gene_list %>% cacher("control_genes") %__%
+    con@input@control_gene_list %>>%
+      load_gene_list %>% cacher("control_genes") %>%
 
-  rmonad::funnel(
-    syndir = con@input@syn_dir,
-    fspec  = view(m, 'focal_species'),
-    tspecs = view(m, 'target_species')
-  ) %*>% {
-    "Load synteny map for focal species against each target species"
+    # Load synteny maps
+    view('target_species') %>>%
+    lapply(
+      FUN    = load_synmap_meta,
+      fspec  = con@input@focal_species,
+      syndir = con@input@syn_dir
+    ) %>>% rmonad::combine()
 
-    ss <- lapply(
-      tspecs,
-      load_synmap_meta,
-      fspec  = fspec,
-      syndir = syndir
-    )
-
-    rmonad::combine(ss)
-  }
 }

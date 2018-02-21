@@ -17,7 +17,8 @@ library(magrittr)
 con <- config()
 file.symlink("../inst/yeast", "INPUT")
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
-# plot(m, vertex.size=5, edge.arrow.size=0.2)
+# species_name=con@input@focal_species
+plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
 d <- run_fagin(con)
 missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')

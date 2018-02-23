@@ -530,7 +530,7 @@ primary_data <- function(con){
     #   )
     if(get_OK(m, m@head)){
       focal <- con@input@focal_species
-      for(target in rmonad::get_value(m, tag='target_species')){
+      for(target in rmonad::get_value(m, tag='target_species')[[1]]){
         m <-
           rmonad::funnel(
             tseqinfo = rmonad::view(m, c("seqinfo", target)),

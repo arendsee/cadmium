@@ -42,38 +42,38 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   }
 
   # GeneModels -> mRNA
-  .view_target(m, 'gff') %>>%
+  .view_target(m, "gffDB") %>>%
     GenomicFeatures::transcripts()
     rmonad::funnel(
       x = .,
-      seqinfo_ = .view_target('seqinfo')
+      seqinfo_ = .view_target("seqinfo")
     ) %*>%
-    get_gff_from_txdb(type = 'mRNA') %>% .cacher('mRNA') %>%
+    get_gff_from_txdb(type = "mRNA") %>% .cacher("mRNA") %>%
 
   # GeneModels -> CDS
-  .view_target('gff') %>>%
+  .view_target("gffDB") %>>%
     GenomicFeatures::cds()
     rmonad::funnel(
       x = .,
-      seqinfo_ = .view_target('seqinfo')
+      seqinfo_ = .view_target("seqinfo")
     ) %*>%
-    get_gff_from_txdb(type = 'CDS') %>% .cacher('CDS') %>%
+    get_gff_from_txdb(type = "CDS") %>% .cacher("CDS") %>%
 
   # GeneModels -> Exon
-  .view_target('gff') %>>%
+  .view_target("gffDB") %>>%
     GenomicFeatures::exons()
     rmonad::funnel(
       x = .,
-      seqinfo_ = .view_target('seqinfo')
+      seqinfo_ = .view_target("seqinfo")
     ) %*>%
-    get_gff_from_txdb(type = 'exon') %>% .cacher('exon') %>%
+    get_gff_from_txdb(type = "exon") %>% .cacher("exon") %>%
 
   # SyntenyMap -> mRNA -> SearchIntervals
-  .view_target('synmap') %>%
+  .view_target("synmap") %>%
     # fsi_
     rmonad::funnel(
       syn = .,
-      gff = .view_focal('mRNA')
+      gff = .view_focal("mRNA")
     ) %*>%
     synder::search(
       swap    = FALSE,
@@ -81,20 +81,20 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       k       = con@synder@k,
       r       = con@synder@r,
       offsets = con@synder@offsets
-    ) %>% .cacher('synder_out') %>>%
+    ) %>% .cacher("synder_out") %>>%
     # synder_summary_
-    synder::flag_summary() %>% .cacher('summary_synder_flags') %>%
+    synder::flag_summary() %>% .cacher("summary_synder_flags") %>%
 
-  .view_target('synder_out') %>>%
+  .view_target("synder_out") %>>%
     find_indels(indel.threshold=con@alignment@indel_threshold) %>%
-    .cacher('indels') %>%
+    .cacher("indels") %>%
 
-  .view_target('nstring') %>>%
+  .view_target("nstring") %>>%
     synder::as_gff %>%
-    rmonad::funnel(si = .view_target('synder_out'), gff=.) %*>% overlapMap %>%
+    rmonad::funnel(si = .view_target("synder_out"), gff=.) %*>% overlapMap %>%
     rmonad::funnel(
       x = .,
-      nstrings = .view_target(., 'nstring')
+      nstrings = .view_target(., "nstring")
     ) %*>% {
 
       "
@@ -122,33 +122,33 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
           length = GenomicRanges::width(nstrings)[x$qid]
         ) %>% { .[!is.na(.$length), ] }
       }
-    } %>% .cacher('gaps') %>%
+    } %>% .cacher("gaps") %>%
 
   # SeachIntervals -> GeneModels -> Overlaps
   rmonad::funnel(
-    si  = .view_target(., 'synder_out'),
-    gff = .view_target(., 'gff')
+    si  = .view_target(., "synder_out"),
+    gff = .view_target(., "gffDB")
   ) %*>%
-    overlapMap %>% .cacher('f_si_map') %>%
+    overlapMap %>% .cacher("f_si_map") %>%
 
   # f_si_map_orf_
-  .view_target('orfgff') %>>%
+  .view_target("orfgff") %>%
     # TODO: do this in analysis_1
     { synder::as_gff(., id=GenomicRanges::mcols(.)$seqid) } %>%
     rmonad::funnel(
-      si  = .view_target('synder_out'),
+      si  = .view_target("synder_out"),
       gff = .
     ) %*>% overlapMap %>% .cacher("f_si_map_orf") %>%
 
   # - align query protein against target genes in the SI
   rmonad::funnel(
-    queseq  = .view_focal(., 'faa'),
-    tarseq  = .view_target(., 'faa'),
-    map     = .view_target(., 'f_si_map'),
+    queseq  = .view_focal(., "faa"),
+    tarseq  = .view_target(., "faa"),
+    map     = .view_target(., "f_si_map"),
     queries = rmonad::view(., gene_tag),
     group   = species,
     label   = "aa2aa_aln" #TODO: probably not necessary
-  ) %*>% align_by_map %>% .cacher('aa2aa') %>%
+  ) %*>% align_by_map %>% .cacher("aa2aa") %>%
 
   # # Run the exact test above, but with the query indices scrambled. For a
   # # reasonably sized genome, there should be very few hits (I should do the
@@ -162,13 +162,13 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
 
   # - align query protein against ORFs in genomic intervals in SI
   rmonad::funnel(
-    queseq  = .view_focal(., 'faa'),
-    tarseq  = .view_target(., 'orffaa'),
-    map     = .view_target(., 'f_si_map_orf'),
+    queseq  = .view_focal(., "faa"),
+    tarseq  = .view_target(., "orffaa"),
+    map     = .view_target(., "f_si_map_orf"),
     queries = rmonad::view(., gene_tag),
     group   = species,
     label   = "aa2orf_aln" #TODO: probably not necessary
-  ) %*>% align_by_map %>% .cacher('aa2orf') %>%
+  ) %*>% align_by_map %>% .cacher("aa2orf") %>%
 
   # rand_aa2orf_ <- rmonad::funnel(
   #   queseq  = f_faa_,
@@ -179,8 +179,8 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
 
   # transorf_map_
   rmonad::funnel(
-    transorfgff = .view_target('transorfgff'),
-    f_si_map = .view_target('f_si_map') 
+    transorfgff = .view_target("transorfgffDB"),
+    f_si_map = .view_target("f_si_map") 
   ) %*>% {
     transorfgff %>%
     {
@@ -190,22 +190,22 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
         stringsAsFactors=FALSE
       )
     } %>%
-    merge(f_si_map, by.x='seqid', by.y='target') %>%
+    merge(f_si_map, by.x="seqid", by.y="target") %>%
     {
       data.frame(
         query = .$query,
         target = .$orfid,
-        type = 'transorf',
+        type = "transorf",
         stringsAsFactors=FALSE
       )
     }
-  } %>% .cacher('f_si_map_transorf') %>%
+  } %>% .cacher("f_si_map_transorf") %>%
 
   # aa2transorf - align query protein against ORFs in transcripts in the SI
   rmonad::funnel(
-    queseq  = .view_focal(., 'faa'),
-    tarseq  = .view_target(., 'transorfaa'),
-    map     = .view_target(., 'f_si_map_transorf'),
+    queseq  = .view_focal(., "faa"),
+    tarseq  = .view_target(., "transorfaa"),
+    map     = .view_target(., "f_si_map_transorf"),
     queries = rmonad::view(., gene_tag),
     group   = species,
     label   = "aa2transorf_aln"
@@ -213,9 +213,9 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
 
   # gene2genome - align query DNA sequence against the SI
   rmonad::funnel(
-    map     = .view_target('synder_out'),
-    quedna  = .view_focal('transcript_seq'), # TODO: fix this in analysis_1
-    tardna  = .view_target('genome_seq') ,
+    map     = .view_target("synder_out"),
+    quedna  = .view_focal("transcript_seq"), # TODO: fix this in analysis_1
+    tardna  = .view_target("genome_seq") ,
     queries = seqids
   ) %*>% {
 
@@ -329,15 +329,15 @@ secondary_data <- function(m, con){
     rmonad::view(m, c(tag, con@input@focal_species))
   }
 
-  m <- .view_focal(m, 'gff') %>>%
+  m <- .view_focal(m, "gffDB") %>>%
     #- GeneModels -> Transcript
     GenomicFeatures::transcripts %>%
     #- Transcipt -> TranscriptGFF
     rmonad::funnel(
-      x = .
-      seqinfo_ = .view_focal(., 'seqinfo'),
+      x = .,
+      seqinfo_ = .view_focal(., "seqinfo")
     ) %*>%
-    get_gff_from_txdb(type="mRNA") %>% cacher("?focal_gff") %>>%
+    get_gff_from_txdb(type="mRNA") %>% cacher("?focal_gffDB") %>>%
     rmonad::funnel(
       gff = .,
       qgenes = rmonad::view(., "query_genes"),
@@ -345,16 +345,16 @@ secondary_data <- function(m, con){
     ) %*>%
     query_control_gene_check
 
-  for(target_species in rmonad::get_value(m, tag='target_species')){
+  for(target_species in rmonad::get_value(m, tag="target_species")){
     m <- m %>% compare_target_to_focal(
       species  = target_species,
-      group    = 'query',
-      gene_tag = 'query_genes'
+      group    = "query",
+      gene_tag = "query_genes"
     )
     m <- m %>% compare_target_to_focal(
       species  = target_species,
-      group='control',
-      gene_tag='control_genes'
+      group="control",
+      gene_tag="control_genes"
     )
   }
 

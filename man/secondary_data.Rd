@@ -4,8 +4,12 @@
 \alias{secondary_data}
 \title{Load secondary data}
 \usage{
-secondary_data(primary_input, con)
+secondary_data(m, con)
+}
+\arguments{
+\item{m}{Rmonad pipeline from stage 2}
 }
 \description{
-Load secondary data
+Loop over all target species, produce the secondary data needed to classify
+orphans. This step will take a long time (many CPU hours).
 }

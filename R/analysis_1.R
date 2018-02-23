@@ -196,9 +196,9 @@ load_species <- function(species_name, con){
         .cacher('summary_genome') %>%
 
     # seqinfo
-    .view('genome') %>>%
+    .view('genome') %>^%
       #- _ :: Genome -> GenomeSeq
-      scanFa_trw %>>%
+      scanFa_trw %>^%
       #- _ :: Seqid -> SeqLength -> isCircular -> SpeciesName -> GenomeSeqinfo
       {GenomeInfoDb::Seqinfo(
         seqnames   = names(.),
@@ -206,12 +206,12 @@ load_species <- function(species_name, con){
         isCircular = NA,
         genome     = species_name
       )} %>%
-      .cacher('seqinfo') %>%
+      .cacher('seqinfo') %^>%
+      (function(seq, seqinfo_){ (seqinfo(seq) <- seqinfo_) }) %>%
+      .cacher('genomeSeq')
 
     # nstring and summary_nstring
-    .view('genome') %>>%
-      #- _ :: Genome -> GenomeSeq
-      scanFa_trw %>>%
+    .view('genomeSeq') %>>%
       #- _ :: GenomeSeq -> NString
       derive_nstring %>%
       .cacher('nstring') %>>%
@@ -233,9 +233,7 @@ load_species <- function(species_name, con){
       summarize_gff %>% .cacher("summary_gff") %>%
 
     # orfgff and summary_orfgff
-    .view('genome') %>>%
-      #- _ :: Genome -> GenomeSeq
-      scanFa_trw %>>%
+    .view('genomeSeq') %>>%
       #- _ :: GenomeSeq -> ORFRanges 
       derive_orfgff %>%
       .cacher('orfgff') %>>%
@@ -345,14 +343,14 @@ load_species <- function(species_name, con){
         list(format_warnings=format_translation_warning)
         Biostrings::translate(., if.fuzzy.codon="solve")
       } %>%
-      .cacher('aa') %>>% 
+      .cacher('faa') %>>% 
       #- AASeqs -> AASummary
       summarize_faa %>% .cacher('summary_aa') %>_%
       #- AASummary -> *Warning
       check_for_internal_stops %>%
 
     # aa_model_phase
-    .view('aa') %>%
+    .view('faa') %>%
       #- [Phase] -> AASeqs -> {
       #-   summary = NamedList (0 = Count, 1 = Count, 2 = Count),
       #-   incomplete_models = [Seqid]

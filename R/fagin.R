@@ -168,10 +168,10 @@ run_fagin <- function(con){
     dir.create(con@archive)
 
   } %__%
-  primary_data(con=con)   #%>>%
-  # secondary_data(con=con)    %>% cacher('secondary') %>>%
-  # tertiary_data(con=con)     %>% cacher('tertiary')  %>>%
-  # determine_labels(con=con)  %>% cacher('labels')    %>>%
-  # determine_origins(con=con) %>% cacher('origins')   %>%
-  #                                saveRDS(file.path(con@archive, "pipeline.Rda"))
+  # TODO: better names
+  primary_data(con=con)     %>%
+  secondary_data(con=con)   %>%
+  tertiary_data(con=con)    %>%
+  determine_labels(con=con) %>%
+  determine_origins(con=con)
 }

@@ -108,8 +108,6 @@ load_species <- function(species_name, con){
   "Generate, summarize and merge all derived data for one species. The only
   inputs are a genome and a GFF file of gene models."
 
-  return(as_monad(species_name))
-
   # Type descriptions
   #- SpeciesName :: character
   #- FolderPath :: character
@@ -117,7 +115,7 @@ load_species <- function(species_name, con){
   #- Transcriptome :: FaFile
   #- TranscriptomeSeq :: DNAStringSet
   #- GenomeSeq :: DNAStringSet
-  #- CDS :: DnaStringSet
+  #- CDS :: DNAStringSet
   #- GenomeSeqinfo :: Seqinfo
   #- Length :: integer | numeric
   #- Count :: integer
@@ -457,7 +455,7 @@ primary_data <- function(con){
   "
   Derive secondary data from the minimal required inputs
   
-  The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
+  The required inputs to Fagin are genome fasta files, GFFs, synteny maps, a
   species tree, and the focal species name. This function derives all required
   secondary data, but does no analysis specific to the query intervals (e.g.
   the orphan genes candidates).
@@ -488,11 +486,11 @@ primary_data <- function(con){
 
       gsub(" ", "_", .)
 
-    } %>% cacher('target_species') %>>%
-    lapply(
+    } %>% cacher('target_species') %>%
+    rmonad::loop(
       FUN = load_species,
       con = con
-    ) %>>% rmonad::combine() %__%
+    ) %__%
 
     con@input@query_gene_list %>>%
       load_gene_list %>% cacher("query_genes") %__%
@@ -501,11 +499,11 @@ primary_data <- function(con){
       load_gene_list %>% cacher("control_genes") %>%
 
     # Load synteny maps
-    view('target_species') %>>%
-    lapply(
+    rmonad::view('target_species') %>%
+    rmonad::loop(
       FUN    = load_synmap_meta,
       fspec  = con@input@focal_species,
       syndir = con@input@syn_dir
-    ) %>>% rmonad::combine()
+    )
 
 }

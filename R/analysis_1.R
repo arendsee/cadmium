@@ -194,43 +194,38 @@ load_species <- function(species_name, con){
 
   format_translation_warning <- make_format_translation_warning(species_name)
 
-  # local cacher for current target species
-  .cacher <- function(m, tag){
-    cacher(m, c(tag, species_name))
-  }
-
   .view <- function(m, tag){
-    rmonad::view(m, c(tag, species_name))
+    rmonad::view(m, tag, species_name)
   }
 
   .tag <- function(m, tag){
-    rmonad::tag(m, c(tag, species_name))
+    rmonad::tag(m, tag, species_name)
   }
 
   # genome and summary_genome
   #- _ :: SpeciesName -> FolderPath -> FilePath
   get_genome_filename(species_name, dir=con@input@fna_dir) %>%
-      .cacher("genome_filename") %>>%
+      .tag("genome_filename") %>>%
       #- _ :: FilePath -> Genome
       load_dna %>%
-        .cacher("genomeDB") %>>%
+        .tag("genomeDB") %>>%
         #- _ :: Genome -> DNASummary
         summarize_dna %>%
-        .cacher("summary_genome") %>%
+        .tag("summary_genome") %>%
 
     # seqinfo
     .view("genomeDB") %>%
-      m_db2seq(species_name) %>% .cacher('genomeSeq') %>>%
-      GenomeInfoDb::seqinfo() %>% .cacher('seqinfo') %>%
+      m_db2seq(species_name) %>% .tag('genomeSeq') %>>%
+      GenomeInfoDb::seqinfo() %>% .tag('seqinfo') %>%
 
     # nstring and summary_nstring
     .view("genomeSeq") %>>%
       #- _ :: GenomeSeq -> NString
       derive_nstring %>%
-      .cacher("nstring") %>>%
+      .tag("nstring") %>>%
       #- _ :: NString -> NStringSummary
       summarize_nstring %>%
-      .cacher("summary_nstring") %>%
+      .tag("summary_nstring") %>%
 
     .view("genomeDB") %__%
 
@@ -242,19 +237,19 @@ load_species <- function(species_name, con){
       rmonad::funnel(
         file = .,
         seqinfo_ = .view(., "seqinfo")
-      ) %*>% load_gene_models %>% .cacher("gffDB") %>>%
+      ) %*>% load_gene_models %>% .tag("gffDB") %>>%
       #- _ :: GeneModels -> GFFSummary
-      summarize_gff %>% .cacher("summary_gff") %>%
+      summarize_gff %>% .tag("summary_gff") %>%
 
     # orfgff and summary_orfgff
     .view("genomeSeq") %>>%
       #- _ :: GenomeSeq -> ORFRanges 
       derive_orfgff %>>%
       { synder::as_gff(., id=GenomicRanges::mcols(.)$seqid) } %>%
-      .cacher("orfgff") %>>%
+      .tag("orfgff") %>>%
       #- _ :: GRanges -> GRangesSummary
       summarize_granges %>%
-      .cacher("summary_orfgff") %>%
+      .tag("summary_orfgff") %>%
 
     # orffaa and summary_orffaa
     .view("genomeDB") %>%
@@ -269,9 +264,9 @@ load_species <- function(species_name, con){
         list(format_warnings=format_translation_warning)
         Biostrings::translate(., if.fuzzy.codon="solve")
       } %>%
-      .cacher("orffaa") %>>%
+      .tag("orffaa") %>>%
       #- AASeqs -> AASummary
-      summarize_faa %>% .cacher("summary_orffaa") %>%
+      summarize_faa %>% .tag("summary_orffaa") %>%
 
     # transgff
     .view("gffDB") %>>%
@@ -282,7 +277,7 @@ load_species <- function(species_name, con){
       #-   exon_rank = Int
       #- }
       GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
-      .cacher("pre_transcript") %>>%
+      .tag("pre_transcript") %>>%
       #- GeneModelList -> [Phase]
       {
 
@@ -315,7 +310,8 @@ load_species <- function(species_name, con){
           incomplete, total, species_name))
         }
 
-      } %>% .cacher("aa_model_phase") %>%
+      } %>% .tag("aa_model_phase") %>%
+
     .view("pre_transcript") %>>%
       #- GeneModelList -> GeneModelList  -- trim starts
       {
@@ -343,7 +339,7 @@ load_species <- function(species_name, con){
           relist(ori)
 
       } %>%
-      .cacher("transgffDB") %>%
+      .tag("transgffDB") %>%
 
     # aa and summary_aa
     .view("genomeDB") %>%
@@ -358,9 +354,9 @@ load_species <- function(species_name, con){
         list(format_warnings=format_translation_warning)
         Biostrings::translate(., if.fuzzy.codon="solve")
       } %>%
-      .cacher("faa") %>>% 
+      .tag("faa") %>>% 
       #- AASeqs -> AASummary
-      summarize_faa %>% .cacher("summary_aa") %>_%
+      summarize_faa %>% .tag("summary_aa") %>_%
       #- AASummary -> *Warning
       check_for_internal_stops %>%
 
@@ -378,7 +374,7 @@ load_species <- function(species_name, con){
           summary = factor(phases) %>% table,
           incomplete_models = names(aa)[phases != 0]
         )
-      } %>% .cacher("aa_model_phase") %>%
+      } %>% .tag("aa_model_phase") %>%
 
     # transfna
     .view("gffDB") %>>%
@@ -389,9 +385,9 @@ load_species <- function(species_name, con){
         x = .view(., "genomeDB"),
         transcripts = .
       ) %*>%
-      get_trans_dna %>% .cacher("transcriptomeDB") %>>%
+      get_trans_dna %>% .tag("transcriptomeDB") %>>%
       #- Transcriptome -> DNASummary
-      summarize_dna %>% .cacher("summary_transfna") %>%
+      summarize_dna %>% .tag("summary_transfna") %>%
 
     # transorfgff
     .view("transcriptomeDB") %>>%
@@ -400,10 +396,10 @@ load_species <- function(species_name, con){
       #- TranscriptomeSeq -> ORFRange
       derive_orfgff %>>%
       { synder::as_gff(., id=GenomicRanges::mcols(.)$seqid) } %>%
-      .cacher("transorfgff") %>>%
+      .tag("transorfgff") %>>%
       #- ORFRange -> GRangesSummary
       summarize_granges %>%
-      .cacher("summary_transorfgff") %>%
+      .tag("summary_transorfgff") %>%
       #- AASummary -> GRangesSummary -> *Warning
       rmonad::funnel(
         aa_summary = .view(., "summary_aa"),
@@ -412,7 +408,7 @@ load_species <- function(species_name, con){
       check_protein_transcript_match %>%
 
     .view("transcriptomeDB") %>%
-      m_db2seq(species_name) %>% .cacher("transcriptomeSeq") %>%
+      m_db2seq(species_name) %>% .tag("transcriptomeSeq") %>%
 
     # transorfaa and summary_transorfaa
     .view("transcriptomeDB") %>%
@@ -426,9 +422,9 @@ load_species <- function(species_name, con){
       {
         list(format_warnings=format_translation_warning)
         Biostrings::translate(., if.fuzzy.codon="solve")
-      } %>% .cacher("transorfaa") %>>%
+      } %>% .tag("transorfaa") %>>%
       #- AASeqs -> AASummary
-      summarize_faa %>% .cacher("summary_transorfaa")
+      summarize_faa %>% .tag("summary_transorfaa")
 
 }
 

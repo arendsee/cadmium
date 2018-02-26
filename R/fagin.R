@@ -128,8 +128,6 @@ NULL
 #' @name fagin
 NULL
 
-
-
 #' Run a Fagin analysis
 #'
 #' @export
@@ -139,7 +137,14 @@ run_fagin <- function(con){
 
   # Set the cache function. There is one cache system for TxDb objects and
   # everything else is saved as Rdata.
-  cacher <- make_fagin_cacher(con@archive, "cache")
+  options(rmonad.cache_dir = file.path(con@archive, "cache"))
+  options(rmonad.cacher = make_fagin_cacher())
+  options(rmonad.cache_maxtime = 0.5)
+
+  # TODO: make this cleaner on the rmonad side
+  # What I want to do here is make all caching and names dependent on the focal
+  # species. The following command DOES accomplish this (in rmonad v0.5.0.9009)
+  rmonad:::.set_nest_salt(rmonad:::.digest(con@input@focal_species))
 
   {
 
@@ -155,15 +160,18 @@ run_fagin <- function(con){
 
     devtools::session_info()
   
-  } %>% cacher('session_info') %__% {
+  } %>% tag('session_info') %__% {
 
     "Store the configuration"
 
     con
 
-  } %>% cacher('config') %__% {
+  } %>% tag('config') %__% {
 
-    "Create the archival directory"
+    "Create the archival directory. Warn if the directory already exists. If
+    the directory does exist, everything may be fine, so long as you are
+    continuing an analysis, not starting a new one. If you are starting a new
+    one, you should NOT use the same archive."
 
     dir.create(con@archive)
 

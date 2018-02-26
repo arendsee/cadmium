@@ -4,7 +4,7 @@
 \alias{make_fagin_cacher}
 \title{Build the cacher that will be used inside rmonad}
 \usage{
-make_fagin_cacher(archive_dir, cache_dir)
+make_fagin_cacher()
 }
 \arguments{
 \item{archive_dir}{The main archive directory}

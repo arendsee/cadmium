@@ -5,6 +5,7 @@
 \alias{summarize_numeric}
 \alias{summarize_faa}
 \alias{summarize_dna}
+\alias{summarize_phase}
 \alias{summarize_granges}
 \alias{summarize_gff}
 \alias{summarize_nstring}
@@ -16,6 +17,8 @@ summarize_numeric(x)
 summarize_faa(x)
 
 summarize_dna(x)
+
+summarize_phase(phase, aa)
 
 summarize_granges(x)
 

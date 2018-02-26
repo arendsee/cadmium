@@ -335,6 +335,18 @@ faa_summary <- setClass(
   contains = "seq_summary"
 )
 
+#' CDS phase summary 
+#'
+#' @slot initial_residue   integer
+#' @slot final_residue     integer
+phase_summary <- setClass(
+  "phase_summary",
+  representation(
+    table = "table",
+    incomplete_modesl = "character"
+  )
+)
+
 #' Summary of a GFF file
 #'
 #' @slot seqstats    data.frame

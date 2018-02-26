@@ -82,6 +82,20 @@ summarize_dna <- function(x){
   )
 }
 
+
+#' @rdname fagin_summary
+#' @export
+summarize_phase <- function(phase, aa){
+  # This should always be true. If it is not, there is a logical problem
+  # in the code, not the data.
+  stopifnot(length(aa) == length(phases))
+  new(
+    "phase_summary",
+    summary = factor(phases) %>% table,
+    incomplete_models = names(aa)[phases != 0]
+  )
+}
+
 #' @rdname fagin_summary
 #' @export
 summarize_granges <- function(x){

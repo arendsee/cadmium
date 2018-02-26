@@ -103,6 +103,156 @@ check_protein_transcript_match <- function(aa_summary, trans_summary){
   }
 }
 
+get_proteins <- function(gffDB, genomeDB, species_name){
+
+  "Take a GFF database object (TxDb) and a genomeDB (FaFile) and build an
+  rmonad graph containing the tagged fields 'faa' and 'summary_faa', the
+  annotated protein sequences and the protein summary object, respectively."
+
+  .view <- function(m, tag) rmonad::view(m, tag, species_name)
+  .tag  <- function(m, tag) rmonad::tag( m, tag, species_name)
+
+  #- GeneModels ->
+  #- GeneModelList {
+  #-   cds_id    = Int,
+  #-   cds_name  = String,
+  #-   exon_rank = Int
+  #- }
+  gffDB %>>%
+    GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
+    .tag("cdsRangeList") %>>%
+
+    #- GeneModelList -> [Phase]
+    {
+
+      "Find the phase of the first CDS in each model. This will be zero if the
+      model is complete."
+
+
+      # NOTE: in load_gene_models, I set the 'cds_name' to 'phase'.
+      # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
+      # So the code:
+      # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
+      # does not work. So instead I have to do the following, which is vastly slower:
+      sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
+
+    } %>_%
+    #- [Phase] -> *Warning
+    {
+
+      "Warn if there are any incomplete models"
+
+      incomplete <- sum(. != 0)
+      total <- length(.)
+
+      if(incomplete > 0){
+        warning(sprintf(
+        "%s of %s gene models in %s are incomplete (the phase of the first CDS is
+        not equal to 0). This does not include partial gene models that happen to
+        begin in-phase. Details are recorded in the species_summary field
+        model_phases.",
+        incomplete, total, species_name))
+      }
+
+    } %>% .tag("aa_model_phase") %>%
+
+  .view("cdsRangeList") %>>%
+    #- GeneModelList -> GeneModelList  -- trim starts
+    {
+
+      "Offset start based on phase.
+      
+      WARNING: Abominable hack. To get around the GenomicFeatures issue
+      reported [here](https://support.bioconductor.org/p/101245/), I encode
+      the phase information in the CDS name. Here I extract that data and
+      offset the reading frame as needed."
+
+      ori <- .
+
+      unlist(ori) %>%
+        {
+          meta <- GenomicRanges::mcols(.)
+          meta$phase <- as.integer(meta$cds_name)
+          meta <- meta %>% as.data.frame %>%
+            dplyr::group_by(cds_id) %>%
+            dplyr::mutate(last_exon = exon_rank == max(exon_rank)) %>%
+            as.data.frame
+
+          GenomicRanges::start(.) <- ifelse(
+            meta$exon_rank == 1 & GenomicRanges::strand(.) == "+",
+            GenomicRanges::start(.) + meta$phase,
+            GenomicRanges::start(.)
+          )
+          GenomicRanges::end(.) <- ifelse(
+            meta$last_exon &  GenomicRanges::strand(.) == "-",
+            GenomicRanges::end(.) - meta$phase,
+            GenomicRanges::end(.)
+          )
+          GenomicRanges::mcols(.)$type <- "exon" # actually CDS, but
+                                                 # `extractTranscriptSeqs`
+                                                 # wants exons
+          .
+        } %>%
+        relist(ori)
+
+    } %>>% {
+
+      "Remove any entries that have chromosome name. If there are any, raise a
+      warning."
+
+      gff <- .
+
+      if(any(is.na(names(gff)))){
+        n_cds_with_unnamed_mRNA <- gff[is.na(names(gff))] %>% length
+        total <- GenomicRanges::seqnames(gff) %>% length
+        msg <- paste(
+          "%s out of %s have no mRNA name associated with them. This may",
+          "be bad. All of these CDS will be removed from the analysis"
+        )
+        warning(sprintf(msg, n_cds_with_unnamed_mRNA, total))
+        gff <- gff[!is.na(names(gff))]
+      }
+
+      gff
+
+    } %>%
+    .tag("cdsRanges") %>%
+
+    #- Genome -> GeneModelList -> CDS
+    rmonad::funnel(
+      x = genomeDB,
+      transcripts = .
+    ) %*>%
+    GenomicFeatures::extractTranscriptSeqs %>>%
+    #- CDS -> AASeqs
+    {
+      list(format_warnings=format_translation_warning)
+      Biostrings::translate(., if.fuzzy.codon="solve")
+    } %>%
+    .tag("faa") %>>% 
+    {
+      "Check for zero length proteins. If any are found, raise and warning and
+      then remove them."
+
+      aa <- .
+
+      if(any(GenomicRanges::width(aa) == 0)){
+        zero_width_models <- names(aa)[GenomicRanges::width(aa) == 0]
+        bad <- length(zero_width_models)
+        total <- length(aa)
+        msg <- paste("%s or %s mRNAs code for a 0 length protein. This is bad.",
+                     "The following mRNA IDs are being removed: %s")
+        warning(sprintf(msg, bad, total, paste(zero_width_models, collapse=", ")))
+      }
+
+      aa[GenomicRanges::width(aa) > 0]
+    } %>>%
+    #- AASeqs -> AASummary
+    summarize_faa %>% .tag("summary_aa") %>_%
+    #- AASummary -> *Warning
+    check_for_internal_stops
+}
+
 #- _ :: Genome -> GenomeSeq  -- with seqinfo
 m_db2seq <- function(m, species_name){
   m %>>% scanFa_trw %>%
@@ -268,97 +418,10 @@ load_species <- function(species_name, con){
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_orffaa") %>%
 
-    # transgff
-    .view("gffDB") %>>%
-      #- GeneModels ->
-      #- GeneModelList {
-      #-   cds_id    = Int,
-      #-   cds_name  = String,
-      #-   exon_rank = Int
-      #- }
-      GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
-      .tag("pre_transcript") %>>%
-      #- GeneModelList -> [Phase]
-      {
-
-        "Find the phase of the first CDS in each model. This will be zero if the
-        model is complete."
-
-
-        # NOTE: in load_gene_models, I set the 'cds_name' to 'phase'.
-        # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
-        # So the code:
-        # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
-        # does not work. So instead I have to do the following, which is vastly slower:
-        sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
-
-      } %>_%
-      #- [Phase] -> *Warning
-      {
-
-        "Warn if there are any incomplete models"
-
-        incomplete <- sum(. != 0)
-        total <- length(.)
-
-        if(incomplete > 0){
-          warning(sprintf(
-          "%s of %s gene models in %s are incomplete (the phase of the first CDS is
-          not equal to 0). This does not include partial gene models that happen to
-          begin in-phase. Details are recorded in the species_summary field
-          model_phases.",
-          incomplete, total, species_name))
-        }
-
-      } %>% .tag("aa_model_phase") %>%
-
-    .view("pre_transcript") %>>%
-      #- GeneModelList -> GeneModelList  -- trim starts
-      {
-
-        "Offset start based on phase.
-        
-        WARNING: Abominable hack. To get around the GenomicFeatures issue
-        reported [here](https://support.bioconductor.org/p/101245/), I encode
-        the phase information in the CDS name. Here I extract that data and
-        offset the reading frame as needed."
-
-        ori <- .
-
-        unlist(ori) %>%
-          {
-            meta <- GenomicRanges::mcols(.)
-            meta$phase <- as.integer(meta$cds_name)
-            GenomicRanges::start(.) <- ifelse(
-              meta$exon_rank == 1,
-              GenomicRanges::start(.) + meta$phase,
-              GenomicRanges::start(.)
-            )
-            .
-          } %>%
-          relist(ori)
-
-      } %>%
-      .tag("transgffDB") %>%
-
-    # aa and summary_aa
-    .view("genomeDB") %>%
-      #- Genome -> GeneModelList -> CDS
-      rmonad::funnel(
-        x = .,
-        transcripts = .view(., "transgffDB")
-      ) %*>%
-      GenomicFeatures::extractTranscriptSeqs %>>%
-      #- CDS -> AASeqs
-      {
-        list(format_warnings=format_translation_warning)
-        Biostrings::translate(., if.fuzzy.codon="solve")
-      } %>%
-      .tag("faa") %>>% 
-      #- AASeqs -> AASummary
-      summarize_faa %>% .tag("summary_aa") %>_%
-      #- AASummary -> *Warning
-      check_for_internal_stops %>%
+    rmonad::funnel(
+      gffDB = .views(., 'gffDB'),
+      genomeDB = .view(., 'genomeDB')
+    ) %*>% get_proteins(species_name=species_name) %>%
 
     # aa_model_phase
     .view("faa") %>%

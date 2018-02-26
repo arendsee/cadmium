@@ -1,4 +1,4 @@
-translate <- function(aa, species){
+translate <- function(dna, species_name){
 
   "_ :: DNAStringSet -> AAStringSet   -- Species for warning annotation
 
@@ -10,7 +10,7 @@ translate <- function(aa, species){
 
   list(format_warnings=make_format_translation_warning(species_name))
 
-  Biostrings::translate(aa, if.fuzzy.codon="solve")
+  Biostrings::translate(dna, if.fuzzy.codon="solve")
 }
 
 

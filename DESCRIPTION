@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.27.2),
-    rmonad (>= 0.5.0.9010),
+    rmonad (>= 0.5.0.9011),
     methods,
     devtools,
     magrittr,

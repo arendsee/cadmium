@@ -74,7 +74,11 @@ load_species <- function(species_name, con){
 
   # genome and summary_genome
   #- _ :: SpeciesName -> FolderPath -> FilePath
-  get_genome_filename(species_name, dir=con@input@fna_dir) %>%
+  get_readable_filename(
+    species_name,
+    dir = con@input@fna_dir, 
+    ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
+  ) %>%
       .tag("genome_filename") %>>%
       #- _ :: FilePath -> Genome
       load_dna %>%
@@ -101,7 +105,11 @@ load_species <- function(species_name, con){
 
     # gff and summary_gff
     #- _ :: SpeciesName -> FolderPath -> FilePath
-    get_gff_filename(species_name, dir=con@input@gff_dir) %>%
+    get_readable_filename(
+      species_name,
+      dir = con@input@gff_dir,
+      ext = c("gff3","gff")
+    ) %>%
       .tag("gff_filename") %>%
       #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
       rmonad::funnel(

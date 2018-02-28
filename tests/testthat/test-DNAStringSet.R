@@ -1,23 +1,85 @@
 context("test `DNAStringSet -> a` functions")
 
 cds_sample <- Biostrings::DNAStringSet(c(
-  'ATGTTTTAA',
-  'ATG',
-  'TAA',
-  'TAATTT',
-  'NNN'
+  a='ATGTTTTAA',
+  b='ATG',
+  c='TAA',
+  d='TAATTT',
+  e='NNN'
 ))
 
 cds_sample_ambiguous <- Biostrings::DNAStringSet('CCN')
 
 test_that("translate works", {
   expect_equal(
-    translate(cds_sample), Biostrings::AAStringSet(c("MF*", "M", "*", "*F", "X"))
+    translate(cds_sample), Biostrings::AAStringSet(c(a="MF*", b="M", c="*", d="*F", e="X"))
   )
   expect_equal(
-    translate(cds_sample_ambiguous), Biostrings::AAStringSet(c("P"))
+    translate(cds_sample_ambiguous), Biostrings::AAStringSet("P")
   )
   expect_warning(
-    Biostrings::DNAStringSet(c(x="A")) %>>% translate(species_name='unicorn')
+    Biostrings::DNAStringSet(c(x="A")) %>%
+      fagin:::translate(species_name='unicorn'),
+    "last base was ignored"
+  )
+})
+
+test_that("filter_with_warnings__zero_length_proteins", {
+  expect_warning(
+    Biostrings::AAStringSet(c("GANDALF", "")) %>%
+      filter_with_warnings__zero_length_proteins
+  )
+  expect_equal(
+    Biostrings::AAStringSet(c("GANDALF", "")) %>%
+      filter_with_warnings__zero_length_proteins,
+    Biostrings::AAStringSet(c("GANDALF"))
+  )
+})
+
+test_that("Check nstrings", {
+  expect_equal(
+    cds_sample %>% derive_nstring %>% top_class,
+    "GRanges"
+  )
+  expect_equal(cds_sample %>% derive_nstring %>% length, 1)
+  expect_equal(
+    cds_sample                %>%
+    derive_nstring            %>%
+    GenomicRanges::seqnames() %>%
+    as.character, "e"
+  )
+  expect_equal(
+    cds_sample %>% derive_nstring %>% summarize_nstring %>% unname,
+    as.vector(summary(3))
+  )
+})
+
+orfgff <- NULL
+
+# TODO: make a simple test, ensure it works CORRECTLY
+# Because the current implementation is dead wrong
+test_that("ngORF prediction runs", {
+  expect_equal(
+    {
+      orfgff <<- load_dna(file.path("tiny", "unicorn.fna")) %>%
+        convert_FaFile_to_XStringSet %>%
+        derive_orfgff
+      top_class(orfgff)
+    },
+    "GRanges"  
+  ) 
+})
+
+test_that("convert_GRanges_to_SynderGFF", {
+  expect_true(identical(
+    GenomicRanges::ranges(convert_GRanges_to_SynderGFF(orfgff)),
+    GenomicRanges::ranges(orfgff)
+  ))
+})
+
+test_that("Can summarize GRanges", {
+  expect_equal(
+    summarize_granges(orfgff) %>% top_class,
+    "granges_summary"
   )
 })

@@ -30,3 +30,8 @@
 # .typecheck_GFFSummary
 # .typecheck_NumericSummary
 # .typecheck_GRangesSummary
+
+# internal function, mustly for testing
+top_class <- function(x){
+  class(x)[1]
+}

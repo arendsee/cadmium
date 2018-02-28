@@ -1,7 +1,7 @@
 context("FaFile types")
 
-fna <- file.path("tiny", "unicorn.fna")
-fai <- file.path("tiny", "unicorn.fna.fai")
+fna <- system.file("yeast", "fna", "Saccharomyces_arboricola.fna", package='fagin')
+fai <- paste0(fna, ".fai")
 
 unlink(fai)
 test_that("load_dna builds DB and returns", {

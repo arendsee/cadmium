@@ -1,5 +1,8 @@
 context("test `DNAStringSet -> a` functions")
 
+fna_file <- system.file("yeast", "fna", "Saccharomyces_arboricola.fna", package='fagin')
+gff_file <- system.file("yeast", "gff", "Saccharomyces_arboricola.gff", package='fagin')
+
 cds_sample <- Biostrings::DNAStringSet(c(
   a='ATGTTTTAA',
   b='ATG',
@@ -61,7 +64,7 @@ orfgff <- NULL
 test_that("ngORF prediction runs", {
   expect_equal(
     {
-      orfgff <<- load_dna(file.path("tiny", "unicorn.fna")) %>%
+      orfgff <<- load_dna(fna_file) %>%
         convert_FaFile_to_XStringSet %>%
         derive_orfgff
       top_class(orfgff)

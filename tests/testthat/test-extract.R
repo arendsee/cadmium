@@ -1,6 +1,9 @@
 context("protein extraction from genome")
 
-fna <- load_dna(file.path("tiny", "unicorn.fna"))
+fna_file <- system.file("yeast", "fna", "Saccharomyces_arboricola.fna", package='fagin')
+gff_file <- system.file("yeast", "gff", "Saccharomyces_arboricola.gff", package='fagin')
+
+fna <- load_dna(fna_file)
 gff <- derive_orfgff(convert_FaFile_to_XStringSet(fna))
 cds <- NULL
 

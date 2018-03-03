@@ -125,7 +125,7 @@ extract_phase_from_GRangesList <- function(grlist){
   # So the code:
   # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
   # does not work. So instead I have to do the following, which is vastly slower:
-  phase <- sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
+  phase <- sapply(grlist, function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
 
   if(! setequal(phase, 0:2)){
     stop("Expected phase information, with values from [0,1,2]")

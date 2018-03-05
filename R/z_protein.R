@@ -50,7 +50,7 @@ trim_CDS_with_non_zero_phase <- function(grlist){
   meta <- GenomicRanges::mcols(gr)
 
   # Assert that the CDS name is in the set {0,1,2}
-  if(! setequal(meta$cds_name, 0:2)){
+  if(! all(meta$cds_name %in% 0:2)){
     stop("Expected the `cds_name` field to be overloaded with phase info",
          "[0,1,2]. But it is not. This is a bug in the code.")
   }
@@ -62,18 +62,18 @@ trim_CDS_with_non_zero_phase <- function(grlist){
     as.data.frame
 
   GenomicRanges::start(gr) <- ifelse(
-    meta$exon_rank == 1 & GenomicRanges::strand(.) == "+",
+    meta$exon_rank == 1 & GenomicRanges::strand(gr) == "+",
     GenomicRanges::start(gr) + meta$phase,
     GenomicRanges::start(gr)
   )
   GenomicRanges::end(gr) <- ifelse(
-    meta$last_exon &  GenomicRanges::strand(gr) == "-",
+    meta$last_exon & GenomicRanges::strand(gr) == "-",
     GenomicRanges::end(gr) - meta$phase,
     GenomicRanges::end(gr)
   )
   GenomicRanges::mcols(gr)$type <- "exon" # actually CDS, but
-                                         # `extractTranscriptSeqs`
-                                         # wants exons
+                                          # `extractTranscriptSeqs`
+                                          # wants exons
 
   relist(gr, grlist)
 }
@@ -91,7 +91,7 @@ check_for_incomplete_models <- function(phases, species_name){
 
   "Warn if there are any incomplete models"
 
-  if(! setequal(phases, 0:2)){
+  if(! all(phases %in% 0:2)){
     stop("Expected phase information, with values from [0,1,2]")
   }
 
@@ -127,7 +127,7 @@ extract_phase_from_GRangesList <- function(grlist){
   # does not work. So instead I have to do the following, which is vastly slower:
   phase <- sapply(grlist, function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
 
-  if(! setequal(phase, 0:2)){
+  if(! all(phase %in% 0:2)){
     stop("Expected phase information, with values from [0,1,2]")
   }
 
@@ -206,9 +206,9 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
     GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
     .tag("cdsRangeList") %>>%
     #- GeneModelList -> [Phase]
-    extract_phase_from_GRangesList %>_%
+    extract_phase_from_GRangesList %>% .tag("aa_model_phase") %>_%
     #- [Phase] -> *Warning
-    check_for_incomplete_models %>% .tag("aa_model_phase") %>%
+    check_for_incomplete_models(species_name) %>%
 
   .view("cdsRangeList") %>>%
     #- GeneModelList -> GeneModelList

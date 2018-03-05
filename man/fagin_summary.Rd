@@ -18,7 +18,7 @@ summarize_faa(x)
 
 summarize_dna(x)
 
-summarize_phase(phase, aa)
+summarize_phase(phases, aa)
 
 summarize_granges(x)
 

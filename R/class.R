@@ -343,7 +343,7 @@ phase_summary <- setClass(
   "phase_summary",
   representation(
     table = "table",
-    incomplete_modesl = "character"
+    incomplete_models = "character"
   )
 )
 

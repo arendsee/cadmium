@@ -75,7 +75,7 @@ trim_CDS_with_non_zero_phase <- function(grlist){
                                           # `extractTranscriptSeqs`
                                           # wants exons
 
-  relist(gr, grlist)
+  BiocGenerics::relist(gr, grlist)
 }
 
 
@@ -135,7 +135,7 @@ extract_phase_from_GRangesList <- function(grlist){
 }
 
 
-check_for_internal_stops <- function(aa_summary){
+check_for_internal_stops <- function(aa_summary, species_name){
 
   "Warn if any proteins have internal stop codons"
 
@@ -227,5 +227,5 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
     #- AASeqs -> AASummary
     summarize_faa %>% .tag("summary_aa") %>_%
     #- AASummary -> *Warning
-    check_for_internal_stops
+    check_for_internal_stops(species_name)
 }

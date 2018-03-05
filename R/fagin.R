@@ -141,10 +141,10 @@ run_fagin <- function(con){
   options(rmonad.cacher = make_fagin_cacher())
   options(rmonad.cache_maxtime = 0.5)
 
-  # TODO: make this cleaner on the rmonad side
-  # What I want to do here is make all caching and names dependent on the focal
-  # species. The following command DOES accomplish this (in rmonad v0.5.0.9009)
-  rmonad:::.set_nest_salt(rmonad:::.digest(con@input@focal_species))
+  # What I want to do here is make all caching dependent on the input
+  # configuration. The following command DOES accomplish this (in rmonad
+  # v0.5.0.9009)
+  rmonad:::.set_nest_salt(rmonad:::.digest(con))
 
   {
 
@@ -159,7 +159,7 @@ run_fagin <- function(con){
     importance are the versions of `synder` and `rmonad`."
 
     devtools::session_info()
-  
+
   } %>% tag('session_info') %__% {
 
     "Store the configuration"

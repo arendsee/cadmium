@@ -356,7 +356,7 @@ phase_summary <- setClass(
 gff_summary <- setClass(
   "gff_summary",
   representation(
-    seqstats    = "data.frame",
+    table       = "data.frame",
     mRNA_length = "numeric_summary",
     CDS_length  = "numeric_summary",
     exon_length = "numeric_summary"
@@ -370,8 +370,8 @@ gff_summary <- setClass(
 granges_summary <- setClass(
   "granges_summary",
   representation(
-    seqstats = "data.frame",
-    width    = "numeric_summary"
+    table = "data.frame",
+    width = "numeric_summary"
   )
 )
 

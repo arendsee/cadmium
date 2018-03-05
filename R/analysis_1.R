@@ -78,17 +78,16 @@ load_species <- function(species_name, con){
     species_name,
     dir = con@input@fna_dir, 
     ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
-  ) %>%
-      .tag("genome_filename") %>>%
-      #- _ :: FilePath -> Genome
-      load_dna %>%
-        .tag("genomeDB") %>>%
-        #- _ :: Genome -> DNASummary
-        summarize_dna %>%
-        .tag("summary_genome") %>%
+  )  %>>%
+    #- _ :: FilePath -> Genome
+    load_dna %>%
+      .tag("genomeDB") %>>%
+      #- _ :: Genome -> DNASummary
+      summarize_dna %>%
+      .tag("summary_genome") %>%
 
     # seqinfo
-    .view("genomeDB") %>%
+    .view("genomeDB") %>>%
       convert_FaFile_to_XStringSet %>% .tag('genomeSeq') %>>%
       GenomeInfoDb::seqinfo() %>% .tag('seqinfo') %>%
 
@@ -110,7 +109,6 @@ load_species <- function(species_name, con){
       dir = con@input@gff_dir,
       ext = c("gff3","gff")
     ) %>%
-      .tag("gff_filename") %>%
       #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
       rmonad::funnel(
         file = .,
@@ -129,23 +127,21 @@ load_species <- function(species_name, con){
       summarize_granges %>%
       .tag("summary_orfgff") %>%
 
-    # orffaa and summary_orffaa
-    .view("genomeDB") %>%
-      #- Genome -> ORFRanges -> DNASeqs
-      rmonad::funnel(
-        dna = .,
-        gff = .view(., "orfgff")
-      ) %*>%
+    #- Genome -> ORFRanges -> DNASeqs
+    {rmonad::funnel(
+      dna = .view(., "genomeDB"),
+      gff = .view(., "orfgff")
+    )} %*>%
       extractWithComplements %>>%
       translate(species_name) %>%
       .tag("orffaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_orffaa") %>%
 
-    rmonad::funnel(
-      gffDB = .views(., 'gffDB'),
-      genomeDB = .view(., 'genomeDB')
-    ) %*>% m_get_proteins(species_name=species_name) %>%
+    {rmonad::funnel(
+      gffDB = .view(., 'gffDB'),
+      genomeDB = .view(., "genomeDB")
+    )} %*>% m_get_proteins(species_name=species_name) %>%
 
     # aa_model_phase
     .view("faa") %>%
@@ -180,22 +176,20 @@ load_species <- function(species_name, con){
       #- ORFRange -> GRangesSummary
       summarize_granges %>% .tag("summary_transorfgff") %>%
       #- AASummary -> GRangesSummary -> *Warning
-      rmonad::funnel(
+      {rmonad::funnel(
         aa_summary = .view(., "summary_aa"),
-        trans_summary = .,
-      ) %*>%
+        trans_summary = .view(., "summary_transorfgff")
+      )} %*>%
       check_protein_transcript_match %>%
 
-    .view("transcriptomeDB") %>%
+    .view("transcriptomeDB") %>>%
       convert_FaFile_to_XStringSet %>% .tag("transcriptomeSeq") %>%
 
-    # transorfaa and summary_transorfaa
-    .view("transcriptomeDB") %>%
-      #- Transcriptome -> ORFRange -> CDS
-      rmonad::funnel(
-        dna = .,
-        gff = .view(., "transorfgff")
-      ) %*>%
+    #- Transcriptome -> ORFRange -> CDS
+    {rmonad::funnel(
+      dna = .view(., "transcriptomeDB"),
+      gff = .view(., "transorfgff")
+    )} %*>%
       extractWithComplements %>>%
       #- CDS -> AASeqs
       translate(species_name) %>% .tag("transorfaa") %>>%
@@ -223,11 +217,11 @@ load_synmap_meta <- function(tseqinfo, fseqinfo, target_species, focal_species, 
     focal_name  = focal_species,
     target_name = target_species,
     dir         = syndir
-  ) %>% cacher(c("synmap_file", target_species)) %>>%
+  ) %>% rmonad::tag(c("synmap_file", target_species)) %>>%
     synder::read_synmap(
       seqinfo_a = fseqinfo,
       seqinfo_b = tseqinfo
-    ) %>% cacher(c("synmap", target_species)) %>>%
+    ) %>% rmonad::tag(c("synmap", target_species)) %>>%
     summarize_syn %>% cacher(c("synmap_summary", target_species))
 }
 

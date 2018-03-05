@@ -45,11 +45,12 @@ test_that("m_get_proteins works", {
 grlist <- get_value(m_prots, tag='cdsRangeList')[[1]]
 test_that("trim_CDS_with_non_zero_phase", {
   expect_equal(class(grlist), class(trim_CDS_with_non_zero_phase(grlist))) 
+  expect_equal(names(grlist), names(trim_CDS_with_non_zero_phase(grlist))) 
 })
 
 phases <- NULL
 test_that("phase summaries are proper", {
-  test_silent(
+  expect_silent(
     phases <<- rmonad::funnel(
       phases = rmonad::view(m_prots, "aa_model_phase/Saccharomyces_paradoxus"),
       aa = rmonad::view(m_prots, "faa/Saccharomyces_paradoxus")

@@ -56,10 +56,13 @@ trim_CDS_with_non_zero_phase <- function(grlist){
   }
 
   meta$phase <- as.integer(meta$cds_name)
+  meta$seqid <- names(gr)
   meta <- meta %>% as.data.frame %>%
-    dplyr::group_by(cds_id) %>%
+    dplyr::group_by(seqid) %>%
+    dplyr::mutate(n = length(exon_rank)) %>%
     dplyr::mutate(last_exon = exon_rank == max(exon_rank)) %>%
     as.data.frame
+  meta$seqid <- NULL
 
   GenomicRanges::start(gr) <- ifelse(
     meta$exon_rank == 1 & GenomicRanges::strand(gr) == "+",

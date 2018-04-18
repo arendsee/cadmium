@@ -38,11 +38,11 @@ test_that("m_get_proteins works", {
       genomeDB     = genomeDB,
       species_name = "Saccharomyces_paradoxus"
     )
-    get_OK(m_prots, m_prots@head)
+    rmonad::get_OK(m_prots, m_prots@head)
   })
 })
 
-grlist <- get_value(m_prots, tag='cdsRangeList')[[1]]
+grlist <- rmonad::get_value(m_prots, tag='cdsRangeList')[[1]]
 test_that("trim_CDS_with_non_zero_phase", {
   expect_equal(class(grlist), class(trim_CDS_with_non_zero_phase(grlist))) 
   expect_equal(names(grlist), names(trim_CDS_with_non_zero_phase(grlist))) 

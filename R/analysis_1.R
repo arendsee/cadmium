@@ -39,7 +39,7 @@ load_species <- function(species_name, con){
   #-   }
   #- }
   #- GFFSummary :: {
-  #-   seqstats    = data.frame,
+  #-   table       = data.frame,
   #-   mRNA_length = NumericSummary,
   #-   CDS_length  = NumericSummary,
   #-   exon_length = NumericSummary
@@ -56,7 +56,7 @@ load_species <- function(species_name, con){
   #-   density = Density
   #- }
   #- GRangesSummary :: {
-  #-   seqstats = Table {
+  #-   table = Table {
   #-     seqid = Seqid,
   #-     min   = Int,
   #-     max   = Int
@@ -133,7 +133,7 @@ load_species <- function(species_name, con){
       gff = .view(., "orfgff")
     )} %*>%
       extractWithComplements %>>%
-      translate(species_name) %>%
+      translate(label=species_name) %>%
       .tag("orffaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_orffaa") %>%
@@ -192,7 +192,7 @@ load_species <- function(species_name, con){
     )} %*>%
       extractWithComplements %>>%
       #- CDS -> AASeqs
-      translate(species_name) %>% .tag("transorfaa") %>>%
+      translate(label=species_name) %>% .tag("transorfaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_transorfaa")
 

@@ -11,7 +11,7 @@ Summary of a GFF file
 \section{Slots}{
 
 \describe{
-\item{\code{seqstats}}{data.frame}
+\item{\code{table}}{data.frame}
 
 \item{\code{mRNA_length}}{numeric_summary}
 

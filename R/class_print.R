@@ -184,8 +184,8 @@ setMethod("show", "faa_summary",
 
 print.gff_summary <- function(x, ...){
   cat('Summary of a "gff_summary" object\n')
-  cat('Slot "seqstats"\n')
-  prettyTable(x@seqstats)
+  cat('Slot "table"\n')
+  prettyTable(x@table)
   cat('Slot "mRNA_length"\n')
   print(x@mRNA_length)
   cat('Slot "CDS_length"\n')

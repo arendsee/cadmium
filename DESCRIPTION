@@ -15,6 +15,7 @@ Imports:
     rmonad (>= 0.5.0),
     methods,
     devtools,
+    glue,
     magrittr,
     data.tree,
     CNEr (>= 1.12.1),

@@ -14,6 +14,7 @@ library(fagin)
 library(rmonad)
 library(knitr)
 library(magrittr)
+# The default config uses the sample data for yeast
 con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
 # species_name=con@input@focal_species

@@ -1,4 +1,4 @@
-filter_with_warning__unnamed_entries <- function(gr){
+filter_with_warning__unnamed_entries <- function(gr, label=NULL){
 
   "Check for unnamed entries in a GRanges object. If there are any, remove them
   and raise a warning."
@@ -6,11 +6,11 @@ filter_with_warning__unnamed_entries <- function(gr){
   if(any(is.na(names(gr)))){
     n_cds_with_unnamed_mRNA <- gr[is.na(names(gr))] %>% length
     total <- GenomicRanges::seqnames(gr) %>% length
-    msg <- paste(
-      "%s out of %s entries have no name associated with them. This may",
-      "be bad. All of these entries will be removed from the analysis"
-    )
-    warning(sprintf(msg, n_cds_with_unnamed_mRNA, total))
+    warning(glue::glue(sep=" ",
+      "{.label(label)}: {n_cds_with_unnamed_mRNA} out of {total} entries",
+      "have no name associated with them. This may be bad.",
+      "All of these entries will be removed from the analysis"
+    ))
     gr <- gr[!is.na(names(gr))]
   }
 

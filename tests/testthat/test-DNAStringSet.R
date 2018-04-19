@@ -21,9 +21,7 @@ test_that("translate works", {
     translate(cds_sample_ambiguous), Biostrings::AAStringSet("P")
   )
   expect_warning(
-    Biostrings::DNAStringSet(c(x="A")) %>%
-      fagin:::translate(species_name='unicorn'),
-    "last base was ignored"
+    fagin:::translate(Biostrings::DNAStringSet(c(x="A")), label='unicorn')
   )
 })
 

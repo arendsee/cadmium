@@ -95,13 +95,13 @@ config_input <- setClass(
     control_gene_list = "character"
   ),
   prototype(
-    gff_dir           = "INPUT/gff",
-    fna_dir           = "INPUT/fna",
-    syn_dir           = "INPUT/syn",
-    tree              = "INPUT/tree",
+    gff_dir           = system.file("yeast", "gff", package='fagin'),
+    fna_dir           = system.file("yeast", "fna", package='fagin'),
+    syn_dir           = system.file("yeast", "syn", package='fagin'),
+    tree              = system.file("yeast", "tree", package='fagin'),
     focal_species     = "Saccharomyces_cerevisiae",
-    query_gene_list   = "INPUT/orphan-list.txt",
-    control_gene_list = "INPUT/control-list.txt"
+    query_gene_list   = system.file("yeast", "orphan-list.txt", package='fagin'),
+    control_gene_list = system.file("yeast", "control-list.txt", package='fagin')
   )
 )
 
@@ -349,7 +349,7 @@ phase_summary <- setClass(
 
 #' Summary of a GFF file
 #'
-#' @slot seqstats    data.frame
+#' @slot table       data.frame
 #' @slot mRNA_length numeric_summary
 #' @slot CDS_length  numeric_summary
 #' @slot exon_length numeric_summary
@@ -365,8 +365,8 @@ gff_summary <- setClass(
 
 #' Summary of a IRanges or GRanges file (without the types of a GFF)
 #'
-#' @slot seqstats  data.frame
-#' @slot width     numeric_summary
+#' @slot table  data.frame
+#' @slot width  numeric_summary
 granges_summary <- setClass(
   "granges_summary",
   representation(

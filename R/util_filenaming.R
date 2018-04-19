@@ -9,6 +9,14 @@
 #' @name fagin_naming
 NULL
 
+.label <- function(label, ...){
+  label <- if(is.null(label)){
+    ""
+  } else {
+    glue::glue("In {label}: ")
+  }
+}
+
 .check_name <- function(x){
 
   "Assert that this is a reasonable string"

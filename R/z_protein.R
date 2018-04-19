@@ -1,4 +1,4 @@
-translate <- function(dna, species_name){
+translate <- function(dna, label=NULL){
 
   "_ :: DNAStringSet -> AAStringSet   -- Species for warning annotation
 
@@ -8,13 +8,12 @@ translate <- function(dna, species_name){
   Warnings will be raised if the CDS is not a multiple of 3.
   "
 
-  list(format_warnings=make_format_translation_warning(species_name))
+  list(format_warnings=make_format_translation_warning(label))
 
   Biostrings::translate(dna, if.fuzzy.codon="solve")
 }
 
-
-filter_with_warnings__zero_length_proteins <- function(aa, species){
+filter_with_warnings__zero_length_proteins <- function(aa, label=NULL){
 
   "_ :: AAStringSet -> AAStringSet   -- Species for warning annotation
   
@@ -23,18 +22,20 @@ filter_with_warnings__zero_length_proteins <- function(aa, species){
 
   if(any(GenomicRanges::width(aa) == 0)){
     zero_width_models <- names(aa)[GenomicRanges::width(aa) == 0]
-    bad <- length(zero_width_models)
+    bad   <- length(zero_width_models)
     total <- length(aa)
-    msg <- paste("%s or %s mRNAs code for a 0 length protein. This is bad.",
-                 "The following mRNA IDs are being removed: %s")
-    warning(sprintf(msg, bad, total, paste(zero_width_models, collapse=", ")))
+    lost  <- paste(zero_width_models, collapse=", ")
+    warning(glue::glue(sep=" ",
+      "{.label(label)}{bad} of {total} mRNAs code for a 0 length protein.",
+      "This is bad. The following mRNA IDs are being removed: {lost}"
+    ))
   }
 
   aa[GenomicRanges::width(aa) > 0]
 }
 
 
-trim_CDS_with_non_zero_phase <- function(grlist){
+trim_CDS_with_non_zero_phase <- function(grlist, label=NULL){
 
   "_ :: GRangesList -> GRangesList
   
@@ -51,8 +52,10 @@ trim_CDS_with_non_zero_phase <- function(grlist){
 
   # Assert that the CDS name is in the set {0,1,2}
   if(! all(meta$cds_name %in% 0:2)){
-    stop("Expected the `cds_name` field to be overloaded with phase info",
-         "[0,1,2]. But it is not. This is a bug in the code.")
+    stop(glue::glue(sep=" ",
+      "{.label(label)}expected the `cds_name` field to be overloaded with phase info [0,1,2].",
+      "But it is not. This is a bug in the code."
+    ))
   }
 
   meta$phase <- as.integer(meta$cds_name)
@@ -90,29 +93,31 @@ convert_GRanges_to_SynderGFF <- function(gr){
 }
 
 
-check_for_incomplete_models <- function(phases, species_name){
+check_for_incomplete_models <- function(phases, label=NULL){
 
   "Warn if there are any incomplete models"
 
   if(! all(phases %in% 0:2)){
-    stop("Expected phase information, with values from [0,1,2]")
+    stop(glue::glue(
+      "{.label(label)}expected phase information, with values from [0,1,2]"
+    ))
   }
 
   incomplete <- sum(phases != 0)
   total <- length(phases)
 
   if(incomplete > 0){
-    warning(sprintf(
-    "%s of %s gene models in %s are incomplete (the phase of the first CDS is
-    not equal to 0). This does not include partial gene models that happen to
-    begin in-phase. Details are recorded in the species_summary field
-    model_phases.",
-    incomplete, total, species_name))
+    warning(glue::glue(sep=" ",
+      "{.label(label)}{incomplete} of {total} gene models are incomplete",
+      "(the phase of the first CDS is not equal to 0). This does not include",
+      "partial gene models that happen to begin in-phase. Details are recorded",
+      "in the species_summary field model_phases."
+    ))
   }
 }
 
 
-extract_phase_from_GRangesList <- function(grlist){
+extract_phase_from_GRangesList <- function(grlist, label=NULL){
 
   "GRangesList -> Phase  -- relies on dirty hack
   
@@ -131,14 +136,14 @@ extract_phase_from_GRangesList <- function(grlist){
   phase <- sapply(grlist, function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
 
   if(! all(phase %in% 0:2)){
-    stop("Expected phase information, with values from [0,1,2]")
+    stop("In {label}, expected phase information, with values from [0,1,2]")
   }
 
   phase
 }
 
 
-check_for_internal_stops <- function(aa_summary, species_name){
+check_for_internal_stops <- function(aa_summary, label=NULL){
 
   "Warn if any proteins have internal stop codons"
 
@@ -148,15 +153,17 @@ check_for_internal_stops <- function(aa_summary, species_name){
   if(any(stops)){
     n <- sum(stops)
     total <- length(stops)
-    offenders <- tab[stops, ]$seqids %>% as.character %>%
-      paste0(collapse=", ")
-    msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
-    warning(sprintf(msg, n, total, species_name, offenders))
+    bad <- tab[stops, ]$seqids %>% as.character %>% paste0(collapse=", ")
+    warning(glue::glue(sep=" ",
+      "{.label(label)}{n} of {total} proteins have internal stops.",
+      "These amino acid sequences were constructed",
+      "from the mRNA models specified in the GFF file: {bad}"
+    ))
   }
 }
 
 
-check_protein_transcript_match <- function(aa_summary, trans_summary){
+check_protein_transcript_match <- function(aa_summary, trans_summary, label=NULL){
 
   "Warn if names used in the protein file do not match those of the transcripts"
 
@@ -164,22 +171,12 @@ check_protein_transcript_match <- function(aa_summary, trans_summary){
   trids <- trans_summary@table$seqids
 
   if(! setequal(aaids, trids)){
-
-    not_in_tr <- setdiff(aaids, trids)
-    not_in_aa <- setdiff(trids, aaids)
-
-    msg <- paste(
-      "Protein and transcript names in %s do not match:",
-      "transcript ids missing in proteins: %s",
-      "protein ids missing in transcript: %s",
-      sep="\n"
-    )
-
-    warning(sprintf(
-      msg,
-      species_name,
-      paste(not_in_aa, collapse=", "),
-      paste(not_in_tr, collapse=", ")
+    not_in_tr <- paste(setdiff(aaids, trids), collapse=", ")
+    not_in_aa <- paste(setdiff(trids, aaids), collapse=", ")
+    warning(glue::glue(sep="\n",
+      "{.label(label)}protein and transcript names do not match:",
+      "transcript ids missing in proteins: {not_in_tr}",
+      "protein ids missing in transcript: {not_in_aa}"
     ))
   }
 }
@@ -207,17 +204,19 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
   #- }
   gffDB %>>%
     GenomicFeatures::cdsBy(by="tx", use.names=TRUE) %>%
-    .tag("cdsRangeList") %>>%
+      .tag("cdsRangeList") %>>%
     #- GeneModelList -> [Phase]
-    extract_phase_from_GRangesList %>% .tag("aa_model_phase") %>_%
+    extract_phase_from_GRangesList(label=species_name) %>%
+      .tag("aa_model_phase") %>_%
     #- [Phase] -> *Warning
-    check_for_incomplete_models(species_name) %>%
+    check_for_incomplete_models(label=species_name) %>%
 
   .view("cdsRangeList") %>>%
     #- GeneModelList -> GeneModelList
-    trim_CDS_with_non_zero_phase %>>%
+    trim_CDS_with_non_zero_phase(label=species_name) %>>%
     #- GeneModelList -> GeneModelList
-    filter_with_warning__unnamed_entries %>% .tag("cdsRanges") %>%
+    filter_with_warning__unnamed_entries(label=species_name) %>%
+      .tag("cdsRanges") %>%
     #- Genome -> GeneModelList -> CDS
     rmonad::funnel(
       x = genomeDB,
@@ -225,10 +224,10 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     #- CDS -> AASeqs
-    translate(species_name) %>% .tag("faa") %>>% 
-    filter_with_warnings__zero_length_proteins(species_name) %>>%
+    translate %>% .tag("faa") %>>%
+    filter_with_warnings__zero_length_proteins(label=species_name) %>>%
     #- AASeqs -> AASummary
     summarize_faa %>% .tag("summary_aa") %>_%
     #- AASummary -> *Warning
-    check_for_internal_stops(species_name)
+    check_for_internal_stops(label=species_name)
 }

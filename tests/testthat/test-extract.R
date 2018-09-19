@@ -19,7 +19,6 @@ fna_file <- file.path(tiny, "test.fna")
 gff_file <- file.path(tiny, "test.gff")
 fna <- load_dna(fna_file)
 
-# TODO: MAKE IT WORK
 test_that("can extract multi", {
   expect_equal({
       m_gffDB <- load_gene_models(gff_file, seqinfo_=GenomeInfoDb::seqinfo(fna))

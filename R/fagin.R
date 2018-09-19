@@ -1,5 +1,7 @@
 #' @importFrom methods isClass new
 #' @importFrom graphics plot
+#' @importFrom grDevices dev.off png
+#' @importFrom stats sd
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%" "%T>%"
 #' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%||%" "%|>%" "%>_%"

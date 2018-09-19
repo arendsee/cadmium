@@ -9,7 +9,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, message=FALSE, eval=FALSE}
 library(fagin)
 library(rmonad)
 library(knitr)
@@ -29,16 +29,16 @@ makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 
 ## Input data summary
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, eval=FALSE}
 load('ARCHIVE/d1.Rda')
 ss <- invertSummaries(d1)
 ```
 
-```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE}
+```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE, eval=FALSE}
 plot(d1@tree)
 ```
 
-```{r, echo=FALSE, result='asis'}
+```{r, echo=FALSE, result='asis', eval=FALSE}
 speciesOrder <- getSpeciesPhylogeneticOrder(con)
 knitr::kable(
   makeGenomeTable(ss, speciesOrder),
@@ -46,7 +46,7 @@ knitr::kable(
 )
 ```
 
-```{r, echo=FALSE, result='asis'}
+```{r, echo=FALSE, result='asis', eval=FALSE}
 knitr::kable(
     makeSynmapTable(con, speciesOrder),
     caption="Lengths of homologous links in each synteny map."
@@ -55,7 +55,7 @@ knitr::kable(
 
 ## `synder` output
 
-```{r, echo=FALSE, results='asis', message=FALSE}
+```{r, echo=FALSE, results='asis', message=FALSE, eval=FALSE}
 knitr::kable(
     makeSynderTable(con, speciesOrder),
     caption="Search interval widths"
@@ -64,11 +64,11 @@ knitr::kable(
 
 ## Fagin output
 
-```{r, fig.width=8, fig.height=6, echo=FALSE}
+```{r, fig.width=8, fig.height=6, echo=FALSE, eval=FALSE}
 plotSecondaryLabels(con, speciesOrder)
 ```
 
-```{r, fig.width=8, fig.height=4, echo=FALSE}
+```{r, fig.width=8, fig.height=4, echo=FALSE, eval=FALSE}
 plotSecondaryLabels(con, speciesOrder, fill='species')
 ```
 

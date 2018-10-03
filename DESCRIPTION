@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.27.2),
-    rmonad (>= 0.5.0),
+    rmonad (>= 0.6.0.9000),
     methods,
     devtools,
     glue,
@@ -24,6 +24,7 @@ Imports:
     GenomicFeatures,
     GenomeInfoDb,
     BiocParallel,
+    ORFik,
     IRanges,
     L1pack,
     fitdistrplus,
@@ -36,7 +37,8 @@ Imports:
     dplyr,
     yaml
 Remotes:
-    arendsee/synder
+    arendsee/synder,
+    arendsee/rmonad
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

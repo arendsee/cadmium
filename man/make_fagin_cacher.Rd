@@ -6,10 +6,8 @@
 \usage{
 make_fagin_cacher()
 }
-\arguments{
-\item{archive_dir}{The main archive directory}
-
-\item{cache_dir}{The rmonad cache directory (relative to the archive directory)}
+\value{
+rmonad::Cacher object
 }
 \description{
 Build the cacher that will be used inside rmonad

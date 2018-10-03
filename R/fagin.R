@@ -178,7 +178,6 @@ run_fagin <- function(con){
     dir.create(con@archive)
 
   } %__%
-  # TODO: better names
   primary_data(con=con)     %>%
   secondary_data(con=con)   %>%
   tertiary_data(con=con)    %>%

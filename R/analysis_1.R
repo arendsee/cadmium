@@ -222,7 +222,7 @@ load_synmap_meta <- function(tseqinfo, fseqinfo, target_species, focal_species, 
       seqinfo_a = fseqinfo,
       seqinfo_b = tseqinfo
     ) %>% rmonad::tag(c("synmap", target_species)) %>>%
-    summarize_syn %>% cacher(c("synmap_summary", target_species))
+    summarize_syn %>% rmonad::tag(c("synmap_summary", target_species))
 }
 
 
@@ -244,7 +244,7 @@ primary_data <- function(con){
   role of the `validate_derived_inputs` function.
   "
 
-  load_tree(con@input@tree) %>% cacher("tree") %>>%
+  as_monad(load_tree(con@input@tree), tag="tree") %>>%
     {
 
       "Extract species list from the species tree. The tree, rather than the
@@ -265,10 +265,10 @@ primary_data <- function(con){
 
       gsub(" ", "_", .)
 
-    } %>% cacher("all_species") %>>% {
+    } %>% rmonad::tag("all_species") %>>% {
       setdiff(., con@input@focal_species)
     } %>%
-      cacher('target_species') %>%
+      rmonad::tag('target_species') %>%
       view('all_species') %>%
 
     rmonad::loop(
@@ -277,38 +277,59 @@ primary_data <- function(con){
     ) %__%
 
     con@input@query_gene_list %>>%
-      load_gene_list %>% cacher("query_genes") %__%
+      load_gene_list %>% rmonad::tag("query_genes") %__%
 
     con@input@control_gene_list %>>%
-      load_gene_list %>% cacher("control_genes") %>%
-      
-    rmonad::view("target_species") -> m
+      load_gene_list %>% rmonad::tag("control_genes") %>%
 
-    # FIXME: this is too ugly, maybe can add some better handling in rmonad?
-    # Loop doesn't quite work here, because I need two things from inside the
-    # Rmonad.
-    # I want something simple like this:
-    #   rmonad::foo(
-    #     load_synmap_meta,
-    #     tseqinfo = view(c("seqinfo", target)) 
-    #     fseqinfo = view(c("seqinfo", focal))
-    #     fseqinfo = con@input@syn_dir
-    #   )
-    if(get_OK(m, m@head)){
-      focal <- con@input@focal_species
-      for(target in rmonad::get_value(m, tag='target_species')[[1]]){
-        m <-
-          rmonad::funnel(
-            tseqinfo = rmonad::view(m, c("seqinfo", target)),
-            fseqinfo = rmonad::view(m, c("seqinfo", focal))
-          ) %*>%
-          load_synmap_meta(
-            target_species = target,
-            focal_species = focal,
-            syndir=con@input@syn_dir
-          )
-      }
+    rmonad::view("target_species") %>%
+      rmonad::loop(
+        load_synmap_meta,
+        tseqinfo = view(c("seqinfo", target)),
+        fseqinfo = view(c("seqinfo", con@input@focal_species)),
+        syndir = con@input@syn_dir
+      )
+
+
+    f <- function(focal, tseqinfo, fseqinfo){
+      rmonad::funnel(
+        tseqinfo = tseqinfo,
+        fseqinfo = fseqinfo
+      ) %*>%
+      load_synmap_meta(
+        target_species = target,
+        focal_species = focal,
+        syndir=syndir
+      )
     }
+
+    # rmonad::view("target_species") -> m
+    #
+    # # FIXME: this is too ugly, maybe can add some better handling in rmonad?
+    # # Loop doesn't quite work here, because I need two things from inside the
+    # # Rmonad.
+    # # I want something simple like this:
+    # #   rmonad::foo(
+    # #     load_synmap_meta,
+    # #     tseqinfo = view(c("seqinfo", target))
+    # #     fseqinfo = view(c("seqinfo", focal))
+    # #     fseqinfo = con@input@syn_dir
+    # #   )
+    # if(get_OK(m, m@head)){
+    #   focal <- con@input@focal_species
+    #   for(target in rmonad::get_value(m, tag='target_species')[[1]]){
+    #     m <-
+    #       rmonad::funnel(
+    #         tseqinfo = rmonad::view(m, c("seqinfo", target)),
+    #         fseqinfo = rmonad::view(m, c("seqinfo", focal))
+    #       ) %*>%
+    #       load_synmap_meta(
+    #         target_species = target,
+    #         focal_species = focal,
+    #         syndir=con@input@syn_dir
+    #       )
+    #   }
+    # }
 
     m
 

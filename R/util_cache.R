@@ -1,7 +1,6 @@
 #' Build the cacher that will be used inside rmonad
 #'
-#' @param archive_dir The main archive directory
-#' @param cache_dir The rmonad cache directory (relative to the archive directory)
+#' @return rmonad::Cacher object
 make_fagin_cacher <- function(){
   rmonad::make_cacher(
     f_save = function(x, filename) {

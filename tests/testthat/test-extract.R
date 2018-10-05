@@ -14,7 +14,7 @@ cds <- NULL
 test_that("extract and translate work", {
   expect_silent(cds <<- extractWithComplements(fna, orf)) 
   expect_equal(top_class(cds), "DNAStringSet")
-  expect_equal(translate(cds) %>% top_class, "AAStringSet")
+  expect_equal(fuzzy_translate(cds) %>% top_class, "AAStringSet")
 })
 
 fna_file <- file.path(tiny, "test.fna")
@@ -35,7 +35,7 @@ test_that("can extract multi", {
 })
 
 
-con@orf@minlen <- 3L
+con@orf@minlen <- 2L
 dna <- Biostrings::DNAStringSet(
   c("a"="ATGTTTAAATAA",    # too short
     "b"="ATGTTTAAATTTTAA", # just right

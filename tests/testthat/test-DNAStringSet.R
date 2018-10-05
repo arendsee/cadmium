@@ -15,13 +15,13 @@ cds_sample_ambiguous <- Biostrings::DNAStringSet('CCN')
 
 test_that("translate works", {
   expect_equal(
-    translate(cds_sample), Biostrings::AAStringSet(c(a="MF*", b="M", c="*", d="*F", e="X"))
+    fuzzy_translate(cds_sample), Biostrings::AAStringSet(c(a="MF*", b="M", c="*", d="*F", e="X"))
   )
   expect_equal(
-    translate(cds_sample_ambiguous), Biostrings::AAStringSet("P")
+    fuzzy_translate(cds_sample_ambiguous), Biostrings::AAStringSet("P")
   )
   expect_warning(
-    fagin:::translate(Biostrings::DNAStringSet(c(x="A")), label='unicorn')
+    fuzzy_translate(Biostrings::DNAStringSet(c(x="A")), label='unicorn')
   )
 })
 

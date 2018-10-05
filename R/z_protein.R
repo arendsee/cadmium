@@ -1,4 +1,4 @@
-translate <- function(dna, label=NULL){
+fuzzy_translate <- function(dna, label=NULL){
 
   "_ :: DNAStringSet -> AAStringSet   -- Species for warning annotation
 
@@ -8,7 +8,8 @@ translate <- function(dna, label=NULL){
   Warnings will be raised if the CDS is not a multiple of 3.
   "
 
-  list(format_warnings=make_format_translation_warning(label))
+  # # TODO: fix rmonad so `label` can be handled
+  # list(format_warnings=make_format_translation_warning(label))
 
   Biostrings::translate(dna, if.fuzzy.codon="solve")
 }

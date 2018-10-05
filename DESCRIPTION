@@ -40,7 +40,7 @@ Imports:
 Remotes:
     arendsee/synder,
     arendsee/rmonad,
-    JokingHero/ORFik@70506dfd6343116c1fd20cef191fc882fff7c605
+    JokingHero/ORFik
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

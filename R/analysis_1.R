@@ -133,13 +133,12 @@ load_species <- function(species_name, con){
       gff = .view(., "orfgff")
     )} %*>%
       extractWithComplements %>>%
-      translate(label=species_name) %>%
-      .tag("orffaa") %>>%
+      fuzzy_translate(label=species_name) %>% .tag("orffaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_orffaa") %>%
 
     {rmonad::funnel(
-      gffDB = .view(., 'gffDB'),
+      gffDB    = .view(., 'gffDB'),
       genomeDB = .view(., "genomeDB")
     )} %*>% m_get_proteins(species_name=species_name) %>%
 
@@ -177,7 +176,7 @@ load_species <- function(species_name, con){
       summarize_granges %>% .tag("summary_transorfgff") %>%
       #- AASummary -> GRangesSummary -> *Warning
       {rmonad::funnel(
-        aa_summary = .view(., "summary_aa"),
+        aa_summary    = .view(., "summary_aa"),
         trans_summary = .view(., "summary_transorfgff")
       )} %*>%
       check_protein_transcript_match %>%
@@ -192,7 +191,7 @@ load_species <- function(species_name, con){
     )} %*>%
       extractWithComplements %>>%
       #- CDS -> AASeqs
-      translate(label=species_name) %>% .tag("transorfaa") %>>%
+      fuzzy_translate(label=species_name) %>% .tag("transorfaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_transorfaa")
 
@@ -309,6 +308,8 @@ primary_data <- function(con){
     # # Loop doesn't quite work here, because I need two things from inside the
     # # Rmonad.
     # # I want something simple like this:
+    # # This concept in Haskell is roughly:
+    # #  -- `load_synmap_meta <$> . <*> tseqinfo <*> fseqinfo <*> pure con`
     # #   rmonad::foo(
     # #     load_synmap_meta,
     # #     tseqinfo = view(c("seqinfo", target))

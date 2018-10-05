@@ -127,6 +127,25 @@ config_synder <- setClass(
   )
 )
 
+#' Settings for Open Reading Frame finding
+#'
+#' @slot start Start codon (e.g. "ATG|TTG|CTG")
+#' @slot stop Stop codon (e.g. "TAA|TGA|TAG")
+#' @slot minlen Minimum ORF length (not including start and stop codons)
+config_orf <- setClass(
+  "config_orf",
+  representation(
+    start  = "character",
+    stop   = "character",
+    minlen = "integer"
+  ),
+  prototype(
+    start  = "ATG",
+    stop   = "TAA|TGA|TAG",
+    minlen = 30L
+  )
+)
+
 default_decision_tree <- '
 gen:
   divisor: Is AA similar to a known gene?
@@ -217,6 +236,7 @@ fagin_config <- setClass(
   representation(
     input         = "config_input",
     synder        = "config_synder",
+    orf           = "config_orf",
     alignment     = "config_alignment",
     decision_tree = "list",
     archive       = "character"

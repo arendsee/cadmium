@@ -27,7 +27,7 @@ filter_with_warnings__zero_length_proteins <- function(aa, label=NULL){
     lost  <- paste(zero_width_models, collapse=", ")
     warning(glue::glue(sep=" ",
       "{.label(label)}{bad} of {total} mRNAs code for a 0 length protein.",
-      "This is bad. The following mRNA IDs are being removed: {lost}"
+      " This is bad. The following mRNA IDs are being removed: {lost}"
     ))
   }
 

@@ -86,12 +86,49 @@ derive_nstring <- function(dna) {
 
 } 
 
+getORFs <- function(dna, con, sense='.'){
+  .findORFs <- function(x, strnd){
+    orf <- ORFik::findORFs(
+      x,
+      startCodon    = con@orf@start,
+      stopCodon     = con@orf@stop,
+      minimumLength = con@orf@minlen,
+      longestORF    = TRUE
+    ) %>% as("GRanges")
+    GenomicRanges::strand(orf) <- strnd
+    orf
+  }
+  plus_orfs <- if(sense == '.' || sense == '+'){
+    .findORFs(dna, "+")
+  } else {
+    GenomicRanges::GRanges()
+  }
+  minus_orfs <- if(sense == '.' || sense == '-'){
+    .findORFs(Biostrings::reverseComplement(dna), "-")
+  } else {
+    GenomicRanges::GRanges()
+  }
+  orfs <- GenomicRanges::union(plus_orfs, minus_orfs)
+  GenomicRanges::mcols(orfs) <- data.frame(
+      seqid = paste0('orf_', seq_along(orfs)),
+      type  = 'orf',
+      stringsAsFactors=FALSE
+  )
+  # findORFs returns seqnames that are indices, not strings
+  # so need to convert to names
+  GenomeInfoDb::renameSeqlevels(
+    orfs,
+    names(dna)[as.integer(GenomeInfoDb::seqlevels(orfs))]
+  )
+}
+
 #' Derive mono-exonic ORF intervals from a genome
 #'
-#' @param dna DNAStringSet genome
+#' @param x DNAStringSet genome
+#' @param con fagin config object
 #' @return GenomicRanges object
 #' @export
-derive_orfgff <- function(dna) {
+derive_genomic_ORFs <- function(dna, con) {
 
   "
   Given a genome, find the locations of ORFs on both strands.
@@ -101,25 +138,25 @@ derive_orfgff <- function(dna) {
   finder.
 
   Gives ORFs unique ids (just an integer sequence for now) in meta-column `seqid`.
-
-  BUG: This misses potentially longer ORFs that start within a previous ORF.
-  TODO: replace with real ORF finder.
   "
 
-  orfpat <- "ATG(AAA|AAC|AAG|AAT|ACA|ACC|ACG|ACT|AGA|AGC|AGG|AGT|ATA|ATC|ATG|ATT|CAA|CAC|CAG|CAT|CCA|CCC|CCG|CCT|CGA|CGC|CGG|CGT|CTA|CTC|CTG|CTT|GAA|GAC|GAG|GAT|GCA|GCC|GCG|GCT|GGA|GGC|GGG|GGT|GTA|GTC|GTG|GTT|TAC|TAT|TCA|TCC|TCG|TCT|TGC|TGG|TGT|TTA|TTC|TTG|TTT){49,}(TAA|TGA|TAG)"
+  getORFs(dna, con, sense='.')
+}
 
-  dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE) %>%
-  {
+#' Derive ORFs from transcripts
+#'
+#' @param x DNAStringSet transcriptome
+#' @param con fagin config object
+#' @return GenomicRanges object
+#' @export
+derive_transcript_ORFs <- function(dna, con) {
 
-    GenomicRanges::mcols(.) <- data.frame(
-      seqid = paste0('orf_', seq_along(.)),
-      type  = 'orf',
-      stringsAsFactors=FALSE
-    )
+  "
+  Given a transcriptome, find the locations of all ORFs. Also gives ORFs unique
+  ids (just an integer sequence for now) in meta-column `seqid`.
+  "
 
-    .
-  }
-
+  getORFs(dna, con, sense='+')
 }
 
 #' Extract DNA intervals, reverse complementing them if they are minus sense

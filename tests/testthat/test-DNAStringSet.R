@@ -56,15 +56,12 @@ test_that("Check nstrings", {
 })
 
 orfgff <- NULL
-
-# TODO: make a simple test, ensure it works CORRECTLY
-# Because the current implementation is dead wrong
 test_that("ngORF prediction runs", {
   expect_equal(
     {
       orfgff <<- load_dna(fna_file) %>%
         convert_FaFile_to_XStringSet %>%
-        derive_orfgff
+        derive_genomic_ORFs(con=config())
       top_class(orfgff)
     },
     "GRanges"  

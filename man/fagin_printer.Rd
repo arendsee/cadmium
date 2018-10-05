@@ -7,6 +7,7 @@
 \alias{print.config_alignment}
 \alias{print.config_input}
 \alias{print.config_synder}
+\alias{print.config_orf}
 \alias{print.fagin_config}
 \alias{print.numeric_summary}
 \title{Special printers}
@@ -20,6 +21,8 @@
 \method{print}{config_input}(x, ...)
 
 \method{print}{config_synder}(x, ...)
+
+\method{print}{config_orf}(x, ...)
 
 \method{print}{fagin_config}(x, ...)
 

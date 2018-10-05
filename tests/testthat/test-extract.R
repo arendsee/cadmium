@@ -6,7 +6,9 @@ gff_file <- system.file("yeast", "gff", "Saccharomyces_arboricola.gff", package=
 tiny <- system.file("tiny", package='fagin')
 
 fna <- load_dna(fna_file)
-orf <- derive_orfgff(convert_FaFile_to_XStringSet(fna))
+con <- config()
+con@orf@start <- "ATG"
+orf <- derive_genomic_ORFs(convert_FaFile_to_XStringSet(fna), con)
 cds <- NULL
 
 test_that("extract and translate work", {
@@ -30,4 +32,24 @@ test_that("can extract multi", {
     },
     Biostrings::AAStringSet("MMM*")
   )
+})
+
+
+con@orf@minlen <- 3L
+dna <- Biostrings::DNAStringSet(
+  c("a"="ATGTTTAAATAA",    # too short
+    "b"="ATGTTTAAATTTTAA", # just right
+    "c"="ATGTTATGTTTTTAAAATAA", # overlapping
+    "d"="TTAGGGATGAAACATAAATAA" # both strands 
+  ))
+test_that("ORF finding works as expected", {
+  genorfs   <- derive_genomic_ORFs(dna, con)
+  expect_equal(as.character(GenomeInfoDb::seqnames(genorfs)), c("b", "c", "d", "d"))
+  expect_equal(GenomicRanges::start(genorfs), c(1,1,7,7))
+  expect_equal(as.character(GenomicRanges::strand(genorfs)), c("+", "+", "+", "-"))
+
+  transorfs <- derive_transcript_ORFs(dna, con)
+  expect_equal(as.character(GenomeInfoDb::seqnames(transorfs)), c("b", "c", "d"))
+  expect_equal(GenomicRanges::start(transorfs), c(1,1,7))
+  expect_equal(as.character(GenomicRanges::strand(transorfs)), c("+", "+", "+"))
 })

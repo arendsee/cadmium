@@ -76,7 +76,7 @@ load_species <- function(species_name, con){
   #- _ :: SpeciesName -> FolderPath -> FilePath
   get_readable_filename(
     species_name,
-    dir = con@input@fna_dir, 
+    dir = con@input@fna_dir,
     ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
   )  %>>%
     #- _ :: FilePath -> Genome
@@ -119,8 +119,8 @@ load_species <- function(species_name, con){
 
     # orfgff and summary_orfgff
     .view("genomeSeq") %>>%
-      #- _ :: GenomeSeq -> ORFRanges 
-      derive_orfgff %>>%
+      #- _ :: GenomeSeq -> ORFRanges
+      derive_genomic_ORFs(con) %>>%
       convert_GRanges_to_SynderGFF %>%
       .tag("orfgff") %>>%
       #- _ :: GRanges -> GRangesSummary
@@ -170,7 +170,7 @@ load_species <- function(species_name, con){
       #- Transcriptome -> TranscriptomeSeq
       convert_FaFile_to_XStringSet %>>%
       #- TranscriptomeSeq -> ORFRange
-      derive_orfgff %>>%
+      derive_transcript_ORFs(con) %>>%
       #- ORFRange -> ORFRange  -- slightly different format, some checking
       convert_GRanges_to_SynderGFF %>% .tag("transorfgff") %>>%
       #- ORFRange -> GRangesSummary

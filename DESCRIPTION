@@ -28,6 +28,7 @@ Imports:
     IRanges,
     L1pack,
     fitdistrplus,
+    ORFik,
     ape,
     rlang (>= 0.1.2),
     readr,
@@ -38,7 +39,8 @@ Imports:
     yaml
 Remotes:
     arendsee/synder,
-    arendsee/rmonad
+    arendsee/rmonad,
+    JokingHero/ORFik@70506dfd6343116c1fd20cef191fc882fff7c605
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true

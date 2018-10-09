@@ -94,11 +94,9 @@ load_species <- function(species_name, con){
     # nstring and summary_nstring
     .view("genomeSeq") %>>%
       #- _ :: GenomeSeq -> NString
-      derive_nstring %>%
-      .tag("nstring") %>>%
+      derive_nstring %>% .tag("nstring") %>>%
       #- _ :: NString -> NStringSummary
-      summarize_nstring %>%
-      .tag("summary_nstring") %>%
+      summarize_nstring %>% .tag("summary_nstring") %>%
 
     .view("genomeDB") %__%
 
@@ -138,7 +136,7 @@ load_species <- function(species_name, con){
       summarize_faa %>% .tag("summary_orffaa") %>%
 
     {rmonad::funnel(
-      gffDB    = .view(., 'gffDB'),
+      gffDB    = .view(., "gffDB"),
       genomeDB = .view(., "genomeDB")
     )} %*>% m_get_proteins(species_name=species_name) %>%
 
@@ -160,7 +158,7 @@ load_species <- function(species_name, con){
         x = .view(., "genomeDB"),
         transcripts = .
       ) %*>%
-      get_trans_dna %>% .tag("transcriptomeDB") %>>%
+      get_trans_dna(species_name=species_name) %>% .tag("transcriptomeDB") %>>%
       #- Transcriptome -> DNASummary
       summarize_dna %>% .tag("summary_transfna") %>%
 

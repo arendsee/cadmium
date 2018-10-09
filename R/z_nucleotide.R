@@ -36,7 +36,7 @@ convert_FaFile_to_XStringSet <- function(x, ...){
 }
 
 
-get_trans_dna <- function(x, transcripts){
+get_trans_dna <- function(x, species_name, transcripts){
   GenomicFeatures::extractTranscriptSeqs(x, transcripts) %>>%
   {
 

@@ -8,8 +8,8 @@ fuzzy_translate <- function(dna, label=NULL){
   Warnings will be raised if the CDS is not a multiple of 3.
   "
 
-  # # TODO: fix rmonad so `label` can be handled
-  # list(format_warnings=make_format_translation_warning(label))
+  # TODO: fix rmonad so `label` can be handled
+  list(format_warnings=make_format_translation_warning("a_species"))
 
   Biostrings::translate(dna, if.fuzzy.codon="solve")
 }
@@ -225,7 +225,7 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     #- CDS -> AASeqs
-    translate %>% .tag("faa") %>>%
+    Biostrings::translate %>% .tag("faa") %>>%
     filter_with_warnings__zero_length_proteins(label=species_name) %>>%
     #- AASeqs -> AASummary
     summarize_faa %>% .tag("summary_aa") %>_%

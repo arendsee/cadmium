@@ -12,7 +12,7 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.27.2),
-    rmonad (>= 0.6.0.9000),
+    rmonad (>= 0.6.2),
     methods,
     devtools,
     glue,
@@ -28,7 +28,7 @@ Imports:
     IRanges,
     L1pack,
     fitdistrplus,
-    ORFik,
+    ORFik (>= 1.1.13),
     ape,
     rlang (>= 0.1.2),
     readr,

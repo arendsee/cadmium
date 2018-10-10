@@ -17,6 +17,7 @@ library(magrittr)
 # The default config uses the sample data for yeast
 con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
+validate_config(con)
 # species_name=con@input@focal_species
 # plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
 d <- run_fagin(con)

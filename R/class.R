@@ -252,11 +252,44 @@ fagin_config <- setClass(
 
 #' Get a default configuration object
 #'
+#' Checks existence of all required files and reports species in the tree
+#'
 #' @export
 config <- function(){
   con <- fagin_config()
   con@input@focal_species <- gsub(" ", "_", con@input@focal_species)
   con
+}
+
+#' Validate a configuration
+#'
+#' @export
+validate_config <- function(con){
+  if(! file.exists(con@input@tree)){
+    stop("Tree file not found")
+  }
+  if(! file.exists(con@input@gff_dir)){
+    stop("GFF directory not found")
+  }
+  if(! file.exists(con@input@fna_dir)){
+    stop("Genome sequence directory not found")
+  }
+  if(! file.exists(con@input@syn_dir)){
+    stop("Synteny map directory not found")
+  }
+  if(! file.exists(con@input@query_gene_list)){
+    stop("Query gene list not found")
+  }
+  if(! file.exists(con@input@control_gene_list)){
+    stop("Control gene list not found")
+  }
+  # check whether the tree can be loaded
+  tree <- ape::read.tree(con@input@tree)
+  if(! (con@input@focal_species %in% tree$tip.label)){
+    stop("Focal species is not in tree")
+  }
+  cat("Found tree with species:", paste(tree$tip.label, collapse=", "), "\n")
+  cat("Everything looks good so far\n")
 }
 
 

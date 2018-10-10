@@ -7,5 +7,5 @@
 config()
 }
 \description{
-Get a default configuration object
+Checks existence of all required files and reports species in the tree
 }

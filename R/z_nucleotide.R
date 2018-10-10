@@ -1,3 +1,9 @@
+make_seqinfo <- function(x, species_name){
+  si <- GenomeInfoDb::seqinfo(x)
+  GenomeInfoDb::genome(si) <- species_name
+  si
+}
+
 filter_with_warning__unnamed_entries <- function(gr, label=NULL){
 
   "Check for unnamed entries in a GRanges object. If there are any, remove them

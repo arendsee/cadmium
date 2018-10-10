@@ -89,7 +89,7 @@ load_species <- function(species_name, con){
     # seqinfo
     .view("genomeDB") %>>%
       convert_FaFile_to_XStringSet %>% .tag('genomeSeq') %>>%
-      GenomeInfoDb::seqinfo() %>% .tag('seqinfo') %>%
+      make_seqinfo(species_name) %>% .tag('seqinfo') %>%
 
     # nstring and summary_nstring
     .view("genomeSeq") %>>%
@@ -195,33 +195,20 @@ load_species <- function(species_name, con){
 
 }
 
-
-load_synmap_meta <- function(tseqinfo, fseqinfo, target_species, focal_species, syndir){
-
-  "Load the synteny map for the given focal and target species. Then cache the
-  synteny map and return the cached filename and a summary of the map as a
-  `synteny_meta` object."
-
-  if(length(target_species) != 1  ||  length(focal_species) != 1){
-    stop("More than one species found in Seqinfo file, this should not happen.")
-  }
-
-  if(any(is.na(target_species)) || any(is.na(focal_species))){
-    stop("Species must be set in each Seqinfo object (must not be NA)")
-  }
-
-  get_synmap_filename(
-    focal_name  = focal_species,
-    target_name = target_species,
-    dir         = syndir
-  ) %>% rmonad::tag(c("synmap_file", target_species)) %>>%
-    synder::read_synmap(
-      seqinfo_a = fseqinfo,
-      seqinfo_b = tseqinfo
-    ) %>% rmonad::tag(c("synmap", target_species)) %>>%
-    summarize_syn %>% rmonad::tag(c("synmap_summary", target_species))
+load_synmap_meta <- function(m, focal, target, syndir){
+  m %__%
+    get_synmap_filename(
+      focal_name  = focal,
+      target_name = target,
+      dir         = syndir
+    ) %>% rmonad::tag("synmap_file", target) %>%
+    funnel(
+      seqinfo_a = view(., "seqinfo", focal),
+      seqinfo_b = view(., "seqinfo", target) 
+    ) %*>%
+      synder::read_synmap %>% rmonad::tag("synmap", target) %>>%
+      summarize_syn %>% rmonad::tag("synmap_summary", target)
 }
-
 
 #' Load primary data
 #'
@@ -241,33 +228,8 @@ primary_data <- function(con){
   role of the `validate_derived_inputs` function.
   "
 
-  as_monad(load_tree(con@input@tree), tag="tree") %>>%
-    {
-
-      "Extract species list from the species tree. The tree, rather than the
-      input files, determines which species are used in the analysis."
-
-      .$tip.label
-
-    } %>_% {
-      "Assert that the focal species is in the phylogenetic tree"
-
-      if(! (con@input@focal_species %in% .)){
-        msg <- "Focal species '%s' is not in the species tree [%s]"
-        stop(sprintf(msg, ., paste(targets, collapse=", ")))
-      }
-    } %>>% {
-
-      "Remove spaces in the species names."
-
-      gsub(" ", "_", .)
-
-    } %>% rmonad::tag("all_species") %>>% {
-      setdiff(., con@input@focal_species)
-    } %>%
-      rmonad::tag('target_species') %>%
-      view('all_species') %>%
-
+  {
+    as_monad(get_species(con)) %>%
     rmonad::loop(
       FUN = load_species,
       con = con
@@ -277,59 +239,18 @@ primary_data <- function(con){
       load_gene_list %>% rmonad::tag("query_genes") %__%
 
     con@input@control_gene_list %>>%
-      load_gene_list %>% rmonad::tag("control_genes") %>%
+      load_gene_list %>% rmonad::tag("control_genes")
 
-    rmonad::view("target_species") %>%
-      rmonad::loop(
-        load_synmap_meta,
-        tseqinfo = view(c("seqinfo", target)),
-        fseqinfo = view(c("seqinfo", con@input@focal_species)),
-        syndir = con@input@syn_dir
-      )
+  } -> m
 
+  for(target in get_targets(con)){
+    m <- load_synmap_meta(
+      m,
+      focal  = con@input@focal_species,
+      target = target,
+      syndir = con@input@syn_dir
+    )
+  }
 
-    f <- function(focal, tseqinfo, fseqinfo){
-      rmonad::funnel(
-        tseqinfo = tseqinfo,
-        fseqinfo = fseqinfo
-      ) %*>%
-      load_synmap_meta(
-        target_species = target,
-        focal_species = focal,
-        syndir=syndir
-      )
-    }
-
-    # rmonad::view("target_species") -> m
-    #
-    # # FIXME: this is too ugly, maybe can add some better handling in rmonad?
-    # # Loop doesn't quite work here, because I need two things from inside the
-    # # Rmonad.
-    # # I want something simple like this:
-    # # This concept in Haskell is roughly:
-    # #  -- `load_synmap_meta <$> . <*> tseqinfo <*> fseqinfo <*> pure con`
-    # #   rmonad::foo(
-    # #     load_synmap_meta,
-    # #     tseqinfo = view(c("seqinfo", target))
-    # #     fseqinfo = view(c("seqinfo", focal))
-    # #     fseqinfo = con@input@syn_dir
-    # #   )
-    # if(get_OK(m, m@head)){
-    #   focal <- con@input@focal_species
-    #   for(target in rmonad::get_value(m, tag='target_species')[[1]]){
-    #     m <-
-    #       rmonad::funnel(
-    #         tseqinfo = rmonad::view(m, c("seqinfo", target)),
-    #         fseqinfo = rmonad::view(m, c("seqinfo", focal))
-    #       ) %*>%
-    #       load_synmap_meta(
-    #         target_species = target,
-    #         focal_species = focal,
-    #         syndir=con@input@syn_dir
-    #       )
-    #   }
-    # }
-
-    m
-
+  m
 }

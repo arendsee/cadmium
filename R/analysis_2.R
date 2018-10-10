@@ -1,11 +1,3 @@
-get_gff_from_txdb <- function(x, ...){
-  synder::as_gff(
-    x,
-    id=GenomicRanges::mcols(x)$tx_name,
-    ...
-  )
-}
-
 # Collect secondary data for one species. The main output is a feature table.
 # Internal data is summarized (for use in downstream diagnostics or
 # side-analyses) and cached.
@@ -23,7 +15,7 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   # [ ] look into deeper synder analysis
   # [ ] cache everything
   # [ ] formalize results in classes
-  # [ ] move mRNA, CDS, exon tags to analysis_1.R
+  # [x] move mRNA, CDS, exon tags to analysis_1.R
 
   .view_target <- function(tag){
     rmonad::view(m, c(tag, species))
@@ -40,33 +32,6 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   .tag <- function(m, tag){
     rmonad::tag(m, c(tag, species))
   }
-
-  # GeneModels -> mRNA
-  .view_target(m, "gffDB") %>>%
-    GenomicFeatures::transcripts()
-    rmonad::funnel(
-      x = .,
-      seqinfo_ = .view_target("seqinfo")
-    ) %*>%
-    get_gff_from_txdb(type = "mRNA") %>% .cacher("mRNA") %>%
-
-  # GeneModels -> CDS
-  .view_target("gffDB") %>>%
-    GenomicFeatures::cds()
-    rmonad::funnel(
-      x = .,
-      seqinfo_ = .view_target("seqinfo")
-    ) %*>%
-    get_gff_from_txdb(type = "CDS") %>% .cacher("CDS") %>%
-
-  # GeneModels -> Exon
-  .view_target("gffDB") %>>%
-    GenomicFeatures::exons()
-    rmonad::funnel(
-      x = .,
-      seqinfo_ = .view_target("seqinfo")
-    ) %*>%
-    get_gff_from_txdb(type = "exon") %>% .cacher("exon") %>%
 
   # SyntenyMap -> mRNA -> SearchIntervals
   .view_target("synmap") %>%
@@ -326,18 +291,10 @@ query_control_gene_check <- function(gff, qgenes, cgenes) {
 secondary_data <- function(m, con){
 
   .view_focal <- function(m, tag){
-    rmonad::view(m, c(tag, con@input@focal_species))
+    rmonad::view(m, tag, con@input@focal_species)
   }
 
-  m <- .view_focal(m, "gffDB") %>>%
-    #- GeneModels -> Transcript
-    GenomicFeatures::transcripts %>%
-    #- Transcipt -> TranscriptGFF
-    rmonad::funnel(
-      x = .,
-      seqinfo_ = .view_focal(., "seqinfo")
-    ) %*>%
-    get_gff_from_txdb(type="mRNA") %>% cacher("?focal_gffDB") %>>%
+  m <- .view_focal(m, "mRNA") %>%
     rmonad::funnel(
       gff = .,
       qgenes = rmonad::view(., "query_genes"),
@@ -353,8 +310,8 @@ secondary_data <- function(m, con){
     )
     m <- m %>% compare_target_to_focal(
       species  = target_species,
-      group="control",
-      gene_tag="control_genes"
+      group    = "control",
+      gene_tag = "control_genes"
     )
   }
 

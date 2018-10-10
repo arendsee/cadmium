@@ -72,6 +72,14 @@ load_species <- function(species_name, con){
     rmonad::tag(m, tag, species_name)
   }
 
+  get_gff_from_txdb <- function(x, ...){
+    synder::as_gff(
+      x,
+      id=GenomicRanges::mcols(x)$tx_name,
+      ...
+    )
+  }
+
   # genome and summary_genome
   #- _ :: SpeciesName -> FolderPath -> FilePath
   get_readable_filename(
@@ -114,6 +122,33 @@ load_species <- function(species_name, con){
       ) %*>% load_gene_models %>% .tag("gffDB") %>>%
       #- _ :: GeneModels -> GFFSummary
       summarize_gff %>% .tag("summary_gff") %>%
+
+    # GeneModels -> mRNA
+    .view("gffDB") %>>%
+      GenomicFeatures::transcripts() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "mRNA") %>% .tag("mRNA") %>%
+
+    # GeneModels -> CDS
+    .view("gffDB") %>>%
+      GenomicFeatures::cds() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "CDS") %>% .tag("CDS") %>%
+
+    # GeneModels -> Exon
+    .view("gffDB") %>>%
+      GenomicFeatures::exons() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "exon") %>% .tag("exon") %>%
 
     # orfgff and summary_orfgff
     .view("genomeSeq") %>>%
@@ -192,7 +227,6 @@ load_species <- function(species_name, con){
       fuzzy_translate(label=species_name) %>% .tag("transorfaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_transorfaa")
-
 }
 
 load_synmap_meta <- function(m, focal, target, syndir){

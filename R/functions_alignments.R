@@ -204,7 +204,6 @@ align_by_map <- function(
 
   map <- map[map$query %in% queries, ]
 
-
   if(!all(map$target %in% names(tarseq))){
     dif <- setdiff(map$target, names(tarseq))
     msg <- "%s of %s of target genes missing in map; [%s, ...]"

@@ -237,8 +237,6 @@ add_logmn <- function(d){
 alignToGenome <- function(
   queseq,
   tarseq,
-  group,
-  label,
   simulation = FALSE,
   offset     = 0,
   permute    = FALSE
@@ -260,12 +258,8 @@ alignToGenome <- function(
     subject=subject,
     type='local'
   )
-  metadata(aln)$query  <- names(queseq) 
-  metadata(aln)$target <- names(tarseq) 
-
-  if(simulation){
-    label = paste0(label, "-sim")
-  }
+  S4Vectors::metadata(aln)$query  <- names(queseq) 
+  S4Vectors::metadata(aln)$target <- names(tarseq) 
 
   aln %>>% {
     CNEr::GRangePairs(
@@ -338,23 +332,18 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
       )
     }
 
-  # TODO: continue from here: need to extract the cached file
   ctrl_ <- truncated_seqs_ %*>%
     alignToGenome(
       permute    = TRUE,
-      simulation = TRUE,
-      ...
+      simulation = TRUE
     ) %>>% { .$map <- add_logmn(.$map); . }
-    ## TODO: And what the flip is the following commented code? Why is it still
-    ## here? I kept it for some reason ...
+    ### This?
     # dplyr::group_by(query) %>%
-    # dplyr::filter(.data$score == max(.data$score))
+    #   dplyr::filter(.data$score == max(.data$score))
 
   hits_ <- truncated_seqs_ %*>%
-    alignToGenome(
-      permute = FALSE,
-      ...
-    ) %>>% { .$map <- add_logmn(.$map); . }
+    alignToGenome(permute = FALSE) %>>%
+    { .$map <- add_logmn(.$map); . }
 
   gum_ <- ctrl_ %>>%
     {

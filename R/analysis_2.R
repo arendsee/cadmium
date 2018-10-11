@@ -148,7 +148,7 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   # transorf_map_
   {
     rmonad::funnel(
-      transorfgff = .view_target(., "transorfgffDB"),
+      transorfgff = .view_target(., "transorfgff"),
       f_si_map = .view(., "f_si_map")
     )
   } %*>% {
@@ -156,7 +156,7 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     {
       data.frame(
         seqid = GenomicRanges::seqnames(.),
-        orfid = GenomicRanges::mcols(.)$seqid,
+        orfid = GenomicRanges::mcols(.)$attr,
         stringsAsFactors=FALSE
       )
     } %>%
@@ -169,58 +169,62 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
         stringsAsFactors=FALSE
       )
     }
-  } %>% .tag("f_si_map_transorf") # %>%
+  } %>% .tag("f_si_map_transorf") %>%
 
-  # # aa2transorf - align query protein against ORFs in transcripts in the SI
-  # rmonad::funnel(
-  #   queseq  = .view_focal(., "faa"),
-  #   tarseq  = .view_target(., "transorfaa"),
-  #   map     = .view(., "f_si_map_transorf"),
-  #   queries = rmonad::view(., gene_tag)
-  # ) %*>% align_by_map %>% .tag('aa2transorf')
-  #
-  # # gene2genome - align query DNA sequence against the SI
-  # rmonad::funnel(
-  #   map     = .view(., "synder_out"),
-  #   quedna  = .view_focal(., "transcript_seq"), # TODO: fix this in analysis_1
-  #   tardna  = .view_target(., "genome_seq") ,
-  #   queries = seqids
-  # ) %*>% {
-  #
-  #   qids <- GenomicRanges::mcols(map)$attr
-  #   if(! all(qids %in% names(quedna)) ){
-  #
-  #     ngood <- sum(unique(qids) %in% names(quedna))
-  #     ntotal <- length(unique(qids))
-  #
-  #     msg <- "There is a mismatch between the names in the synteny map and
-  #     those derived from the GFF file. %s of %s names from the synteny map are
-  #     missing in the DNA file. Here are the first 5 names from the GFF-derived
-  #     DNA file: [%s]. Here are the first 5 from the synteny map: [%s]."
-  #
-  #     stop(sprintf(
-  #       msg,
-  #       ngood,
-  #       ntotal,
-  #       paste0(head(names(quedna), 5), collapse=", "),
-  #       paste0(head(qids, 5), collapse=", ")
-  #     ))
-  #
-  #   }
-  #
-  #   tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
-  #   queseq <- quedna[ qids ]
-  #   offset <- GenomicRanges::start(CNEr::second(map)) - 1
-  #
-  #   # An rmonad bound list with elements: map | sam | dis | skipped
-  #   get_dna2dna(
-  #     tarseq  = tarseq,
-  #     queseq  = queseq,
-  #     queries = queries,
-  #     offset  = offset
-  #   )
-  #
-  # } %>% .tag('gene2genome') %*>% rmonad::funnel(
+  # aa2transorf - align query protein against ORFs in transcripts in the SI
+  {
+    rmonad::funnel(
+      queseq  = .view_focal(., "faa"),
+      tarseq  = .view_target(., "transorfaa"),
+      map     = .view(., "f_si_map_transorf"),
+      queries = rmonad::view(., gene_tag)
+    )
+  } %*>% align_by_map %>% .tag('aa2transorf') %>%
+
+  # gene2genome - align query DNA sequence against the SI
+  {
+    rmonad::funnel(
+      map     = .view(., "synder_out"),
+      quedna  = .view_focal(., "transcriptomeSeq"),
+      tardna  = .view_target(., "genomeDB"),
+      queries = rmonad::view(., gene_tag)
+    )
+  } %*>% {
+
+    qids <- GenomicRanges::mcols(map)$attr
+    if(! all(qids %in% names(quedna)) ){
+
+      ngood <- sum(unique(qids) %in% names(quedna))
+      ntotal <- length(unique(qids))
+
+      msg <- "There is a mismatch between the names in the synteny map and
+      those derived from the GFF file. %s of %s names from the synteny map are
+      missing in the DNA file. Here are the first 5 names from the GFF-derived
+      DNA file: [%s]. Here are the first 5 from the synteny map: [%s]."
+
+      stop(sprintf(
+        msg,
+        ngood,
+        ntotal,
+        paste0(head(names(quedna), 5), collapse=", "),
+        paste0(head(qids, 5), collapse=", ")
+      ))
+
+    }
+
+    tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
+    queseq <- quedna[ qids ]
+    offset <- GenomicRanges::start(CNEr::second(map)) - 1
+
+    # An rmonad bound list with elements: map | sam | dis | skipped
+    get_dna2dna(
+      tarseq  = tarseq,
+      queseq  = queseq,
+      queries = queries,
+      offset  = offset
+    )
+
+  } %>% .tag('gene2genome') #%*>% rmonad::funnel(
   #   cds  = tcds_,
   #   exon = texons_,
   #   mrna = tgff_

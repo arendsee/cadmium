@@ -82,7 +82,7 @@ derive_nstring <- function(dna) {
 
   "Given a genome, find all sequences of N (unknown nucleotides)"
 
-  dnaregex(dna, "N+", strand='u', ignore.case=TRUE)
+  dnaregex(dna, "N+", strand='u', ignore.case=TRUE) %>% synder::as_gff()
 
 } 
 
@@ -196,8 +196,13 @@ extractWithComplements <- function(dna, gff){
 
   dna <- Rsamtools::getSeq(dna, gff)
 
-  if(!is.null(GenomicRanges::mcols(gff)$seqid))
-    names(dna) <- GenomicRanges::mcols(gff)$seqid
+  names(dna) <- if(! is.null(gff$attr)){
+    gff$attr 
+  } else if(!is.null(GenomicRanges::mcols(gff)$seqid)) {
+    GenomicRanges::mcols(gff)$seqid
+  } else {
+    NULL
+  }
 
   dna
 

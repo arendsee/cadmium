@@ -1,4 +1,4 @@
-overlapMap <- function(si, gff, type=NULL){
+overlapMap <- function(gff, si, type=NULL){
 
   "Find all features in the gff GenomicRanges object that overlap a search interval."
 

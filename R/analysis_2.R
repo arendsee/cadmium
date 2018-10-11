@@ -11,10 +11,6 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   #-  , tid    = ?
   #-  }
 
-  # TODO:
-  # [ ] look into deeper synder analysis
-  # [ ] formalize results in classes
-
   .view_target <- function(m, tag){
     rmonad::view(m, tag, species)
   }
@@ -34,10 +30,12 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   # SyntenyMap -> mRNA -> SearchIntervals
   .view_target(m, "synmap") %>%
     # fsi_
-    rmonad::funnel(
-      syn = .,
-      gff = .view_focal(., "mRNA")
-    ) %*>%
+    {
+      rmonad::funnel(
+        syn = .,
+        gff = .view_focal(., "mRNA")
+      )
+    } %*>%
     synder::search(
       swap    = FALSE,
       trans   = con@synder@trans,
@@ -52,13 +50,19 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     find_indels(indel.threshold=con@alignment@indel_threshold) %>%
     .tag("indels") %>%
 
-  .view_target("nstring") %>>%
-    synder::as_gff %>%
-    rmonad::funnel(si = .view(., "synder_out"), gff=.) %*>% overlapMap %>%
-    rmonad::funnel(
-      x = .,
-      nstrings = .view_target(., "nstring")
-    ) %*>% {
+  .view_target("nstring") %>%
+    {
+      rmonad::funnel(
+        gff = .,
+        si  = .view(., "synder_out")
+      )
+    } %*>% overlapMap %>%
+    {
+      rmonad::funnel(
+        x = .,
+        nstrings = .view_target(., "nstring")
+      )
+    } %*>% {
 
       "
       Get a N-string table with the columns
@@ -88,20 +92,21 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     } %>% .tag("gaps") %>%
 
   # SeachIntervals -> GeneModels -> Overlaps
-  rmonad::funnel(
-    si  = .view(., "synder_out"),
-    gff = .view_target(., "mRNA")
-  ) %*>%
+  {
+    rmonad::funnel(
+      gff = .view_target(., "mRNA"),
+      si  = .view(., "synder_out")
+    )
+  } %*>%
     overlapMap %>% .tag("f_si_map") %>%
 
   # f_si_map_orf_
-  .view_target("orfgff") %>>%
-    # TODO: do this in analysis_1
-    { synder::as_gff(., id=GenomicRanges::mcols(.)$seqid) } %>%
+  {
     rmonad::funnel(
-      si  = .view(., "synder_out"),
-      gff = .
-    ) %*>% overlapMap %>% .tag("f_si_map_orf") %>%
+      gff = .view_target(., "orfgff"),
+      si  = .view(., "synder_out")
+    )
+  } %*>% overlapMap %>% .tag("f_si_map_orf") %>%
 
   # - align query protein against target genes in the SI
   {
@@ -131,43 +136,41 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       map     = .view(., "f_si_map_orf"),
       queries = rmonad::view(., gene_tag)
     )
-  } %*>% align_by_map %>% .tag("aa2orf") #%>%
-    # TODO: Resume from here:
-    # [x] see summary_orfaa, the minus-strand was mis-translated
-    # [ ] fix names in tarseq, currently they are the scaffold names,
-    #     they should be the ORF names (e.g. orf_1)
+  } %*>% align_by_map %>% .tag("aa2orf") %>%
 
-  # # rand_aa2orf_ <- rmonad::funnel(
-  # #   queseq  = f_faa_,
-  # #   tarseq  = t_orffaa_,
-  # #   map     = f_si_map_orf_,
-  # #   queries = seqids
-  # # ) %*>% align_by_map(permute=TRUE)
-  #
-  # # transorf_map_
-  # rmonad::funnel(
-  #   transorfgff = .view_target(., "transorfgffDB"),
-  #   f_si_map = .view(., "f_si_map")
-  # ) %*>% {
-  #   transorfgff %>%
-  #   {
-  #     data.frame(
-  #       seqid = GenomicRanges::seqnames(.),
-  #       orfid = GenomicRanges::mcols(.)$seqid,
-  #       stringsAsFactors=FALSE
-  #     )
-  #   } %>%
-  #   merge(f_si_map, by.x="seqid", by.y="target") %>%
-  #   {
-  #     data.frame(
-  #       query = .$query,
-  #       target = .$orfid,
-  #       type = "transorf",
-  #       stringsAsFactors=FALSE
-  #     )
-  #   }
-  # } %>% .tag("f_si_map_transorf") %>%
-  #
+  # rand_aa2orf_ <- rmonad::funnel(
+  #   queseq  = f_faa_,
+  #   tarseq  = t_orffaa_,
+  #   map     = f_si_map_orf_,
+  #   queries = seqids
+  # ) %*>% align_by_map(permute=TRUE)
+
+  # transorf_map_
+  {
+    rmonad::funnel(
+      transorfgff = .view_target(., "transorfgffDB"),
+      f_si_map = .view(., "f_si_map")
+    )
+  } %*>% {
+    transorfgff %>%
+    {
+      data.frame(
+        seqid = GenomicRanges::seqnames(.),
+        orfid = GenomicRanges::mcols(.)$seqid,
+        stringsAsFactors=FALSE
+      )
+    } %>%
+    merge(f_si_map, by.x="seqid", by.y="target") %>%
+    {
+      data.frame(
+        query = .$query,
+        target = .$orfid,
+        type = "transorf",
+        stringsAsFactors=FALSE
+      )
+    }
+  } %>% .tag("f_si_map_transorf") # %>%
+
   # # aa2transorf - align query protein against ORFs in transcripts in the SI
   # rmonad::funnel(
   #   queseq  = .view_focal(., "faa"),

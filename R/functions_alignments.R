@@ -2,6 +2,18 @@
 # Statistics
 # ============================================================================
 
+dgumbel <- function(x, mu, s){
+  z <- (mu - x) / s
+  exp( z-exp(z) ) / s
+}
+pgumbel <- function(q, mu, s){
+  z <- (q - mu) / s
+  exp(-exp(-z))
+}
+qgumbel <- function(p, mu, s){
+  mu - s*log(-log(p))
+}
+
 fit.gumbel <- function(sam){
 
   stopifnot(c('query', 'score', 'logmn') %in% names(sam))
@@ -31,18 +43,6 @@ fit.gumbel <- function(sam){
 
   scores <- get.adj.from.score(sam$score, sam$logmn)
 
-
-  dgumbel <- function(x, mu, s){
-    z <- (mu - x) / s
-    exp( z-exp(z) ) / s
-  }
-  pgumbel <- function(q, mu, s){
-    z <- (q - mu) / s
-    exp(-exp(-z))
-  }
-  qgumbel <- function(p, mu, s){
-    mu - s*log(-log(p))
-  }
   gumbel.fit <- fitdistrplus::fitdist(
     data   = scores,
     distr  = dgumbel,
@@ -81,7 +81,7 @@ fit.gumbel <- function(sam){
 
 nothing <- function(x) NULL
 
-aln_xy <- function(x, y, group, label, simulation=FALSE){
+aln_xy <- function(x, y, simulation=FALSE){
 
   aln <- Biostrings::pairwiseAlignment(
     pattern=x,
@@ -89,33 +89,25 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
     type='local',
     substitutionMatrix='BLOSUM80'
   )
-  metadata(aln)$query  <- names(x) 
-  metadata(aln)$target <- names(y) 
-
-  if(simulation){
-    label <- paste0(label, "-sim")
-  }
-
-  alnfile <- cacher(aln, c(group, label))
+  S4Vectors::metadata(aln)$query  <- names(x) 
+  S4Vectors::metadata(aln)$target <- names(y) 
 
   a <- data.frame(
     query  = names(x),
     target = names(y),
-    score  = score(aln),
-    qwidth = width(x),
-    twidth = width(y),
+    score  = BiocGenerics::score(aln),
+    qwidth = Biostrings::width(x),
+    twidth = Biostrings::width(y),
     stringsAsFactors = FALSE
   )
 
-  list(
-      map = dplyr::group_by(a, query) %>%
-        # Calculate adjusted score
-        dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-        base::merge(a) %>%
-        dplyr::select(query, target, score, logmn)
-    , alnfile = alnfile
-  )
+  map <- dplyr::group_by(a, query) %>%
+    # Calculate adjusted score
+    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
+    base::merge(a) %>%
+    dplyr::select(query, target, score, logmn)
 
+  list(map=map, aln=aln)
 }
 
 AA_aln <- function(queseq, tarseq, nsims=10000, ...){
@@ -149,7 +141,9 @@ AA_aln <- function(queseq, tarseq, nsims=10000, ...){
   # 5. align these against random targets
   simulation_result <- aln_xy(
     queseq[simids] %>% set_names(simnames),
-    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse,
+    tarseq %>%
+        sample(length(simnames), replace=TRUE) %>%
+        IRanges::reverse(),
     simulation=TRUE,
     ...
   )
@@ -180,7 +174,7 @@ AA_aln <- function(queseq, tarseq, nsims=10000, ...){
     dis     = gum,
     sam     = sam,
     nsims   = nsims,
-    alnfile = aln_result$alnfile
+    aln     = aln_result$aln
   )
 }
 
@@ -222,7 +216,6 @@ align_by_map <- function(
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
   AA_aln(queseq, tarseq, nsims=1000, ...)
-
 }
 
 
@@ -273,9 +266,8 @@ alignToGenome <- function(
   if(simulation){
     label = paste0(label, "-sim")
   }
-  alnfile <- cacher(aln, c(group, label))
 
-  map_ <- aln %>>% {
+  aln %>>% {
     CNEr::GRangePairs(
       first = GenomicRanges::GRanges(
         seqnames = names(pattern),
@@ -298,11 +290,6 @@ alignToGenome <- function(
       twidth = Biostrings::width(subject)
     )
   }
-
-  rmonad::funnel(
-      map = map_
-    , alnfile = alnfile
-  )
 
 }
 
@@ -391,8 +378,7 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
     list(
       map=hits$map,
       sam=ctrl$map,
-      dis=gum,
-      alnfile=hits$alnfile
+      dis=gum
     )
   } %*>%
   rmonad::funnel(

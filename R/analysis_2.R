@@ -131,9 +131,9 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       map     = .view(., "f_si_map_orf"),
       queries = rmonad::view(., gene_tag)
     )
-  } %*>% align_by_map %>% .tag("aa2orf") %>%
+  } %*>% align_by_map %>% .tag("aa2orf") #%>%
     # TODO: Resume from here:
-    # [ ] see summary_orfaa, the minus-strand was mis-translated
+    # [x] see summary_orfaa, the minus-strand was mis-translated
     # [ ] fix names in tarseq, currently they are the scaffold names,
     #     they should be the ORF names (e.g. orf_1)
 

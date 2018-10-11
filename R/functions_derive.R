@@ -86,6 +86,23 @@ derive_nstring <- function(dna) {
 
 } 
 
+extract_range <- function(dna, rng){
+  d <- dna[rng]
+  negative <- GenomicRanges::strand(rng) == '-'
+  if(any(negative)){
+    d[negative] <- Biostrings::reverseComplement(d[negative])
+  }
+  d
+}
+
+# This is needed since ORFik returns indices rather than names
+fix_names <- function(g, dna){
+  GenomeInfoDb::renameSeqlevels(
+    g,
+    names(dna)[as.integer(GenomeInfoDb::seqlevels(g))]
+  )
+}
+
 getORFs <- function(dna, con, sense='.'){
   .findORFs <- function(x, strnd){
     orf <- ORFik::findORFs(
@@ -96,7 +113,7 @@ getORFs <- function(dna, con, sense='.'){
       longestORF    = TRUE
     ) %>% as("GRanges")
     GenomicRanges::strand(orf) <- strnd
-    orf
+    fix_names(orf, dna)
   }
   plus_orfs <- if(sense == '.' || sense == '+'){
     .findORFs(dna, "+")
@@ -104,22 +121,23 @@ getORFs <- function(dna, con, sense='.'){
     GenomicRanges::GRanges()
   }
   minus_orfs <- if(sense == '.' || sense == '-'){
-    .findORFs(Biostrings::reverseComplement(dna), "-")
+    r <- .findORFs(Biostrings::reverseComplement(dna), "-")
+    if(length(r) > 0){
+      lengths <- Biostrings::width(dna[GenomeInfoDb::seqnames(r)])
+      new_start <- lengths - GenomicRanges::end(r) + 1
+      r@ranges@start <- as.integer(new_start)
+    }
+    r
   } else {
     GenomicRanges::GRanges()
   }
-  orfs <- GenomicRanges::union(plus_orfs, minus_orfs)
+  orfs <- append(plus_orfs, minus_orfs)
   GenomicRanges::mcols(orfs) <- data.frame(
       seqid = paste0('orf_', seq_along(orfs)),
       type  = 'orf',
       stringsAsFactors=FALSE
   )
-  # findORFs returns seqnames that are indices, not strings
-  # so need to convert to names
-  GenomeInfoDb::renameSeqlevels(
-    orfs,
-    names(dna)[as.integer(GenomeInfoDb::seqlevels(orfs))]
-  )
+  orfs
 }
 
 #' Derive mono-exonic ORF intervals from a genome

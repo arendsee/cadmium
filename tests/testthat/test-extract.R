@@ -12,7 +12,7 @@ orf <- derive_genomic_ORFs(convert_FaFile_to_XStringSet(fna), con)
 cds <- NULL
 
 test_that("extract and translate work", {
-  expect_silent(cds <<- extractWithComplements(fna, orf)) 
+  expect_silent(cds <<- extractWithComplements(fna, orf))
   expect_equal(top_class(cds), "DNAStringSet")
   expect_equal(fuzzy_translate(cds) %>% top_class, "AAStringSet")
 })
@@ -35,21 +35,23 @@ test_that("can extract multi", {
 })
 
 
-con@orf@minlen <- 2L
+con@orf@minlen <- 3L
 dna <- Biostrings::DNAStringSet(
   c("a"="ATGTTTAAATAA",    # too short
-    "b"="ATGTTTAAATTTTAA", # just right
+    "b"="ATGTTTAAAGGGTAA", # just right
     "c"="ATGTTATGTTTTTAAAATAA", # overlapping
-    "d"="TTAGGGATGAAACATAAATAA" # both strands 
+    "d"="GGGTTAGGGATGAAACATAAATAA" # both strands 
   ))
 test_that("ORF finding works as expected", {
-  genorfs   <- derive_genomic_ORFs(dna, con)
-  expect_equal(as.character(GenomeInfoDb::seqnames(genorfs)), c("b", "c", "d", "d"))
-  expect_equal(GenomicRanges::start(genorfs), c(1,1,7,7))
-  expect_equal(as.character(GenomicRanges::strand(genorfs)), c("+", "+", "+", "-"))
+  genorfs <- derive_genomic_ORFs(dna, con)
+  expect_equal(as.character(GenomeInfoDb::seqnames(genorfs)), c("b", "c", "c", "d", "d"))
+  expect_equal(GenomicRanges::start(genorfs), c(1,1,6,10,4))
+  expect_equal(as.character(GenomicRanges::strand(genorfs)), c("+", "+", "+", "+", "-"))
+  expect_equal(unname(as.character(Biostrings::translate(extract_range(dna, genorfs)))),
+               c("MFKG*", "MLCF*", "MFLK*", "MKHK*", "MFHP*"))
 
   transorfs <- derive_transcript_ORFs(dna, con)
-  expect_equal(as.character(GenomeInfoDb::seqnames(transorfs)), c("b", "c", "d"))
-  expect_equal(GenomicRanges::start(transorfs), c(1,1,7))
-  expect_equal(as.character(GenomicRanges::strand(transorfs)), c("+", "+", "+"))
+  expect_equal(as.character(GenomeInfoDb::seqnames(transorfs)), c("b", "c", "c", "d"))
+  expect_equal(GenomicRanges::start(transorfs), c(1,1,6,10))
+  expect_equal(as.character(GenomicRanges::strand(transorfs)), c("+", "+", "+", "+"))
 })

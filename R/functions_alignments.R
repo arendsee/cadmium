@@ -224,15 +224,15 @@ align_by_map <- function(
 # DNA alignment
 # ============================================================================
 
-add_logmn <- function(d){
-  dplyr::group_by(d, query)                                     %>%
-    # Calculate adjusted score
-    dplyr::filter(twidth > 1 & qwidth > 1)                      %>%
-    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-    base::merge(d)
+get_logmn <- function(pattern, subject){
+  data.frame(
+    seqid = names(pattern),
+    qlen = BiocGenerics::width(pattern),
+    tlen = BiocGenerics::width(subject)
+  ) %>%
+    dplyr::group_by(seqid) %>%
+    dplyr::mutate(logmn = log2(qlen[1]) + log2(sum(tlen))) %$% logmn 
 }
-
-
 
 alignToGenome <- function(
   queseq,
@@ -241,63 +241,65 @@ alignToGenome <- function(
   offset     = 0,
   permute    = FALSE
 ){
-  # Search + and - strands
-  pattern <- c(queseq, Biostrings::reverseComplement(queseq))
-  subject <- c(tarseq, tarseq)
 
-  if(permute){
-    permid <- sample.int(length(subject))
-    subject <- subject[permid]
-    if(length(offset) == length(tarseq)){
-      offset <- c(offset, offset)[permid]
+    # Search + and - strands
+    pattern <- c(queseq, Biostrings::reverseComplement(queseq))
+    subject <- c(tarseq, tarseq)
+
+    # If this is a control, permute the indices
+    # This is used to determine hit significance
+    if(permute){
+      permid <- sample.int(length(subject))
+      subject <- subject[permid]
+      if(length(offset) == length(tarseq)){
+        offset <- c(offset, offset)[permid]
+      }
     }
-  }
 
-  aln <- Biostrings::pairwiseAlignment(
-    pattern=pattern,
-    subject=subject,
-    type='local'
-  )
-  S4Vectors::metadata(aln)$query  <- names(queseq) 
-  S4Vectors::metadata(aln)$target <- names(tarseq) 
+    aln <- Biostrings::pairwiseAlignment(
+      pattern=pattern,
+      subject=subject,
+      type='local'
+    )
+    S4Vectors::metadata(aln)$query  <- names(queseq) 
+    S4Vectors::metadata(aln)$target <- names(tarseq) 
 
-  aln %>>% {
     CNEr::GRangePairs(
       first = GenomicRanges::GRanges(
         seqnames = names(pattern),
         ranges = IRanges::IRanges(
-          start = Biostrings::pattern(.) %>% BiocGenerics::start(),
-          end = Biostrings::pattern(.) %>% BiocGenerics::end()
+          start = Biostrings::pattern(aln) %>% BiocGenerics::start(),
+          end = Biostrings::pattern(aln) %>% BiocGenerics::end()
         )
       ),
       second = GenomicRanges::GRanges(
         seqnames = names(subject),
         ranges = IRanges::IRanges(
-          start = Biostrings::subject(.) %>% BiocGenerics::start() %>% '+'(offset),
-          end = Biostrings::subject(.) %>% BiocGenerics::end() %>% '+'(offset)
+          start = Biostrings::subject(aln) %>% BiocGenerics::start() %>% '+'(offset),
+          end = Biostrings::subject(aln) %>% BiocGenerics::end() %>% '+'(offset)
         )
       ),
-      strand = c(rep('+', length(.)/2), rep('-', length(.)/2)),
-      score = BiocGenerics::score(.),
+      strand = c(rep('+', length(aln)/2), rep('-', length(aln)/2)),
+      score = BiocGenerics::score(aln),
+      logmn = get_logmn(pattern, subject),
       query = names(pattern),
       qwidth = Biostrings::width(pattern),
       twidth = Biostrings::width(subject)
     )
-  }
 
-}
-
-
-add_logmn <- function(d){
-  GenomicRanges::mcols(d) <-
-    as.data.frame(GenomicRanges::mcols(d)) %>%
-    dplyr::group_by(.data$query) %>%
-    dplyr::mutate(logmn=log2(.data$qwidth) + log2(sum(.data$twidth)))
-  d
 }
 
 
 get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
+
+  # The query sequences are already paired against the search sequences
+  stopifnot(length(queseq) == length(tarseq))
+  # There exists an offset for each search interval
+  stopifnot(length(tarseq) == length(offset))
+  # An offset of 0 indicates the search interval starts at start of scaffold
+  stopifnot(offset >= 0)
+  # All query names are in the full list of focal genes
+  stopifnot(queries %in% names(queseq))
 
   skipped_ <- rmonad::as_monad({
 
@@ -323,7 +325,7 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
 
       "Select which gene/search_interval pairs to align"
 
-      i <- setdiff(queries, skipped) %>% match(names(queseq))
+      i <- setdiff(queries, skipped) %>% base::match(names(queseq))
 
       list(
         queseq=queseq[i],
@@ -336,42 +338,38 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
     alignToGenome(
       permute    = TRUE,
       simulation = TRUE
-    ) %>>% { .$map <- add_logmn(.$map); . }
-    ### This?
-    # dplyr::group_by(query) %>%
-    #   dplyr::filter(.data$score == max(.data$score))
+    )
 
   hits_ <- truncated_seqs_ %*>%
-    alignToGenome(permute = FALSE) %>>%
-    { .$map <- add_logmn(.$map); . }
+    alignToGenome(
+      permute    = FALSE,
+      simulation = FALSE
+    )
 
   gum_ <- ctrl_ %>>%
     {
-      GenomicRanges::mcols(.$map) %>%
+      S4Vectors::mcols(.) %>%
       as.data.frame %>%
       dplyr::select(.data$query, .data$score, .data$logmn)
     } %>>%
     fit.gumbel
 
   rmonad::funnel(
-    ctrl = ctrl_,
-    hits = hits_,
-    gum  = gum_
+    ctrl    = ctrl_,
+    hits    = hits_,
+    gum     = gum_,
+    skipped = skipped_
   ) %*>% {
-
-    GenomicRanges::mcols(hits$map)$pval <- 1 - gum$p(GenomicRanges::mcols(hits$map)$score,
-                                                     GenomicRanges::mcols(hits$map)$logmn)
-    GenomicRanges::mcols(ctrl$map)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl$map)$score,
-                                                     GenomicRanges::mcols(ctrl$map)$logmn)
-
+    S4Vectors::mcols(hits)$pval <- 1 - gum$p(S4Vectors::mcols(hits)$score,
+                                             S4Vectors::mcols(hits)$logmn)
+    S4Vectors::mcols(ctrl)$pval <- 1 - gum$p(S4Vectors::mcols(ctrl)$score,
+                                             S4Vectors::mcols(ctrl)$logmn)
     list(
-      map=hits$map,
-      sam=ctrl$map,
-      dis=gum
+      map     = hits,
+      sam     = ctrl,
+      dis     = gum,
+      skipped = skipped
     )
-  } %*>%
-  rmonad::funnel(
-    skipped=skipped_
-  )
+  }
 
 }

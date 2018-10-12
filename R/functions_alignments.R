@@ -290,7 +290,15 @@ alignToGenome <- function(
 }
 
 
-get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
+get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
+
+  "Currently sequence searching is performed with a quadratic time alignment
+  algorithm. If the search space is too big, this becomes prohibitively
+  time-consuming. Ultimately I will need to use a heuristic program, such as
+  BLAST. But this is not yet implemented. For now I just ignore spaces that
+  are too large. Specifically, if `n*m > maxspace`, I skip the pair. The
+  skipped pairs will be returned and ultimately be represented as a column in
+  the feature table."
 
   # The query sequences are already paired against the search sequences
   stopifnot(length(queseq) == length(tarseq))
@@ -301,75 +309,47 @@ get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
   # All query names are in the full list of focal genes
   stopifnot(queries %in% names(queseq))
 
-  skipped_ <- rmonad::as_monad({
+  too_big <- log(GenomicRanges::width(queseq)) +
+             log(GenomicRanges::width(tarseq)) > log(maxspace)
 
-    "Currently sequence searching is performed with a quadratic time alignment
-    algorithm. If the search space is too big, this becomes prohibitively
-    time-consuming. Ultimately I will need to use a heuristic program, such as
-    BLAST. But this is not yet implemented. For now I just ignore spaces that
-    are too large. Specifically, if `n*m > maxspace`, I skip the pair. The
-    skipped pairs will be returned and ultimately be represented as a column in
-    the feature table."
+  skipped <- names(queseq)[too_big] %>% unique
 
-    too_big <- log(GenomicRanges::width(queseq)) +
-               log(GenomicRanges::width(tarseq)) > log(maxspace)
-    names(queseq)[too_big] %>% unique
+  i <- setdiff(queries, skipped) %>% base::match(names(queseq))
+  queseq <- queseq[i]
+  tarseq <- tarseq[i]
+  offset <- offset[i]
 
-  })
+  ctrl <- alignToGenome(
+            queseq     = queseq,
+            tarseq     = tarseq,
+            offset     = offset,
+            permute    = TRUE,
+            simulation = TRUE
+          )
 
-  truncated_seqs_ <-
-    rmonad::funnel(
-      skipped = skipped_,
-      queries = queries
-    ) %*>% {
+  hits <- alignToGenome(
+            queseq     = queseq,
+            tarseq     = tarseq,
+            offset     = offset,
+            permute    = FALSE,
+            simulation = FALSE
+          )
 
-      "Select which gene/search_interval pairs to align"
-
-      i <- setdiff(queries, skipped) %>% base::match(names(queseq))
-
-      list(
-        queseq=queseq[i],
-        tarseq=tarseq[i],
-        offset=offset[i]
-      )
-    }
-
-  ctrl_ <- truncated_seqs_ %*>%
-    alignToGenome(
-      permute    = TRUE,
-      simulation = TRUE
-    )
-
-  hits_ <- truncated_seqs_ %*>%
-    alignToGenome(
-      permute    = FALSE,
-      simulation = FALSE
-    )
-
-  gum_ <- ctrl_ %>>%
-    {
-      S4Vectors::mcols(.) %>%
-      as.data.frame %>%
-      dplyr::select(.data$query, .data$score, .data$logmn)
-    } %>>%
+  gum <-
+    S4Vectors::mcols(ctrl) %>%
+    as.data.frame %>%
+    dplyr::select(.data$query, .data$score, .data$logmn) %>%
     fit.gumbel
 
-  rmonad::funnel(
-    ctrl    = ctrl_,
-    hits    = hits_,
-    gum     = gum_,
-    skipped = skipped_
-  ) %*>% {
-    S4Vectors::mcols(hits)$pval <- 1 - gum$p(S4Vectors::mcols(hits)$score,
-                                             S4Vectors::mcols(hits)$logmn)
-    S4Vectors::mcols(ctrl)$pval <- 1 - gum$p(S4Vectors::mcols(ctrl)$score,
-                                             S4Vectors::mcols(ctrl)$logmn)
-    list(
-      map     = hits,
-      sam     = ctrl,
-      dis     = gum,
-      skipped = skipped
-    )
-  }
+  S4Vectors::mcols(hits)$pval <- 1 - gum$p(S4Vectors::mcols(hits)$score,
+                                           S4Vectors::mcols(hits)$logmn)
+  S4Vectors::mcols(ctrl)$pval <- 1 - gum$p(S4Vectors::mcols(ctrl)$score,
+                                           S4Vectors::mcols(ctrl)$logmn)
 
+  list(
+    map     = hits,
+    sam     = ctrl,
+    dis     = gum,
+    skipped = skipped
+  )
 }

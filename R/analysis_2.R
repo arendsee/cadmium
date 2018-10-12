@@ -189,12 +189,12 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       tardna  = .view_target(., "genomeDB"),
       queries = rmonad::view(., gene_tag)
     )
-  } %>>% {
+  } %*>% {
 
-    qids <- GenomicRanges::mcols(.$map)$attr
-    if(! all(qids %in% names(.$quedna)) ){
+    qids <- GenomicRanges::mcols(map)$attr
+    if(! all(qids %in% names(quedna)) ){
 
-      ngood <- sum(unique(qids) %in% names(.$quedna))
+      ngood <- sum(unique(qids) %in% names(quedna))
       ntotal <- length(unique(qids))
 
       msg <- "There is a mismatch between the names in the synteny map and
@@ -206,25 +206,24 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
         msg,
         ngood,
         ntotal,
-        paste0(head(names(.$quedna), 5), collapse=", "),
+        paste0(head(names(quedna), 5), collapse=", "),
         paste0(head(qids, 5), collapse=", ")
       ))
 
     }
 
-    .$tarseq <- Rsamtools::getSeq(x=.$tardna, CNEr::second(.$map))
-    .$queseq <- .$quedna[ qids ]
-    .$offset <- GenomicRanges::start(CNEr::second(.$map)) - 1
+    tarseq <- Rsamtools::getSeq(x=tardna, CNEr::second(map))
+    queseq <- quedna[ qids ]
+    offset <- GenomicRanges::start(CNEr::second(map)) - 1
 
-    list(
-      queseq  = .$queseq,
-      tarseq  = .$tarseq,
-      queries = .$queries,
-      offset  = .$offset
+    get_dna2dna(
+      queseq   = queseq,
+      tarseq   = tarseq,
+      queries  = queries,
+      offset   = offset,
+      maxspace = con@alignment@dna2dna_maxspace
     )
-  } %*>%
-    # An rmonad bound list with elements: map | sam | dis | skipped
-    get_dna2dna %>% .tag('gene2genome') #%*>% rmonad::funnel(
+  } %>% .tag('gene2genome') #%*>% rmonad::funnel(
 
   #   cds  = tcds_,
   #   exon = texons_,
@@ -308,6 +307,8 @@ secondary_data <- function(m, con){
     ) %*>%
     query_control_gene_check
 
+
+  m <- readRDS('m.Rda')
   for(target_species in get_targets(con)){
     m <- compare_target_to_focal(
       m,
@@ -318,6 +319,7 @@ secondary_data <- function(m, con){
     )
     m <- compare_target_to_focal(
       m,
+      con,
       species  = target_species,
       group    = "control",
       gene_tag = "control_genes"

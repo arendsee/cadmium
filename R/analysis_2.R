@@ -3,6 +3,8 @@
 # side-analyses) and cached.
 compare_target_to_focal <- function(m, con, species, group, gene_tag){
 
+  message("Processing ", species, " ", group)
+
   .view_target <- function(m, tag){
     rmonad::view(m, tag, species)
   }

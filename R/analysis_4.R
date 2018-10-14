@@ -106,6 +106,9 @@ setAncestor <- function(node, ...){
 #' @param ... Arguments that will be passed to \code{classify}
 #' @export
 determine_origins <- function(m, con){
+
+  message("Determining origins")
+
   m %>%
     view('query_labels')   %>>%
       .determine_origins(con) %>% tag('query_origins') %>%

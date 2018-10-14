@@ -162,6 +162,8 @@ labelTreeToTable <- function(root, feats){
 #' @export
 determine_labels <- function(m, con){
 
+  message("Determining labels")
+
   # TODO: fix rmonad::views so that it returns a named list
   query_features <- list()
   control_features <- list()
@@ -263,6 +265,8 @@ plotDecisionTree <- function(root){
 #'
 #' @export
 tertiary_data <- function(m, con){
+
+  message("Building feature tables")
 
   for(species in get_targets(con)){
     m <- buildFeatureTable(m, species, con, group = "query",   gene_tag = "query_genes")

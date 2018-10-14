@@ -2,6 +2,8 @@
 # inputs are a genome and a GFF file of gene models.
 load_species <- function(species_name, con){
 
+  message("Loading '", species_name)
+
   # Type descriptions
   #- SpeciesName :: character
   #- FolderPath :: character

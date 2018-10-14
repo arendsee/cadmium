@@ -4,7 +4,7 @@
 \alias{determine_labels}
 \title{Merge labels for all species}
 \usage{
-determine_labels(features, con)
+determine_labels(m, con)
 }
 \description{
 Merge labels for all species

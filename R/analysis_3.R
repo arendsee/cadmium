@@ -160,11 +160,20 @@ labelTreeToTable <- function(root, feats){
 
 #' Merge labels for all species
 #' @export
-determine_labels <- function(features, con){
-  rmonad::funnel(
-    query   = .determine_labels(features$query, con),
-    control = .determine_labels(features$control, con)
-  )
+determine_labels <- function(m, con){
+
+  # TODO: fix rmonad::views so that it returns a named list
+  query_features <- list()
+  control_features <- list()
+  for(target in get_targets(con)){
+    query_features[[target]]   <- rmonad::view(m, "feature_table", "query",   target)
+    control_features[[target]] <- rmonad::view(m, "feature_table", "control", target)
+  }
+
+  rmonad::combine(query_features) %>>%
+    .determine_labels(con) %>% tag("query_labels") %__%
+  rmonad::combine(control_features) %>>%
+    .determine_labels(con) %>% tag("control_labels")
 }
 .determine_labels <- function(features, con){
 
@@ -185,28 +194,21 @@ determine_labels <- function(features, con){
     N4 = 'non-genic: No DNA match to known gene'
   )
 
-  labelTrees_ <- lapply(features, function(feat) feat %>>% buildLabelsTree(con) ) %>% rmonad::combine()
-  
-  labels_ <- labelTrees_ %>>%
-    {
-      lapply(
-        seq_along(.),
-        function(i) .[[i]] %>>% labelTreeToTable(features[[i]])
-      ) %>% magrittr::set_names(names(features))
-    } %>>% rmonad::combine()
+  labelTrees_ <- lapply(features, buildLabelsTree, con)
 
-  label.summary_ <- labels_ %>>%
-  {
+  labels_ <- lapply(
+      seq_along(labelTrees_),
+      function(i) labelTrees_[[i]] %>% labelTreeToTable(features[[i]])
+    ) %>% magrittr::set_names(names(features))
 
-    "Summarize labels as a table with the columns:
-
-      1. secondary
-      2. species
-      3. count
-      4. description
-    "
-
-    lapply(., dplyr::count, primary, secondary)             %>%
+  # Summarize labels as a table with the columns:
+  #
+  #  1. secondary
+  #  2. species
+  #  3. count
+  #  4. description
+  label_summary_ <-
+    lapply(labels_, dplyr::count, primary, secondary)       %>%
     reshape2::melt(id.vars=c('primary', 'secondary'))       %>%
     dplyr::rename(species=L1, count=value)                  %>%
     dplyr::select(secondary, species, count)                %>%
@@ -215,12 +217,11 @@ determine_labels <- function(features, con){
     dplyr::mutate(description = descriptions[secondary])    %>%
     dplyr::arrange(description, secondary, species, count)  %>%
     as.data.frame
-  }
 
-  rmonad::funnel(
+  list(
     trees   = labelTrees_,
     labels  = labels_,
-    summary = label.summary_
+    summary = label_summary_
   )
 }
 

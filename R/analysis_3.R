@@ -1,86 +1,78 @@
-#' Build table of binary features
-buildFeatureTable <- function(d, con){
+# Build table of binary features
+buildFeatureTable <- function(m, species, con, group, gene_tag){
 
-  n <- length(d$queries)
+  .view_target <- function(m, tag){
+    rmonad::view(m, tag, species)
+  }
 
-  { 
+  .view_focal <- function(m, tag){
+    rmonad::view(m, tag, con@input@focal_species)
+  }
+
+  .view <- function(m, tag){
+    rmonad::view(m, tag, species, group)
+  }
+
+
+  rmonad::funnel(
+    genes = rmonad::view(m, gene_tag),
+    gene2genome = .view(m, "gene2genome"),
+    gaps = .view(m, "gaps"),
+    indels = .view(m, "indels"),
+    aa2aa = .view(m, "aa2aa"),
+    aa2orf = .view(m, "aa2orf"),
+    aa2transorf = .view(m, "aa2transorf"),
+    synder_summary = .view(m, "summary_synder_flags"),
+    synder_out = .view(m, "synder_out"),
+    aln = .view(m, "gene2genome_aln")
+  ) %*>% {
 
     "Set p-value cutoffs for each set of alignments (aa-vs-aa, aa-vs-orf,
     aa-vs-mRNA, gene-vs-genome). The p-value threshold set in the configuration
     is the overall desired p-value (defualting to 0.05). Here we need to
     account for multiple testing. For now we use a Bonferoni correction."
 
-    list(
-      p2p_cutoff = con@alignment@thresholds@prot2prot     / length(d$queries),
-      p2a_cutoff = con@alignment@thresholds@prot2allorf   / length(d$queries),
-      d2d_cutoff = con@alignment@thresholds@dna2dna       / length(d$queries),
-      p2t_cutoff = con@alignment@thresholds@prot2transorf / length(d$queries)
-    )
+    n <- length(genes)
 
-  } %*>% {
+    p2p_cutoff <- con@alignment@thresholds@prot2prot     / n
+    p2a_cutoff <- con@alignment@thresholds@prot2allorf   / n
+    d2d_cutoff <- con@alignment@thresholds@dna2dna       / n
+    p2t_cutoff <- con@alignment@thresholds@prot2transorf / n
 
-    "From the raw data, distill a binary feature table"
-
-    met <- GenomicRanges::mcols(d$gene2genome$map) %>%
+    met <- GenomicRanges::mcols(gene2genome) %>%
            as.data.frame %>%
            subset(pval < d2d_cutoff)
 
-    rmonad::funnel(
-      seqid = d$queries,
+    data.frame(
+      seqid = genes,
       # matches somewhere in at least one search interval
-      nuc = d$queries %in% met$query,
+      nuc = genes %in% met$query,
       # matches CDS in at least one search interval
-      cds = d$queries %in% subset(met, cds_match)$query,
+      cds = genes %in% subset(met, cds_match)$query,
       # matches transcript in at least one search interval
-      rna = d$queries %in% subset(met, mrna_match)$query,
+      rna = genes %in% subset(met, mrna_match)$query,
       # matches exon in at least one search interval
-      exo = d$queries %in% subset(met, exon_match)$query,
+      exo = genes %in% subset(met, exon_match)$query,
       # at least search interval overlaps a N-string
-      nst = d$queries %in% as.character(d$gapped$query),
+      nst = genes %in% gaps$query,
       # number of confirmed indels (based on search interval size)
-      ind = d$queries %in% d$indels,
+      ind = genes %in% indels,
       # the query has an ortholog in the target
-      gen = d$queries %in% subset(d$aa2aa$map, pval < p2p_cutoff)$query ,
+      gen = genes %in% subset(aa2aa$map, pval < p2p_cutoff)$query,
       # ORF match in SI
-      orf = d$queries %in% subset(d$aa2orf$map, pval < p2a_cutoff)$query ,
+      orf = genes %in% subset(aa2orf$map, pval < p2a_cutoff)$query,
       # ORF match to spliced transcript (possibly multi-exonic)
-      trn = d$queries %in% subset(d$aa2transorf$map, pval < p2t_cutoff)$query ,
+      trn = genes %in% subset(aa2transorf$map, pval < p2t_cutoff)$query,
       # synteny is scrambled
-      scr = d$queries %in% subset(d$synder_summary, incoherent)$attr,
+      scr = genes %in% subset(synder_summary, incoherent)$attr,
       # at least one search interval maps off scaffold
-      una = d$queries %in% subset(d$synder_summary, unassembled)$attr,
+      una = genes %in% subset(synder_summary, unassembled)$attr,
       # search interval was not processed for technical reasons (e.g. too big)
-      tec = d$queries %in% d$gene2genome$skipped
+      tec = genes %in% aln$skipped,
+      stringsAsFactors = FALSE
     )
-
-  } %>_% {
-
-    "Assert all feature vectors are of the correct length"
-
-    stopifnot(sapply(., length) == n)
-
-  } %>>% as.data.frame(stringsAsFactors=FALSE)
+  } %>% rmonad::tag("feature_table", group, species)
 }
-
-#' Load tertiary data
-#'
-#' @export
-tertiary_data <- function(secondary_data, con){
-
-  "For each species, build a feature table"
-
-  buildFeatureTables <- function(d){
-    ss <- lapply(d, buildFeatureTable, con=con)
-    names(ss) <- names(d)
-    rmonad::combine(ss)
-  }
-
-  qss <- buildFeatureTables(secondary_data$query)
-  css <- buildFeatureTables(secondary_data$control)
-  
-  rmonad::funnel(query=qss, control=css)
-}
-
 
 buildLabelsTree <- function(feats, con){
 
@@ -233,7 +225,6 @@ determine_labels <- function(features, con){
 }
 
 
-
 plotDecisionTree <- function(root){
   GetNodeLabel <- function(node) { sprintf('%s\n%s', node$name, node$N) }
 
@@ -262,4 +253,20 @@ plotDecisionTree <- function(root){
   data.tree::SetGraphStyle(root, rankdir="LR")
 
   plot(root)
+}
+
+
+#' Load tertiary data
+#'
+#' For each species, build a feature table
+#'
+#' @export
+tertiary_data <- function(m, con){
+
+  for(species in get_targets(con)){
+    m <- buildFeatureTable(m, species, con, group = "query",   gene_tag = "query_genes")
+    m <- buildFeatureTable(m, species, con, group = "control", gene_tag = "control_genes")
+  }
+
+  m
 }

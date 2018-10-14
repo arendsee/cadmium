@@ -4,7 +4,7 @@
 \alias{buildFeatureTable}
 \title{Build table of binary features}
 \usage{
-buildFeatureTable(d, con)
+buildFeatureTable(m, species, con, group, gene_tag)
 }
 \description{
 Build table of binary features

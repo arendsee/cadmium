@@ -4,8 +4,8 @@
 \alias{tertiary_data}
 \title{Load tertiary data}
 \usage{
-tertiary_data(secondary_data, con)
+tertiary_data(m, con)
 }
 \description{
-Load tertiary data
+For each species, build a feature table
 }

@@ -3,14 +3,6 @@
 # side-analyses) and cached.
 compare_target_to_focal <- function(m, con, species, group, gene_tag){
 
-  #- Overlaps :: Table {
-  #-    query  = Seqid
-  #-  , target = Seqid
-  #-  , type   = SOType
-  #-  , qid    = ? -- I think this is an integer ID, but need to double check
-  #-  , tid    = ?
-  #-  }
-
   .view_target <- function(m, tag){
     rmonad::view(m, tag, species)
   }
@@ -223,37 +215,34 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       offset   = offset,
       maxspace = con@alignment@dna2dna_maxspace
     )
-  } %>% .tag('gene2genome') #%*>% rmonad::funnel(
+  } %>% .tag('gene2genome_aln') %>% {
+    rmonad::funnel(
+      gene2genome = .,
+      cds  = .view_target(., "mRNA"),
+      exon = .view_target(., "exon"),
+      mrna = .view_target(., "CDS")
+    )
+  } %*>% {
 
-  #   cds  = tcds_,
-  #   exon = texons_,
-  #   mrna = tgff_
-  # ) %*>% {
-  #
-  #   "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,
-  #   but GFF uses mRNA to specify the entire transcript before splicing)"
-  #
-  #   met <- GenomicRanges::mcols(map)
-  #   rng <- CNEr::second(map)
-  #
-  #   has_cds_match  <- GenomicRanges::findOverlaps(rng, cds)  %>% queryHits %>% unique
-  #   has_exon_match <- GenomicRanges::findOverlaps(rng, exon) %>% queryHits %>% unique
-  #   has_mrna_match <- GenomicRanges::findOverlaps(rng, mrna) %>% queryHits %>% unique
-  #
-  #   met$cds_match  <- seq_along(met$score) %in% has_cds_match
-  #   met$exon_match <- seq_along(met$score) %in% has_exon_match
-  #   met$mrna_match <- seq_along(met$score) %in% has_mrna_match
-  #
-  #   GenomicRanges::mcols(map) <- met
-  #
-  #   list(
-  #     map=map,
-  #     sam=sam,
-  #     dis=dis,
-  #     skipped=skipped
-  #   )
-  # }
+    "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,
+    but GFF uses mRNA to specify the entire transcript before splicing)"
 
+    map <- gene2genome$map
+    met <- S4Vectors::mcols(map)
+    rng <- CNEr::second(map)
+
+    has_cds_match  <- GenomicRanges::findOverlaps(rng, cds)  %>% S4Vectors::queryHits() %>% unique
+    has_exon_match <- GenomicRanges::findOverlaps(rng, exon) %>% S4Vectors::queryHits() %>% unique
+    has_mrna_match <- GenomicRanges::findOverlaps(rng, mrna) %>% S4Vectors::queryHits() %>% unique
+
+    met$cds_match  <- seq_along(met$score) %in% has_cds_match
+    met$exon_match <- seq_along(met$score) %in% has_exon_match
+    met$mrna_match <- seq_along(met$score) %in% has_mrna_match
+
+    S4Vectors::mcols(map) <- met
+
+    map
+  } %>% .tag('gene2genome')
 }
 
 query_control_gene_check <- function(gff, qgenes, cgenes) {
@@ -307,8 +296,6 @@ secondary_data <- function(m, con){
     ) %*>%
     query_control_gene_check
 
-
-  m <- readRDS('m.Rda')
   for(target_species in get_targets(con)){
     m <- compare_target_to_focal(
       m,

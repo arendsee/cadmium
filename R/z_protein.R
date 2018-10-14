@@ -225,7 +225,7 @@ m_get_proteins <- function(gffDB, genomeDB, species_name){
     ) %*>%
     GenomicFeatures::extractTranscriptSeqs %>>%
     #- CDS -> AASeqs
-    Biostrings::translate %>% .tag("faa") %>>%
+    Biostrings::translate(if.fuzzy.codon="solve") %>% .tag("faa") %>>%
     filter_with_warnings__zero_length_proteins(label=species_name) %>>%
     #- AASeqs -> AASummary
     summarize_faa %>% .tag("summary_aa") %>_%

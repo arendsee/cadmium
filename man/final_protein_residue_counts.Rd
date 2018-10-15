@@ -4,7 +4,7 @@
 \alias{final_protein_residue_counts}
 \title{Get a table listing the last protein residue proportions for each species}
 \usage{
-final_protein_residue_counts(x)
+final_protein_residue_counts(m)
 }
 \description{
 Get a table listing the last protein residue proportions for each species

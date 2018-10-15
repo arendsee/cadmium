@@ -4,7 +4,7 @@
 \alias{makeSynmapTable}
 \title{Tabulate states for each genome}
 \usage{
-makeSynmapTable(con, speciesOrder)
+makeSynmapTable(m)
 }
 \arguments{
 \item{con}{Config object}

@@ -4,10 +4,12 @@
 \alias{makeSynderTable}
 \title{Tabulate states for each genome}
 \usage{
-makeSynderTable(con, speciesOrder)
+makeSynderTable(con, speciesOrder, group = "query")
 }
 \arguments{
 \item{con}{Config object}
+
+\item{group}{string - either "query" or "control"}
 }
 \description{
 Tabulate states for each genome

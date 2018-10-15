@@ -26,5 +26,3 @@ context("whole pipeline")
 #     TRUE
 #   })
 # })
-
-# TODO: cleanup

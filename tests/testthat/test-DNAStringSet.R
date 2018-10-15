@@ -27,21 +27,18 @@ test_that("translate works", {
 
 test_that("filter_with_warnings__zero_length_proteins", {
   expect_warning(
-    Biostrings::AAStringSet(c("GANDALF", "")) %>%
+    Biostrings::AAStringSet(c("seq1"="GANDALF", "seq2"="")) %>%
       filter_with_warnings__zero_length_proteins
   )
   expect_equal(
-    Biostrings::AAStringSet(c("GANDALF", "")) %>%
+    Biostrings::AAStringSet(c("seq1"="GANDALF", "seq2"="")) %>%
       filter_with_warnings__zero_length_proteins,
-    Biostrings::AAStringSet(c("GANDALF"))
+    Biostrings::AAStringSet(c("seq1"="GANDALF"))
   )
 })
 
 test_that("Check nstrings", {
-  expect_equal(
-    cds_sample %>% derive_nstring %>% top_class,
-    "GRanges"
-  )
+  expect_equal(cds_sample %>% derive_nstring %>% top_class, "GFF")
   expect_equal(cds_sample %>% derive_nstring %>% length, 1)
   expect_equal(
     cds_sample                %>%

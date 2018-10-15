@@ -139,9 +139,10 @@ run_fagin <- function(con){
 
   # Set the cache function. There is one cache system for TxDb objects and
   # everything else is saved as Rdata.
+  options(rmonad.auto_cache = con@cache)
   options(rmonad.cache_dir = file.path(con@archive, "cache"))
   options(rmonad.cacher = make_fagin_cacher())
-  options(rmonad.cache_maxtime = 0.5)
+  options(rmonad.cache_maxtime = 10)
 
   # What I want to do here is make all caching dependent on the input
   # configuration. The following command DOES accomplish this (in rmonad
@@ -153,7 +154,7 @@ run_fagin <- function(con){
     "Set random seed for the analysis, the choice of 210 is arbitrary. The
     random seed mainly affects the p-value estimates for alignments."
 
-    set.seed(210)
+    set.seed(211)
 
   } %__% {
 

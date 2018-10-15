@@ -2,17 +2,38 @@
 # Statistics
 # ============================================================================
 
+#' Gumbel density function
+#'
+#' @param x number
+#' @param mu mean
+#' @param s standard deviation
+#' @export
 dgumbel <- function(x, mu, s){
   z <- (mu - x) / s
   exp( z-exp(z) ) / s
 }
+
+#' Gumbel function
+#'
+#' @param q quantile 
+#' @param mu mean
+#' @param s standard deviation
+#' @export
 pgumbel <- function(q, mu, s){
   z <- (q - mu) / s
   exp(-exp(-z))
 }
+
+#' Gumbel function
+#'
+#' @param p quantile 
+#' @param mu mean
+#' @param s standard deviation
+#' @export
 qgumbel <- function(p, mu, s){
   mu - s*log(-log(p))
 }
+
 
 fit.gumbel <- function(sam){
 
@@ -45,7 +66,7 @@ fit.gumbel <- function(sam){
 
   gumbel.fit <- fitdistrplus::fitdist(
     data   = scores,
-    distr  = dgumbel,
+    distr  = "gumbel",
     start  = list(mu=mean(scores), s=sd(scores)),
     method = "mge",
     gof    = "CvM" # mge distance method 

@@ -239,14 +239,16 @@ fagin_config <- setClass(
     orf           = "config_orf",
     alignment     = "config_alignment",
     decision_tree = "list",
-    archive       = "character"
+    archive       = "character",
+    cache         = "logical"
   ),
   prototype(
     input         = config_input(),
     synder        = config_synder(),
     alignment     = config_alignment(),
     decision_tree = yaml::yaml.load(default_decision_tree),
-    archive       = 'ARCHIVE'
+    archive       = 'ARCHIVE',
+    cache         = FALSE
   )
 )
 

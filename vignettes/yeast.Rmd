@@ -23,8 +23,6 @@ validate_config(con)
 d <- run_fagin(con)
 missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-es <- rmonad::get_error(d)
-ws <- rmonad::get_warnings(d)
 makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 ```
 

@@ -4,10 +4,10 @@
 \alias{makeSynderTable}
 \title{Tabulate states for each genome}
 \usage{
-makeSynderTable(con, speciesOrder, group = "query")
+makeSynderTable(m, group = "query")
 }
 \arguments{
-\item{con}{Config object}
+\item{m}{Rmonad object}
 
 \item{group}{string - either "query" or "control"}
 }

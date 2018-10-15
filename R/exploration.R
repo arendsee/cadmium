@@ -251,9 +251,7 @@ label_desc <- data.frame(
 #' Plot the secondary labels
 #'
 #' @export
-plotSecondaryLabels <- function(con, speciesOrder, fill='secondary'){
-    load(file.path(con@archive, 'd4.Rda'))
-
+plotSecondaryLabels <- function(m, speciesOrder, fill='secondary'){ 
     parse_labels <- function(labels, group){
       labels %>%
         lapply(
@@ -272,32 +270,32 @@ plotSecondaryLabels <- function(con, speciesOrder, fill='secondary'){
     }
 
     dat <- rbind(
-      parse_labels(d4$query$labels,   group="orphan"),
-      parse_labels(d4$control$labels, group="control")
+      parse_labels(.extract(m, "query_labels")[[1]]$labels, "query"),
+      parse_labels(.extract(m, "control_labels")[[1]]$labels, "control")
     )
 
     if(fill == 'secondary'){
-      ggplot(dat) +
-        geom_bar(aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
-        scale_fill_brewer(palette="Paired") +
-        theme(axis.text.x = element_text(angle=270, hjust=0, vjust=1)) +
-        labs(
+      ggplot2::ggplot(dat) +
+        ggplot2::geom_bar(ggplot2::aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
+        ggplot2::scale_fill_brewer(palette="Paired") +
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle=270, hjust=0, vjust=1)) +
+        ggplot2::labs(
           fill="Classification",
           x="Target species",
           y="# of focal genes"
         ) +
-        facet_grid(group ~ .)
+        ggplot2::facet_grid(group ~ .)
     } else {
-      ggplot(dat) +
-        scale_fill_brewer(palette="Paired") +
-        geom_bar(aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
-        theme(axis.text.x = element_text(angle=325, hjust=0, vjust=1)) +
-        labs(
+      ggplot2::ggplot(dat) +
+        ggplot2::scale_fill_brewer(palette="Paired") +
+        ggplot2::geom_bar(ggplot2::aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
+        ggplot2::theme(axis.text.x = ggplot2::element_text(angle=325, hjust=0, vjust=1)) +
+        ggplot2::labs(
           fill="Target species",
           x="Classification",
           y="# of focal genes"
         ) +
-        facet_grid(group ~ .)
+        ggplot2::facet_grid(group ~ .)
     }
 }
 
@@ -313,12 +311,18 @@ makeResultArchive <- function(con){
   stop("This function is a stub")
 }
 
-makeSecondaryTable <- function(con, speciesOrder){
-  load(file.path(con@archive, "d4.Rda"))
+
+#' Make a table of the secondary labels for each query gene
+#'
+#' @param m Rmonad object
+#' @return
+makeSecondaryTable <- function(m){
+  labels <- .extract(m, "query_labels")[[1]]$labels
+  speciesOrder <- names(labels)
   lapply(
-    names(d4$query$labels),
+    names(labels),
     function(x) {
-      dplyr::select(d4$query$labels[[x]], seqid, secondary) %>%
+      dplyr::select(labels[[x]], seqid, secondary) %>%
         { names(.)[2] <- x; . }
     }
   ) %>% Reduce(f=merge) %>% { .[, c('seqid', speciesOrder[-1])] } 
@@ -328,17 +332,14 @@ makeSecondaryTable <- function(con, speciesOrder){
 #'
 #' Contains all the tabular data created by the \code{makeResultArchive} function.
 #'
-#' @export
 #' @param con Config object
-makeExcelSpreadsheet <- function(con, filename="fagin-result.xlsx"){
+makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
   # TODO: if I can save the image as an EMF, it can be edited in Excel (at
   # least on windows), but currently there seems to be a bug in XLConnect (or
   # some dependency) that prevents this. See
   # https://github.com/miraisolutions/xlconnect issue #22
 
-  load(file.path(con@archive, "d5.Rda"))
-  load(file.path(con@archive, "d1.Rda"))
-  ss <- invertSummaries(d1)
+  ss <- getSummaries(m)
   speciesOrder <- getSpeciesPhylogeneticOrder(con)
 
   wb <- XLConnect::loadWorkbook(filename, create=TRUE)

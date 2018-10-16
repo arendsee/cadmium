@@ -9,7 +9,16 @@ overlapMap <- function(gff, si, type=NULL){
   # A Hits object
   # from(o) accesses the si indices
   # to(o) acceses the ft indices
-  GenomicRanges::findOverlaps(CNEr::second(si), gff) %>% {
+  GenomicRanges::findOverlaps(
+      query = CNEr::second(si)
+    , subject = gff
+    , type = "any" # from: [any, start, end, within, equal]
+    , select = "all" # from: [all, first, last, arbitrary]
+    , ignore.strand = TRUE # This MUST be set to TRUE. The search intervals are
+                           # always '+', which is arbitrary since strand does 
+                           # not matter for them. If strand is considered here,
+                           # all minus strand mRNAs will be ignored.
+  ) %>% {
     data.frame(
       query            = GenomicRanges::mcols(si[S4Vectors::from(.)])$attr,
       target           = GenomicRanges::mcols(gff[S4Vectors::to(.)])$attr,
@@ -19,5 +28,4 @@ overlapMap <- function(gff, si, type=NULL){
       stringsAsFactors = FALSE
     )
   }
-
 }

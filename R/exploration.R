@@ -178,9 +178,9 @@ rownamesAsSpecies <- function(x, levels=unique(rownames(x))){
 makeSynmapTable <- function(m){
   .extract(m, 'synmap_summary') %>%
     lapply(function(x) {
-       x <- x@width
-       values <- c(x@min, x@q25, x@median, x@q75, x@max, x@mean, x@sd)
-       names(values) <- c("min", "q25", "median", "q75", "max", "mean", "sd")
+       w <- x@width
+       values <- c(w@min, w@q25, w@median, w@q75, w@max, w@mean, w@sd, w@n)
+       names(values) <- c("min", "q25", "median", "q75", "max", "mean", "sd", "N")
        values
     }) %>%
     .rbindlist(sort=FALSE)

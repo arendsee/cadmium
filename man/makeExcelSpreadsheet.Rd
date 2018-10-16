@@ -4,7 +4,7 @@
 \alias{makeExcelSpreadsheet}
 \title{Create an excel spreadsheet of fagin results}
 \usage{
-makeExcelSpreadsheet(con, filename = "fagin-result.xlsx")
+makeExcelSpreadsheet(m, filename = "fagin-result.xlsx")
 }
 \arguments{
 \item{con}{Config object}

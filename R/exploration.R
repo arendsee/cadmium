@@ -12,7 +12,7 @@
 }
 
 # extract a tag from a list of things
-.select_tag <- function(xs, tag){
+.select_tag <- function(xs, pattern){
   xs <- xs[grepl(pattern=pattern, x=names(xs), perl=TRUE)]
   names(xs) <- sub(pattern=pattern, replacement="", x=names(xs))
   xs
@@ -352,7 +352,7 @@ makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
   XLConnect::createSheet(wb, "Synmap Summaries")
   XLConnect::writeWorksheet(wb, data=maptab, sheet="Synmap Summaries")
 
-  syntab <- makeSynderTable(con, speciesOrder)
+  syntab <- makeSynderTable(con)
   XLConnect::createSheet(wb, "Synder Summaries")
   XLConnect::writeWorksheet(wb, data=syntab, sheet="Synder Summaries")
 

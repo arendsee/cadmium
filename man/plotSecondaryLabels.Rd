@@ -4,7 +4,7 @@
 \alias{plotSecondaryLabels}
 \title{Plot the secondary labels}
 \usage{
-plotSecondaryLabels(m, fill = "secondary")
+plotSecondaryLabels(m, speciesOrder, fill = "secondary")
 }
 \description{
 Plot the secondary labels

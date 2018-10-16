@@ -67,7 +67,7 @@ config_alignment <- setClass(
   prototype(
     thresholds = config_alignment_thresholds(),
     simulation = config_alignment_simulation(),
-    dna2dna_maxspace = 1e7L,
+    dna2dna_maxspace = 1e8L,
     indel_threshold  = 0.25
   )
 )
@@ -95,13 +95,13 @@ config_input <- setClass(
     control_gene_list = "character"
   ),
   prototype(
-    gff_dir           = "INPUT/gff",
-    fna_dir           = "INPUT/fna",
-    syn_dir           = "INPUT/syn",
-    tree              = "INPUT/tree",
+    gff_dir           = system.file("yeast", "gff", package='fagin'),
+    fna_dir           = system.file("yeast", "fna", package='fagin'),
+    syn_dir           = system.file("yeast", "syn", package='fagin'),
+    tree              = system.file("yeast", "tree", package='fagin'),
     focal_species     = "Saccharomyces_cerevisiae",
-    query_gene_list   = "INPUT/orphan-list.txt",
-    control_gene_list = "INPUT/control-list.txt"
+    query_gene_list   = system.file("yeast", "orphan-list.txt", package='fagin'),
+    control_gene_list = system.file("yeast", "control-list.txt", package='fagin')
   )
 )
 
@@ -124,6 +124,25 @@ config_synder <- setClass(
     k       = 0L,
     r       = 0,
     trans   = "i"
+  )
+)
+
+#' Settings for Open Reading Frame finding
+#'
+#' @slot start Start codon (e.g. "ATG|TTG|CTG")
+#' @slot stop Stop codon (e.g. "TAA|TGA|TAG")
+#' @slot minlen Minimum ORF length (not including start and stop codons)
+config_orf <- setClass(
+  "config_orf",
+  representation(
+    start  = "character",
+    stop   = "character",
+    minlen = "integer"
+  ),
+  prototype(
+    start  = "ATG",
+    stop   = "TAA|TGA|TAG",
+    minlen = 30L
   )
 )
 
@@ -217,26 +236,62 @@ fagin_config <- setClass(
   representation(
     input         = "config_input",
     synder        = "config_synder",
+    orf           = "config_orf",
     alignment     = "config_alignment",
     decision_tree = "list",
-    archive       = "character"
+    archive       = "character",
+    cache         = "logical"
   ),
   prototype(
     input         = config_input(),
     synder        = config_synder(),
     alignment     = config_alignment(),
     decision_tree = yaml::yaml.load(default_decision_tree),
-    archive       = 'ARCHIVE'
+    archive       = 'ARCHIVE',
+    cache         = FALSE
   )
 )
 
 #' Get a default configuration object
+#'
+#' Checks existence of all required files and reports species in the tree
 #'
 #' @export
 config <- function(){
   con <- fagin_config()
   con@input@focal_species <- gsub(" ", "_", con@input@focal_species)
   con
+}
+
+#' Validate a configuration
+#'
+#' @export
+validate_config <- function(con){
+  if(! file.exists(con@input@tree)){
+    stop("Tree file not found")
+  }
+  if(! file.exists(con@input@gff_dir)){
+    stop("GFF directory not found")
+  }
+  if(! file.exists(con@input@fna_dir)){
+    stop("Genome sequence directory not found")
+  }
+  if(! file.exists(con@input@syn_dir)){
+    stop("Synteny map directory not found")
+  }
+  if(! file.exists(con@input@query_gene_list)){
+    stop("Query gene list not found")
+  }
+  if(! file.exists(con@input@control_gene_list)){
+    stop("Control gene list not found")
+  }
+  # check whether the tree can be loaded
+  tree <- ape::read.tree(con@input@tree)
+  if(! (con@input@focal_species %in% tree$tip.label)){
+    stop("Focal species is not in tree")
+  }
+  cat("Found tree with species:", paste(tree$tip.label, collapse=", "), "\n")
+  cat("Everything looks good so far\n")
 }
 
 
@@ -335,16 +390,28 @@ faa_summary <- setClass(
   contains = "seq_summary"
 )
 
+#' CDS phase summary 
+#'
+#' @slot initial_residue   integer
+#' @slot final_residue     integer
+phase_summary <- setClass(
+  "phase_summary",
+  representation(
+    table = "table",
+    incomplete_models = "character"
+  )
+)
+
 #' Summary of a GFF file
 #'
-#' @slot seqstats    data.frame
+#' @slot table       data.frame
 #' @slot mRNA_length numeric_summary
 #' @slot CDS_length  numeric_summary
 #' @slot exon_length numeric_summary
 gff_summary <- setClass(
   "gff_summary",
   representation(
-    seqstats    = "data.frame",
+    table       = "data.frame",
     mRNA_length = "numeric_summary",
     CDS_length  = "numeric_summary",
     exon_length = "numeric_summary"
@@ -353,13 +420,13 @@ gff_summary <- setClass(
 
 #' Summary of a IRanges or GRanges file (without the types of a GFF)
 #'
-#' @slot seqstats  data.frame
-#' @slot width     numeric_summary
+#' @slot table  data.frame
+#' @slot width  numeric_summary
 granges_summary <- setClass(
   "granges_summary",
   representation(
-    seqstats = "data.frame",
-    width    = "numeric_summary"
+    table = "data.frame",
+    width = "numeric_summary"
   )
 )
 

@@ -11,26 +11,19 @@ NULL
 #' @export
 load_dna <- function(filename) {
 
-  {
+  "Open a connection to the indexed fasta file, this will not slurp the whole
+  thing into memory. Build an indexed fasta file if one does not exist"
 
-    "Build an indexed fasta file if one does not exist"
-
-    Rsamtools::indexFa(filename)
-
-  } %__% {
-
-    "Open a connection to the indexed fasta file, this will not slurp the whole
-    thing into memory."
-
-    Rsamtools::FaFile(filename)
-
-  }
-
+  Rsamtools::indexFa(filename)
+  Rsamtools::FaFile(filename)
 }
 
 #' @rdname fagin_io
 #' @export
 load_gene_list <- function(filename){
+
+  "Read a single column list of gene IDs"
+
   readr::read_table(
     filename,
     col_names=FALSE,
@@ -42,5 +35,8 @@ load_gene_list <- function(filename){
 #' @rdname fagin_io
 #' @export
 load_tree <- function(filename){
+
+  "Read a phylogenetic tree as a `phylo` object"
+
   ape::read.tree(filename)
 }

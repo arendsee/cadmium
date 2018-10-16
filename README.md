@@ -81,15 +81,19 @@ following Rdata files:
 
 Content
  - [x] generalize from 'orphan' to 'query'
- - [ ] prepare report for each query
- - [ ] create gene pages
  - [ ] add orthology statistics
- - [ ] print classification tree in report
  - [ ] add RNA-seq input
  - [ ] implement non-quadratic alignment (e.g. HMMER or BLAST)
+ - [ ] account for phylostratigraphic bias (alla Moyer)
+ - [ ] get proper ORF finder
+ - [ ] additional classes
+ - [ ] * transposon footprints (Ux)
+ - [ ] * overprinting (Ox)
+ - [ ] * transposon association (Ox)
+ - [ ] * frameshift (Ox)
 
 Implementation
- - [x] Merge with R synder version
+ - [x] merge with R synder version
  - [x] * ab initio refactor as pure R package
  - [x] * replace all shellscripts
  - [x] * add test suite
@@ -102,9 +106,16 @@ Final Destination
  - [ ] Incorporate BLAST and manage its results (or something better than BLAST)
  - [ ] Incorporate RNAseq data
  - [ ] Visualize the results genewise with Trelliscope
+ - [ ] integrate `phylostratr`
+ - [x] toss knitr, modularize for interactive exploration
+ - [ ] integrate with Trelliscope and datadr
+ - [ ] parallelize everything (divide-analyze-recombine)
+ - [ ] add logs (this will need some `rmonad` modification)
 
 Report
  - [ ] Better order for UNO secondary classes
  - [ ] Distinguish between scaffolds and chromosomes
  - [ ] Retrieve cytology info?
  - [ ] Add alignment stats - overlaps, length of target and query
+ - [ ] prepare report for each query
+ - [ ] create gene pages

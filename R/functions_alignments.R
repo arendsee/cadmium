@@ -2,6 +2,39 @@
 # Statistics
 # ============================================================================
 
+#' Gumbel density function
+#'
+#' @param x number
+#' @param mu mean
+#' @param s standard deviation
+#' @export
+dgumbel <- function(x, mu, s){
+  z <- (mu - x) / s
+  exp( z-exp(z) ) / s
+}
+
+#' Gumbel function
+#'
+#' @param q quantile 
+#' @param mu mean
+#' @param s standard deviation
+#' @export
+pgumbel <- function(q, mu, s){
+  z <- (q - mu) / s
+  exp(-exp(-z))
+}
+
+#' Gumbel function
+#'
+#' @param p quantile 
+#' @param mu mean
+#' @param s standard deviation
+#' @export
+qgumbel <- function(p, mu, s){
+  mu - s*log(-log(p))
+}
+
+
 fit.gumbel <- function(sam){
 
   stopifnot(c('query', 'score', 'logmn') %in% names(sam))
@@ -31,18 +64,6 @@ fit.gumbel <- function(sam){
 
   scores <- get.adj.from.score(sam$score, sam$logmn)
 
-
-  dgumbel <- function(x, mu, s){
-    z <- (mu - x) / s
-    exp( z-exp(z) ) / s
-  }
-  pgumbel <- function(q, mu, s){
-    z <- (q - mu) / s
-    exp(-exp(-z))
-  }
-  qgumbel <- function(p, mu, s){
-    mu - s*log(-log(p))
-  }
   gumbel.fit <- fitdistrplus::fitdist(
     data   = scores,
     distr  = "gumbel",
@@ -81,7 +102,7 @@ fit.gumbel <- function(sam){
 
 nothing <- function(x) NULL
 
-aln_xy <- function(x, y, group, label, simulation=FALSE){
+aln_xy <- function(x, y, simulation=FALSE){
 
   aln <- Biostrings::pairwiseAlignment(
     pattern=x,
@@ -89,33 +110,25 @@ aln_xy <- function(x, y, group, label, simulation=FALSE){
     type='local',
     substitutionMatrix='BLOSUM80'
   )
-  metadata(aln)$query  <- names(x) 
-  metadata(aln)$target <- names(y) 
-
-  if(simulation){
-    label <- paste0(label, "-sim")
-  }
-
-  alnfile <- to_cache(aln, group=group, label=label)
+  S4Vectors::metadata(aln)$query  <- names(x) 
+  S4Vectors::metadata(aln)$target <- names(y) 
 
   a <- data.frame(
     query  = names(x),
     target = names(y),
-    score  = score(aln),
-    qwidth = width(x),
-    twidth = width(y),
+    score  = BiocGenerics::score(aln),
+    qwidth = Biostrings::width(x),
+    twidth = Biostrings::width(y),
     stringsAsFactors = FALSE
   )
 
-  list(
-      map = dplyr::group_by(a, query) %>%
-        # Calculate adjusted score
-        dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-        base::merge(a) %>%
-        dplyr::select(query, target, score, logmn)
-    , alnfile = alnfile
-  )
+  map <- dplyr::group_by(a, query) %>%
+    # Calculate adjusted score
+    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
+    base::merge(a) %>%
+    dplyr::select(query, target, score, logmn)
 
+  list(map=map, aln=aln)
 }
 
 AA_aln <- function(queseq, tarseq, nsims=10000, ...){
@@ -149,7 +162,9 @@ AA_aln <- function(queseq, tarseq, nsims=10000, ...){
   # 5. align these against random targets
   simulation_result <- aln_xy(
     queseq[simids] %>% set_names(simnames),
-    tarseq %>% base::sample(length(simnames), replace=TRUE) %>% reverse,
+    tarseq %>%
+        sample(length(simnames), replace=TRUE) %>%
+        IRanges::reverse(),
     simulation=TRUE,
     ...
   )
@@ -180,7 +195,7 @@ AA_aln <- function(queseq, tarseq, nsims=10000, ...){
     dis     = gum,
     sam     = sam,
     nsims   = nsims,
-    alnfile = aln_result$alnfile
+    aln     = aln_result$aln
   )
 }
 
@@ -204,7 +219,6 @@ align_by_map <- function(
 
   map <- map[map$query %in% queries, ]
 
-
   if(!all(map$target %in% names(tarseq))){
     dif <- setdiff(map$target, names(tarseq))
     msg <- "%s of %s of target genes missing in map; [%s, ...]"
@@ -223,7 +237,6 @@ align_by_map <- function(
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
   AA_aln(queseq, tarseq, nsims=1000, ...)
-
 }
 
 
@@ -232,172 +245,132 @@ align_by_map <- function(
 # DNA alignment
 # ============================================================================
 
-add_logmn <- function(d){
-  dplyr::group_by(d, query)                                     %>%
-    # Calculate adjusted score
-    dplyr::filter(twidth > 1 & qwidth > 1)                      %>%
-    dplyr::summarize(logmn=log2(qwidth[1]) + log2(sum(twidth))) %>%
-    base::merge(d)
+get_logmn <- function(pattern, subject){
+  data.frame(
+    seqid = names(pattern),
+    qlen = BiocGenerics::width(pattern),
+    tlen = BiocGenerics::width(subject)
+  ) %>%
+    dplyr::group_by(seqid) %>%
+    dplyr::mutate(logmn = log2(qlen[1]) + log2(sum(tlen))) %$% logmn 
 }
-
-
 
 alignToGenome <- function(
   queseq,
   tarseq,
-  group,
-  label,
   simulation = FALSE,
   offset     = 0,
   permute    = FALSE
 ){
-  # Search + and - strands
-  pattern <- c(queseq, Biostrings::reverseComplement(queseq))
-  subject <- c(tarseq, tarseq)
 
-  if(permute){
-    permid <- sample.int(length(subject))
-    subject <- subject[permid]
-    if(length(offset) == length(tarseq)){
-      offset <- c(offset, offset)[permid]
+    # Search + and - strands
+    pattern <- c(queseq, Biostrings::reverseComplement(queseq))
+    subject <- c(tarseq, tarseq)
+
+    # If this is a control, permute the indices
+    # This is used to determine hit significance
+    if(permute){
+      permid <- sample.int(length(subject))
+      subject <- subject[permid]
+      if(length(offset) == length(tarseq)){
+        offset <- c(offset, offset)[permid]
+      }
     }
-  }
 
-  aln <- Biostrings::pairwiseAlignment(
-    pattern=pattern,
-    subject=subject,
-    type='local'
-  )
-  metadata(aln)$query  <- names(queseq) 
-  metadata(aln)$target <- names(tarseq) 
+    aln <- Biostrings::pairwiseAlignment(
+      pattern=pattern,
+      subject=subject,
+      type='local'
+    )
+    S4Vectors::metadata(aln)$query  <- names(queseq) 
+    S4Vectors::metadata(aln)$target <- names(tarseq) 
 
-  if(simulation){
-    label = paste0(label, "-sim")
-  }
-  alnfile <- to_cache(aln, group=group, label=label)
-
-  map_ <- aln %>>% {
     CNEr::GRangePairs(
       first = GenomicRanges::GRanges(
         seqnames = names(pattern),
         ranges = IRanges::IRanges(
-          start = Biostrings::pattern(.) %>% BiocGenerics::start(),
-          end = Biostrings::pattern(.) %>% BiocGenerics::end()
+          start = Biostrings::pattern(aln) %>% BiocGenerics::start(),
+          end = Biostrings::pattern(aln) %>% BiocGenerics::end()
         )
       ),
       second = GenomicRanges::GRanges(
         seqnames = names(subject),
         ranges = IRanges::IRanges(
-          start = Biostrings::subject(.) %>% BiocGenerics::start() %>% '+'(offset),
-          end = Biostrings::subject(.) %>% BiocGenerics::end() %>% '+'(offset)
+          start = Biostrings::subject(aln) %>% BiocGenerics::start() %>% '+'(offset),
+          end = Biostrings::subject(aln) %>% BiocGenerics::end() %>% '+'(offset)
         )
       ),
-      strand = c(rep('+', length(.)/2), rep('-', length(.)/2)),
-      score = BiocGenerics::score(.),
+      strand = c(rep('+', length(aln)/2), rep('-', length(aln)/2)),
+      score = BiocGenerics::score(aln),
+      logmn = get_logmn(pattern, subject),
       query = names(pattern),
       qwidth = Biostrings::width(pattern),
       twidth = Biostrings::width(subject)
     )
-  }
-
-  rmonad::funnel(
-      map = map_
-    , alnfile = alnfile
-  )
 
 }
 
 
-add_logmn <- function(d){
-  GenomicRanges::mcols(d) <-
-    as.data.frame(GenomicRanges::mcols(d)) %>%
-    dplyr::group_by(.data$query) %>%
-    dplyr::mutate(logmn=log2(.data$qwidth) + log2(sum(.data$twidth)))
-  d
-}
+get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8){
 
+  "Currently sequence searching is performed with a quadratic time alignment
+  algorithm. If the search space is too big, this becomes prohibitively
+  time-consuming. Ultimately I will need to use a heuristic program, such as
+  BLAST. But this is not yet implemented. For now I just ignore spaces that
+  are too large. Specifically, if `n*m > maxspace`, I skip the pair. The
+  skipped pairs will be returned and ultimately be represented as a column in
+  the feature table."
 
-get_dna2dna <- function(queseq, tarseq, queries, offset, maxspace=1e8, ...){
+  # The query sequences are already paired against the search sequences
+  stopifnot(length(queseq) == length(tarseq))
+  # There exists an offset for each search interval
+  stopifnot(length(tarseq) == length(offset))
+  # An offset of 0 indicates the search interval starts at start of scaffold
+  stopifnot(offset >= 0)
+  # All query names are in the full list of focal genes
+  stopifnot(queries %in% names(queseq))
 
-  skipped_ <- rmonad::as_monad({
+  too_big <- log(GenomicRanges::width(queseq)) +
+             log(GenomicRanges::width(tarseq)) > log(maxspace)
 
-    "Currently sequence searching is performed with a quadratic time alignment
-    algorithm. If the search space is too big, this becomes prohibitively
-    time-consuming. Ultimately I will need to use a heuristic program, such as
-    BLAST. But this is not yet implemented. For now I just ignore spaces that
-    are too large. Specifically, if `n*m > maxspace`, I skip the pair. The
-    skipped pairs will be returned and ultimately be represented as a column in
-    the feature table."
+  skipped <- names(queseq)[too_big] %>% unique
 
-    too_big <- log(GenomicRanges::width(queseq)) +
-               log(GenomicRanges::width(tarseq)) > log(maxspace)
-    names(queseq)[too_big] %>% unique
+  i <- setdiff(queries, skipped) %>% base::match(names(queseq))
+  queseq <- queseq[i]
+  tarseq <- tarseq[i]
+  offset <- offset[i]
 
-  })
+  ctrl <- alignToGenome(
+            queseq     = queseq,
+            tarseq     = tarseq,
+            offset     = offset,
+            permute    = TRUE,
+            simulation = TRUE
+          )
 
-  truncated_seqs_ <-
-    rmonad::funnel(
-      skipped = skipped_,
-      queries = queries
-    ) %*>% {
+  hits <- alignToGenome(
+            queseq     = queseq,
+            tarseq     = tarseq,
+            offset     = offset,
+            permute    = FALSE,
+            simulation = FALSE
+          )
 
-      "Select which gene/search_interval pairs to align"
-
-      i <- setdiff(queries, skipped) %>% match(names(queseq))
-
-      list(
-        queseq=queseq[i],
-        tarseq=tarseq[i],
-        offset=offset[i]
-      )
-    }
-
-  # TODO: continue from here: need to extract the cached file
-  ctrl_ <- truncated_seqs_ %*>%
-    alignToGenome(
-      permute    = TRUE,
-      simulation = TRUE,
-      ...
-    ) %>>% { .$map <- add_logmn(.$map); . }
-    ## TODO: And what the flip is the following commented code? Why is it still
-    ## here? I kept it for some reason ...
-    # dplyr::group_by(query) %>%
-    # dplyr::filter(.data$score == max(.data$score))
-
-  hits_ <- truncated_seqs_ %*>%
-    alignToGenome(
-      permute = FALSE,
-      ...
-    ) %>>% { .$map <- add_logmn(.$map); . }
-
-  gum_ <- ctrl_ %>>%
-    {
-      GenomicRanges::mcols(.$map) %>%
-      as.data.frame %>%
-      dplyr::select(.data$query, .data$score, .data$logmn)
-    } %>>%
+  gum <-
+    S4Vectors::mcols(ctrl) %>%
+    as.data.frame %>%
+    dplyr::select(.data$query, .data$score, .data$logmn) %>%
     fit.gumbel
 
-  rmonad::funnel(
-    ctrl = ctrl_,
-    hits = hits_,
-    gum  = gum_
-  ) %*>% {
+  S4Vectors::mcols(hits)$pval <- 1 - gum$p(S4Vectors::mcols(hits)$score,
+                                           S4Vectors::mcols(hits)$logmn)
+  S4Vectors::mcols(ctrl)$pval <- 1 - gum$p(S4Vectors::mcols(ctrl)$score,
+                                           S4Vectors::mcols(ctrl)$logmn)
 
-    GenomicRanges::mcols(hits$map)$pval <- 1 - gum$p(GenomicRanges::mcols(hits$map)$score,
-                                                     GenomicRanges::mcols(hits$map)$logmn)
-    GenomicRanges::mcols(ctrl$map)$pval <- 1 - gum$p(GenomicRanges::mcols(ctrl$map)$score,
-                                                     GenomicRanges::mcols(ctrl$map)$logmn)
-
-    list(
-      map=hits$map,
-      sam=ctrl$map,
-      dis=gum,
-      alnfile=hits$alnfile
-    )
-  } %*>%
-  rmonad::funnel(
-    skipped=skipped_
+  list(
+    map     = hits,
+    sam     = ctrl,
+    dis     = gum,
+    skipped = skipped
   )
-
 }

@@ -82,6 +82,20 @@ summarize_dna <- function(x){
   )
 }
 
+
+#' @rdname fagin_summary
+#' @export
+summarize_phase <- function(phases, aa){
+  # This should always be true. If it is not, there is a logical problem
+  # in the code, not the data.
+  stopifnot(length(aa) == length(phases))
+  new(
+    "phase_summary",
+    table = factor(phases) %>% table,
+    incomplete_models = names(aa)[phases != 0]
+  )
+}
+
 #' @rdname fagin_summary
 #' @export
 summarize_granges <- function(x){
@@ -96,7 +110,7 @@ summarize_granges <- function(x){
     start = GenomicRanges::start(x)
   )
 
-  seqstats <- dplyr::group_by(xdf, .data$seqid) %>% 
+  table <- dplyr::group_by(xdf, .data$seqid) %>% 
     dplyr::summarize(
       min   = min(.data$start),
       max   = max(.data$stop)
@@ -104,7 +118,7 @@ summarize_granges <- function(x){
 
   new(
     "granges_summary",
-    seqstats = seqstats,
+    table = table,
     width = summarize_numeric(GenomicRanges::width(x))
   )
 }
@@ -117,7 +131,7 @@ summarize_gff <- function(x){
   feat_cds <- GenomicFeatures::cds(x)
   feat_exons <- GenomicFeatures::exons(x)
 
-  seqstats <-
+  table <-
     GenomicRanges::as.data.frame(feat_trans) %>%
     dplyr::group_by(.data$seqnames) %>%
     dplyr::summarize(
@@ -128,7 +142,7 @@ summarize_gff <- function(x){
 
   new(
     "gff_summary",
-    seqstats    = seqstats,
+    table       = table,
     mRNA_length = summarize_numeric(feat_trans %>% IRanges::width()),
     CDS_length  = summarize_numeric(feat_exons %>% IRanges::width()),
     exon_length = summarize_numeric(feat_cds   %>% IRanges::width())

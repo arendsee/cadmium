@@ -4,7 +4,7 @@
 \alias{makeGenomeTable}
 \title{Tabulate states for each genome}
 \usage{
-makeGenomeTable(ss, speciesOrder)
+makeGenomeTable(m, speciesOrder)
 }
 \arguments{
 \item{list}{Summarized data as output by \code{invertSummaries}}

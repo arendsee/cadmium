@@ -11,7 +11,7 @@ Summary of a IRanges or GRanges file (without the types of a GFF)
 \section{Slots}{
 
 \describe{
-\item{\code{seqstats}}{data.frame}
+\item{\code{table}}{data.frame}
 
 \item{\code{width}}{numeric_summary}
 }}

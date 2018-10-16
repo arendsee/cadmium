@@ -2,13 +2,10 @@
 % Please edit documentation in R/util_filenaming.R
 \name{fagin_naming}
 \alias{fagin_naming}
-\alias{get_genome_filename}
 \alias{get_gff_filename}
 \alias{get_synmap_filename}
 \title{Naming stuff}
 \usage{
-get_genome_filename(species_name, dir)
-
 get_gff_filename(species_name, dir)
 
 get_synmap_filename(focal_name, target_name, dir)

@@ -1,3 +1,7 @@
+# v0.10.0
+
+ * fix ORF identification with the ORFik package
+
 # v0.9.0
 
  * add complete yeast data set

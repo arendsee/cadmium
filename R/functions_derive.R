@@ -82,16 +82,71 @@ derive_nstring <- function(dna) {
 
   "Given a genome, find all sequences of N (unknown nucleotides)"
 
-  dnaregex(dna, "N+", strand='u', ignore.case=TRUE)
+  dnaregex(dna, "N+", strand='u', ignore.case=TRUE) %>% synder::as_gff()
 
 } 
 
+extract_range <- function(dna, rng){
+  d <- dna[rng]
+  negative <- GenomicRanges::strand(rng) == '-'
+  if(any(negative)){
+    d[negative] <- Biostrings::reverseComplement(d[negative])
+  }
+  d
+}
+
+# This is needed since ORFik returns indices rather than names
+fix_names <- function(g, dna){
+  GenomeInfoDb::renameSeqlevels(
+    g,
+    names(dna)[as.integer(GenomeInfoDb::seqlevels(g))]
+  )
+}
+
+getORFs <- function(dna, con, sense='.'){
+  .findORFs <- function(x, strnd){
+    orf <- ORFik::findORFs(
+      x,
+      startCodon    = con@orf@start,
+      stopCodon     = con@orf@stop,
+      minimumLength = con@orf@minlen,
+      longestORF    = TRUE
+    ) %>% as("GRanges")
+    GenomicRanges::strand(orf) <- strnd
+    fix_names(orf, dna)
+  }
+  plus_orfs <- if(sense == '.' || sense == '+'){
+    .findORFs(dna, "+")
+  } else {
+    GenomicRanges::GRanges()
+  }
+  minus_orfs <- if(sense == '.' || sense == '-'){
+    r <- .findORFs(Biostrings::reverseComplement(dna), "-")
+    if(length(r) > 0){
+      lengths <- Biostrings::width(dna[GenomeInfoDb::seqnames(r)])
+      new_start <- lengths - GenomicRanges::end(r) + 1
+      r@ranges@start <- as.integer(new_start)
+    }
+    r
+  } else {
+    GenomicRanges::GRanges()
+  }
+  orfs <- append(plus_orfs, minus_orfs)
+  GenomicRanges::mcols(orfs) <- data.frame(
+      seqid = paste0('orf_', seq_along(orfs)),
+      type  = 'orf',
+      stringsAsFactors=FALSE
+  )
+  orfs
+}
+
 #' Derive mono-exonic ORF intervals from a genome
 #'
-#' @param dna DNAStringSet genome
+#' @param x DNAStringSet genome
+#' @param con fagin config object
 #' @return GenomicRanges object
 #' @export
-derive_orfgff <- function(dna) {
+derive_genomic_ORFs <- function(dna, con) {
 
   "
   Given a genome, find the locations of ORFs on both strands.
@@ -101,25 +156,25 @@ derive_orfgff <- function(dna) {
   finder.
 
   Gives ORFs unique ids (just an integer sequence for now) in meta-column `seqid`.
-
-  BUG: This misses potentially longer ORFs that start within a previous ORF.
-  TODO: replace with real ORF finder.
   "
 
-  orfpat <- "ATG(AAA|AAC|AAG|AAT|ACA|ACC|ACG|ACT|AGA|AGC|AGG|AGT|ATA|ATC|ATG|ATT|CAA|CAC|CAG|CAT|CCA|CCC|CCG|CCT|CGA|CGC|CGG|CGT|CTA|CTC|CTG|CTT|GAA|GAC|GAG|GAT|GCA|GCC|GCG|GCT|GGA|GGC|GGG|GGT|GTA|GTC|GTG|GTT|TAC|TAT|TCA|TCC|TCG|TCT|TGC|TGG|TGT|TTA|TTC|TTG|TTT){49,}(TAA|TGA|TAG)"
+  getORFs(dna, con, sense='.')
+}
 
-  dnaregex(dna, orfpat, strand='b', perl=TRUE, ignore.case=TRUE) %>%
-  {
+#' Derive ORFs from transcripts
+#'
+#' @param x DNAStringSet transcriptome
+#' @param con fagin config object
+#' @return GenomicRanges object
+#' @export
+derive_transcript_ORFs <- function(dna, con) {
 
-    GenomicRanges::mcols(.) <- data.frame(
-      seqid = paste0('orf_', seq_along(.)),
-      type  = 'orf',
-      stringsAsFactors=FALSE
-    )
+  "
+  Given a transcriptome, find the locations of all ORFs. Also gives ORFs unique
+  ids (just an integer sequence for now) in meta-column `seqid`.
+  "
 
-    .
-  }
-
+  getORFs(dna, con, sense='+')
 }
 
 #' Extract DNA intervals, reverse complementing them if they are minus sense
@@ -141,86 +196,14 @@ extractWithComplements <- function(dna, gff){
 
   dna <- Rsamtools::getSeq(dna, gff)
 
-  if(!is.null(GenomicRanges::mcols(gff)$seqid))
-    names(dna) <- GenomicRanges::mcols(gff)$seqid
+  names(dna) <- if(! is.null(gff$attr)){
+    gff$attr 
+  } else if(!is.null(GenomicRanges::mcols(gff)$seqid)) {
+    GenomicRanges::mcols(gff)$seqid
+  } else {
+    NULL
+  }
 
   dna
 
 }
-
-# mergeSeqs <- function(dna, gff, tag){
-#
-#   "Extract all entries from `gff` that have type `tag` (for example, CDS or
-#   exon). Then extract these matching intervals from `dna`. All extracted
-#   sequences that share a common parent, are then merged. If they are on the
-#   negative strang, the reverse complement is taken."
-#
-#   g <- gff %>_% {
-#
-#     "Assert that the GFF file has the required columns"
-#
-#     # TODO: need to standardize the case across columns
-#
-#     if(is.null(.$type) || is.null(.$Parent))
-#       stop("GFF must have the meta-columns 'type' and 'Parent'")
-#
-#   } %>>% {
-#
-#     "Extract elements of type `tag` from the `gff`"
-#
-#     .[.$type == tag]
-#
-#   } %>>% {
-#
-#     "Sort the elements by start this is required, since they will be
-#     concatenated by order"
-#
-#     .[order(GenomicRanges::start(.))]
-#
-#   }
-#
-#   revpar_ <- g %>>% {
-#
-#     "Get all unique parents on the reverse strand"
-#
-#     .[GenomicRanges::strand(.) == '-']$Parent %>% unique
-#
-#   }
-#
-#   forpar_ <- g %>>% { GenomicRanges::mcols(.)$Parent }
-#
-#   # TODO: assert no elements within a group overlap
-#
-#   g %>>% {
-#
-#     "Extract DNA sequences based on the GFF"
-#
-#     # this is slow -- 5s
-#     dna[.]
-#
-#   } %>% rmonad::funnel(forpar=forpar_) %*>% {
-#
-#     "Collapse the sequences together, aggregating on the Parent"
-#
-#     q <- .
-#     base::split(seq_len(length(forpar)), forpar) %>%
-#     sapply(function(ids) paste(q[ids], collapse=""))
-#
-#   } %>>% {
-#
-#     "Convert list of strings back into a DNAStringSet object"
-#
-#     Biostrings::DNAStringSet(.)
-#
-#   } %>% rmonad::funnel(revpar=revpar_) %*>% {
-#
-#     "Take the reverse complement of all elements on the reverse strand"
-#
-#     .[names(.) %in% revpar] <-
-#       Biostrings::reverseComplement(.[names(.) %in% revpar])
-#
-#     .
-#
-#   }
-#
-# }

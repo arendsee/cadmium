@@ -4,10 +4,10 @@
 \alias{make_format_translation_warning}
 \title{Collate the warnings of a Biostrings::translate function}
 \usage{
-make_format_translation_warning(species)
+make_format_translation_warning(label = NULL)
 }
 \arguments{
-\item{species}{The species name}
+\item{label}{The species name, usually}
 
 \item{node}{Rmonad object wrapping the result of a Biostrings::translate function}
 }

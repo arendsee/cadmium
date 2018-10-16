@@ -1,5 +1,7 @@
 #' @importFrom methods isClass new
 #' @importFrom graphics plot
+#' @importFrom grDevices dev.off png
+#' @importFrom stats sd
 #' @importFrom rlang .data
 #' @importFrom magrittr "%>%" "%T>%"
 #' @importFrom rmonad "%>>%" "%v>%" "%*>%" "%__%" "%||%" "%|>%" "%>_%"
@@ -128,8 +130,6 @@ NULL
 #' @name fagin
 NULL
 
-
-
 #' Run a Fagin analysis
 #'
 #' @export
@@ -137,14 +137,24 @@ NULL
 #' @return An rmonad object containing all results
 run_fagin <- function(con){
 
-  to_cache <- NULL
+  # Set the cache function. There is one cache system for TxDb objects and
+  # everything else is saved as Rdata.
+  options(rmonad.auto_cache = con@cache)
+  options(rmonad.cache_dir = file.path(con@archive, "cache"))
+  options(rmonad.cacher = make_fagin_cacher())
+  options(rmonad.cache_maxtime = 10)
+
+  # What I want to do here is make all caching dependent on the input
+  # configuration. The following command DOES accomplish this (in rmonad
+  # v0.5.0.9009)
+  rmonad:::.set_nest_salt(rmonad:::.digest(con))
 
   {
 
     "Set random seed for the analysis, the choice of 210 is arbitrary. The
     random seed mainly affects the p-value estimates for alignments."
 
-    set.seed(210)
+    set.seed(211)
 
   } %__% {
 
@@ -152,30 +162,27 @@ run_fagin <- function(con){
     importance are the versions of `synder` and `rmonad`."
 
     devtools::session_info()
-  
-  } %__% {
+
+  } %>% tag('session_info') %__% {
 
     "Store the configuration"
 
     con
 
-  } %__% {
+  } %>% tag('config') %__% {
 
-    "Create the archival directory"
+    "Create the archival directory. Warn if the directory already exists. If
+    the directory does exist, everything may be fine, so long as you are
+    continuing an analysis, not starting a new one. If you are starting a new
+    one, you should NOT use the same archive."
 
     dir.create(con@archive)
 
   } %__% {
-
-    "Set the cache function"
-
-    to_cache <<- make_cache_function(file.path(con@archive, "cache"))
-
-  } %__%
-  primary_data(con=con)      %>_% archive_1(con@archive) %>>%
-  secondary_data(con=con)    %>_% archive_2(con@archive) %>>%
-  tertiary_data(con=con)     %>_% archive_3(con@archive) %>>%
-  determine_labels(con=con)  %>_% archive_4(con@archive) %>>%
-  determine_origins(con=con) %>_% archive_5(con@archive) %T>%
-                                  archive_rmonad(con@archive)
+    primary_data(con=con)     %>%
+    secondary_data(con=con)   %>%
+    tertiary_data(con=con)    %>%
+    determine_labels(con=con) %>%
+    determine_origins(con=con)
+  }
 }

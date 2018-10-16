@@ -9,90 +9,80 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, echo=FALSE, message=FALSE}
-# # uncomment to run the analysis
-# document()
-# # library(fagin)
-# library(rmonad)
-# library(ggplot2)
-# library(knitr)
-# library(dplyr)
-# library(magrittr)
-# require(CNEr)
-# require(GenomicRanges)
-# con <- config()
-# file.symlink("../inst/yeast", "INPUT")
-# # file.symlink("/db/fagin-input/brassicaceae", "INPUT")
-# # con@input@focal_species = "Arabidopsis_thaliana"
-# # con@synder@offsets = c(0L,1L) # offsets for Satsuma
-# con@synder@offsets = c(1L,1L) # offsets for Satsuma
-# d <- run_fagin(con)
-# missues(d) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
-# mtabulate(d, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-# ms <- as.list(d)
-# es <- ms[sapply(ms, function(x) x$has_error())]
-# ws <- ms[sapply(ms, function(x) x$has_warnings())]
-# makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
-```
+```{r, echo=FALSE, message=FALSE, eval=TRUE}
+library(fagin)
+library(rmonad)
+library(knitr)
+library(magrittr)
 
-```{r, echo=FALSE, message=FALSE}
-# uncomment to build a vignette based off the archived data
-require(fagin)
-require(rmonad)
-require(ggplot2)
-require(knitr)
-require(dplyr)
-require(magrittr)
-require(CNEr)
-require(GenomicRanges)
-require(ape)
+# The default config uses the sample data for yeast
 con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
+con@alignment@dna2dna_maxspace = 1e8L
+validate_config(con)
+species_name=con@input@focal_species
+
+# if the last result is present in the archive, use it
+m_sav <- file.path(con@archive, 'm.Rda')
+if(exists(m_sav)){
+    m <- readRDS(m_sav)
+# otherwise run the full analysis
+} else {
+    m <- run_fagin(con)
+    saveRDS(m, m_sav)
+}
+
+# plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
+missues(m) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
+mtabulate(m, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+# Get a list of input summaries
+summaries <- getSummaries(m)
+# # TODO: reconfigure exploration tools for rmonad (keep pure)
+# makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 ```
 
 ## Input data summary
 
-```{r, echo=FALSE}
-load('ARCHIVE/d1.Rda')
-ss <- invertSummaries(d1)
+```{r, echo=FALSE, eval=TRUE}
+ss <- getSummaries(m)
 ```
 
-```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE}
-plot(d1@tree)
+```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE, eval=TRUE}
+plot(ape::read.tree(con@input@tree))
 ```
 
-```{r, echo=FALSE, result='asis'}
+```{r, echo=FALSE, result='asis', eval=TRUE}
 speciesOrder <- getSpeciesPhylogeneticOrder(con)
 knitr::kable(
-  makeGenomeTable(ss, speciesOrder),
+  makeGenomeTable(m, speciesOrder),
   caption="**Genomic statistics**. *scafs* - number of scaffolds in the genome. *bases* - total number of bases in the genome. *prots* - total number of protein coding models. *GC* - the percent of G and C nucleotides in the genome. *oddstart* - number of coding sequences that do not begin with M. *oddstop* - number of coding sequences that do not end with a stop (\\*). *p_N* - number of unknown nucleotides (N) in the genome. *n_stop* - number of coding sequences with an internal stop."
 )
 ```
 
-```{r, echo=FALSE, result='asis'}
+```{r, echo=FALSE, result='asis', eval=TRUE}
 knitr::kable(
-    makeSynmapTable(con, speciesOrder),
+    makeSynmapTable(m),
     caption="Lengths of homologous links in each synteny map."
 )
 ```
 
 ## `synder` output
 
-```{r, echo=FALSE, results='asis', message=FALSE}
+```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
 knitr::kable(
-    makeSynderTable(con, speciesOrder),
+    makeSynderTable(m),
     caption="Search interval widths"
 )
 ```
 
 ## Fagin output
 
-```{r, fig.width=8, fig.height=6, echo=FALSE}
-plotSecondaryLabels(con, speciesOrder)
+```{r, fig.width=8, fig.height=6, echo=FALSE, eval=TRUE}
+plotSecondaryLabels(m, speciesOrder, fill='secondary')
 ```
 
-```{r, fig.width=8, fig.height=4, echo=FALSE}
-plotSecondaryLabels(con, speciesOrder, fill='species')
+```{r, fig.width=8, fig.height=4, echo=FALSE, eval=TRUE}
+plotSecondaryLabels(m, speciesOrder, fill='species')
 ```
 
 ## Origin classifications

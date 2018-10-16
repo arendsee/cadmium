@@ -9,6 +9,14 @@
 #' @name fagin_naming
 NULL
 
+.label <- function(label, ...){
+  label <- if(is.null(label)){
+    ""
+  } else {
+    glue::glue("In {label}: ")
+  }
+}
+
 .check_name <- function(x){
 
   "Assert that this is a reasonable string"
@@ -23,15 +31,18 @@ NULL
 
 }
 
-make_readable_filename <- function(x, dir=NULL, ext=NULL){
+get_readable_filename <- function(x, dir=NULL, ext=NULL){
 
   "Make a filename from a base string, a directory path, and list of legal
   extensions. Spaces in the base string are replaced with underscores. Die if
   the resulting filename is not readable. If multiple extensions are given, the
-  first one to produces an existing filename is used (with a warning if
-  multiple readable files are produced)."
+  first one to produces an existing filename is used. If no file is found,
+  raise an error"
 
   x <- gsub(" ", "_", x)
+
+  .check_name(x)
+  .check_name(dir)
 
   if(!is.null(dir)){
     x <- file.path(dir, x)
@@ -52,27 +63,14 @@ make_readable_filename <- function(x, dir=NULL, ext=NULL){
   }
 
   if(n_valid_files > 1){
-    warning(sprintf(
-      "Multiple valid files found: [%s], using %s",
+    stop(sprintf(
+      "Multiple valid files found: [%s]",
       paste(readable_files, collapse=", "),
       readable_files[1]
     ))
   }
 
   readable_files[1]
-}
-
-#' @rdname fagin_naming
-#' @export
-get_genome_filename <- function(species_name, dir) {
-
-  "Get a genome filename from a species name. Filename should have the format:
-  'Genus_species.fna'. 'fa' and 'fasta' extensions are also allowed."
-
-  species_name %v>%
-  .check_name %v>%
-  make_readable_filename(dir=dir, ext=c("fna","fa","fasta"))
-
 }
 
 #' @rdname fagin_naming
@@ -84,7 +82,7 @@ get_gff_filename <- function(species_name, dir) {
 
   species_name %v>%
   .check_name %v>%
-  make_readable_filename(dir=dir, ext=c("gff3","gff"))
+  get_readable_filename(dir=dir, ext=c("gff3","gff"))
 
 }
 
@@ -96,8 +94,11 @@ get_synmap_filename <- function(focal_name, target_name, dir) {
   filename should have the format:
   <focal-genus>_<focal-species>.vs.<target-genus>_<target-species>.syn"
 
-  .check_name(focal_name) %__%
-    .check_name(target_name) %__%
-    paste0(focal_name, ".vs.", target_name) %v>%
-    make_readable_filename(dir=dir, ext="syn")
+  .check_name(focal_name)
+  .check_name(target_name)
+  get_readable_filename(
+    paste0(focal_name, ".vs.", target_name),
+    dir = dir,
+    ext = "syn"
+  )
 }

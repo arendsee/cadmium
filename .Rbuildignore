@@ -1,4 +1,5 @@
 INPUT
+FUNDING
 ^\.travis\.yml$
 ^codecov\.yml$
 ^\.fagin_cache$

@@ -10,9 +10,9 @@
 #' "in 'x[[456]]': last base was ignored"
 #'
 #' @param node Rmonad object wrapping the result of a Biostrings::translate function
-#' @param species The species name
+#' @param label The species name, usually
 #' @return Rmonad An Rmonad object with a modified warning field
-make_format_translation_warning <- function(species){
+make_format_translation_warning <- function(label=NULL){
   # This function will be used within rmonad as a `format_warnings`
   # post-processor. Arguments: x - the output value of the Rmonad; ws - the
   # character vector of warnings.
@@ -25,18 +25,17 @@ make_format_translation_warning <- function(species){
       perl=TRUE
     ))
     if(length(model_ids) > 0){ 
-      msg <- "%s of %s gene models in %s are truncated (CDS length is not a
-      multiple of 3). This is AFTER adjusting for cases where the phase of the
-      first CDS is not 0 (which means that the model is incomplete on the 5'
-      end). So these are cases of 3' truncation. Also note that truncated models
-      that happen to end in phase will not be detected: [%s]"
-      msg <- sprintf(
-        msg,
-        length(model_ids),
-        length(x),
-        species,
-        paste0(names(x[model_ids]), collapse=', ')
+      n <- length(model_ids)
+      total <- length(x)
+      truncated <- paste0(names(x[model_ids]), collapse=', ')
+      msg <- glue::glue(
+        "{.label(label)}{n} of {total} gene models are truncated (CDS length is not a",
+        "multiple of 3). This is AFTER adjusting for cases where the phase of the",
+        "first CDS is not 0 (which means that the model is incomplete on the 5'",
+        "end). So these are cases of 3' truncation. Also note that truncated models",
+        "that happen to end in phase will not be detected: [{truncated}]"
       )
+      # replace the errors associated with truncation 
       ws <- c(msg, ws[-node_ids])
     }
     ws

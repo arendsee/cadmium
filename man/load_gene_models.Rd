@@ -4,14 +4,14 @@
 \alias{load_gene_models}
 \title{Load a GFF file as a GenomicFeatures object}
 \usage{
-load_gene_models(filename, seqinfo_ = NULL)
+load_gene_models(file, seqinfo_ = NULL)
 }
 \arguments{
-\item{seqinfo_}{Seqinfo object}
-
 \item{file}{GFF filename}
 
-\item{Rmonad}{wrapped GenomicFeatures object}
+\item{seqinfo_}{Seqinfo object}
+
+\item{Rmonad}{wrapped TxDb object describing gene models}
 }
 \description{
 Load a GFF file as a GenomicFeatures object

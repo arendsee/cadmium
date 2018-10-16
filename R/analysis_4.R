@@ -105,11 +105,15 @@ setAncestor <- function(node, ...){
 #' @param con A Config object
 #' @param ... Arguments that will be passed to \code{classify}
 #' @export
-determine_origins <- function(labels, con, ...){
-  rmonad::funnel(
-    query   = .determine_origins(labels$query,   con, ...),
-    control = .determine_origins(labels$control, con, ...)
-  )
+determine_origins <- function(m, con){
+
+  message("Determining origins")
+
+  m %>%
+    view('query_labels')   %>>%
+      .determine_origins(con) %>% tag('query_origins') %>%
+    view('control_labels') %>>%
+      .determine_origins(con) %>% tag('control_origins')
 }
 .determine_origins <- function(labels, con, ...){
 

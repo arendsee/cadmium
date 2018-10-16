@@ -34,10 +34,11 @@ prettyVector <- function(x){
 #' @rdname fagin_printer
 #' @export 
 print.config_alignment_thresholds <- function(x, ...){
-  prettyCat("prot2prot",     x@prot2prot,     4)
-  prettyCat("prot2allorf",   x@prot2allorf,   4)
-  prettyCat("prot2transorf", x@prot2transorf, 4)
-  prettyCat("dna2dna",       x@dna2dna,       4)
+  cat("Alignment thresholds:\n")
+  prettyCat("prot2prot",     x@prot2prot,     2)
+  prettyCat("prot2allorf",   x@prot2allorf,   2)
+  prettyCat("prot2transorf", x@prot2transorf, 2)
+  prettyCat("dna2dna",       x@dna2dna,       2)
 }
 setMethod("show", "config_alignment_thresholds",
   function(object) print(object)
@@ -46,9 +47,10 @@ setMethod("show", "config_alignment_thresholds",
 #' @rdname fagin_printer
 #' @export 
 print.config_alignment_simulation <- function(x, ...){
-  prettyCat("prot2prot",     x@prot2prot,     4)
-  prettyCat("prot2allorf",   x@prot2allorf,   4)
-  prettyCat("prot2transorf", x@prot2transorf, 4)
+  cat("Simulation parameters:\n")
+  prettyCat("prot2prot",     x@prot2prot,     2)
+  prettyCat("prot2allorf",   x@prot2allorf,   2)
+  prettyCat("prot2transorf", x@prot2transorf, 2)
 }
 setMethod("show", "config_alignment_simulation",
   function(object) print(object)
@@ -57,11 +59,10 @@ setMethod("show", "config_alignment_simulation",
 #' @rdname fagin_printer
 #' @export 
 print.config_alignment <- function(x, ...){
+  cat("Alignment parameters:\n")
   prettyCat("dna2dna_maxspace", x@dna2dna_maxspace, 2)
   prettyCat("indel_threshold",  x@indel_threshold,  2)
-  cat('  Slot "thresholds":\n')
   print(x@thresholds)
-  cat('  Slot "simulation":\n')
   print(x@simulation)
 }
 setMethod("show", "config_alignment",
@@ -71,6 +72,7 @@ setMethod("show", "config_alignment",
 #' @rdname fagin_printer
 #' @export 
 print.config_input <- function(x, ...){
+  cat("Input parameters:\n")
   prettyCat("gff_dir"           , x@gff_dir           , 2)
   prettyCat("fna_dir"           , x@fna_dir           , 2)
   prettyCat("syn_dir"           , x@syn_dir           , 2)
@@ -86,6 +88,7 @@ setMethod("show", "config_input",
 #' @rdname fagin_printer
 #' @export 
 print.config_synder <- function(x, ...){
+  cat("Synder parameters:\n")
   prettyCat("offsets", paste(x@offsets, collapse=""), 2)
   prettyCat("k", x@k, 2)
 }
@@ -95,11 +98,25 @@ setMethod("show", "config_synder",
 
 #' @rdname fagin_printer
 #' @export 
+print.config_orf <- function(x, ...){
+  cat('ORF parameters:\n')
+  prettyCat("start", x@start, 2)
+  prettyCat("stop", x@stop, 2)
+  prettyCat("minlen", x@minlen, 2)
+}
+setMethod("show", "config_orf",
+  function(object) print(object)
+)
+
+#' @rdname fagin_printer
+#' @export 
 print.fagin_config <- function(x, ...){
-  cat('Slot "decision_tree" (as data.tree Node):\n')
+  cat("Decision tree:\n")
   print(data.tree::as.Node(x@decision_tree, replaceUnderscores=FALSE))
+  prettyCat("archive", x@archive, 0)
   print(x@input)
   print(x@synder)
+  print(x@orf)
   print(x@alignment)
 }
 setMethod("show", "fagin_config",
@@ -184,8 +201,8 @@ setMethod("show", "faa_summary",
 
 print.gff_summary <- function(x, ...){
   cat('Summary of a "gff_summary" object\n')
-  cat('Slot "seqstats"\n')
-  prettyTable(x@seqstats)
+  cat('Slot "table"\n')
+  prettyTable(x@table)
   cat('Slot "mRNA_length"\n')
   print(x@mRNA_length)
   cat('Slot "CDS_length"\n')

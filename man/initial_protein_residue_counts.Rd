@@ -2,10 +2,10 @@
 % Please edit documentation in R/exploration.R
 \name{initial_protein_residue_counts}
 \alias{initial_protein_residue_counts}
-\title{Get a table listing the first protein residue proportions for each species}
+\title{Get a table listing the first protein residue counts for each species}
 \usage{
 initial_protein_residue_counts(x)
 }
 \description{
-Get a table listing the first protein residue proportions for each species
+Get a table listing the first protein residue counts for each species
 }

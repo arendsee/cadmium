@@ -1,7 +1,7 @@
 Package: fagin
 Type: Package
 Title: Annotate Orphan Genes
-Version: 0.10.2
+Version: 0.10.0
 Author: Zebulun Arendsee
 Maintainer: Zebulun Arendsee <arendsee@iastate.edu>
 URL: https://github.com/arendsee/fagin
@@ -12,19 +12,23 @@ Description:
 Depends: R (>= 3.4.0)
 Imports:
     synder (>= 0.27.2),
-    rmonad (>= 0.4.0.9002),
+    rmonad (>= 0.6.2),
     methods,
     devtools,
+    glue,
     magrittr,
     data.tree,
     CNEr (>= 1.12.1),
     Biostrings,
     GenomicRanges,
+    GenomicFeatures,
     GenomeInfoDb,
     BiocParallel,
+    ORFik,
     IRanges,
     L1pack,
     fitdistrplus,
+    ORFik (>= 1.1.13),
     ape,
     rlang (>= 0.1.2),
     readr,
@@ -35,7 +39,8 @@ Imports:
     yaml
 Remotes:
     arendsee/synder,
-    arendsee/rmonad@dev
+    arendsee/rmonad,
+    JokingHero/ORFik
 License: GPL-3 + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -48,5 +53,5 @@ Suggests:
     reshape2,
     XLConnect
 VignetteBuilder: knitr
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
 BiocViews: 

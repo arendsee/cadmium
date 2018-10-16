@@ -1,347 +1,250 @@
-# A wrapper for scanFa that sets the seqname to the first word in the header
-# This is probably the behaviour the function should have, since this is done
-# when subsetting a sequence using a GRanges object.
-scanFa_trw <- function(x, ...){
-
-  "Load an XStringSet object from an indexed FASTA file. Use the first word in
-  the header as the sequence name"
-
-  seq <- Rsamtools::scanFa(x, ...)
-  names(seq) <- sub(' .*', '', names(seq)) 
-  seq
-}
-
+# Generate, summarize and merge all derived data for one species. The only
+# inputs are a genome and a GFF file of gene models.
 load_species <- function(species_name, con){
 
-  "Generate, summarize and merge all derived data for one species. The only
-  inputs are a genome and a GFF file of gene models."
+  message("Loading ", species_name)
 
-  format_translation_warning <- make_format_translation_warning(species_name)
+  # Type descriptions
+  #- SpeciesName :: character
+  #- FolderPath :: character
+  #- GenomeDB :: FaFile
+  #- GenomeSeq :: DNAStringSet
+  #- TranscriptomeDB :: FaFile
+  #- TranscriptomeSeq :: DNAStringSet
+  #- GenomeSeq :: DNAStringSet
+  #- CDS :: DNAStringSet
+  #- GenomeSeqinfo :: Seqinfo
+  #- Length :: integer | numeric
+  #- Count :: integer
+  #- NString :: GRanges
+  #- ORFRanges :: GRanges
+  #- GeneModelsDB :: TxDb
+  #- GeneModelList :: GeneModelList
+  #- NStringSummary :: [Length]
+  #- Density :: density
+  #- AA :: A | C | D | E | ... | X  -- enum of amino acids 
+  #- Phase :: 0 | 1 | 2
 
-  dna_ <-
-    get_genome_filename(species_name, dir=con@input@fna_dir) %v>%
-    load_dna
+  #- DNASummary :: {
+  #-   n_triple      = [Count],
+  #-   initial_codon = [Count],
+  #-   final_codon   = [Count]
+  #- }
+  #- AASummary :: {
+  #-   initial_residue   = PairList (AA, Count),
+  #-   final_residue     = PairList (AA, Count),
+  #-   has_internal_stop = Bool,
+  #-   comp              = Matrix Count,
+  #-   table             = Table {
+  #-     seqids = Seqid, 
+  #-     length = Length
+  #-   }
+  #- }
+  #- GFFSummary :: {
+  #-   table       = data.frame,
+  #-   mRNA_length = NumericSummary,
+  #-   CDS_length  = NumericSummary,
+  #-   exon_length = NumericSummary
+  #- }
+  #- NumericSummary :: {
+  #-   min     = [Num],
+  #-   q25     = [Num],
+  #-   median  = [Num],
+  #-   q75     = [Num],
+  #-   max     = [Num],
+  #-   mean    = [Num],
+  #-   sd      = [Num],
+  #-   n       = Int,
+  #-   density = Density
+  #- }
+  #- GRangesSummary :: {
+  #-   table = Table {
+  #-     seqid = Seqid,
+  #-     min   = Int,
+  #-     max   = Int
+  #-   },
+  #-   width = NumericSummary
+  #- }
 
-  seqinfo_ <- dna_ %>>% scanFa_trw %>>% {
-    rmonad::funnel(
-      seqnames   = names(.),
-      seqlengths = IRanges::width(.),
-      isCircular = NA,
-      genome     = species_name
-    )
-  } %*>% GenomeInfoDb::Seqinfo
-
-  txdb_ <-
-    rmonad::funnel(
-      filename = get_gff_filename(species_name, dir=con@input@gff_dir),
-      seqinfo_ = seqinfo_
-    ) %*>% load_gene_models
-
-  nstrings_ <- dna_ %>>% scanFa_trw %>>% derive_nstring
-
-  nstring.file_ <- nstrings_ %>>% to_cache(label="nstring", group=species_name)
-  nstring.summary_ <- nstrings_ %>>% summarize_nstring
-  rm(nstrings_); base::gc()
-
-  orfgff_ <- dna_ %>>% scanFa_trw %>>% derive_orfgff
-
-  orffaa_ <-
-    rmonad::funnel(
-      dna = dna_,
-      gff = orfgff_
-    ) %*>%
-    extractWithComplements %>>%
-    {
-      list(format_warnings=format_translation_warning)
-      Biostrings::translate(., if.fuzzy.codon="solve")
-    }
-
-  orfgff.file_ <- orfgff_ %>>% to_cache(label="orfgff", group=species_name)
-  orfgff.summary_ <- orfgff_ %>>% summarize_granges
-  rm(orfgff_); gc()
-
-  transcripts_ <- txdb_ %>>% GenomicFeatures::cdsBy(by="tx", use.names=TRUE)
-
-  aa_model_phase_ <- transcripts_ %>>% {
-
-    "Find the phase of the first CDS in each model. This will be zero if the
-    model is complete."
-
-    # exon_rank unfortunately is what is says it is: exon rank, not CDS rank.
-    # So the code:
-    # R> unlist(.)[mcols(unlist(.))$exon_rank == 1]$cds_name %>% as.integer
-    # does not work. So instead I have to do the following, which is vastly slower:
-    sapply(., function(x) GenomicRanges::mcols(x)$cds_name[1]) %>% as.integer
-
-  } %>_% {
-
-    "Warn if there are any incomplete models"
-
-    incomplete <- sum(. != 0)
-    total <- length(.)
-
-    if(incomplete > 0){
-      warning(sprintf(
-      "%s of %s gene models in %s are incomplete (the phase of the first CDS is
-      not equal to 0). This does not include partial gene models that happen to
-      begin in-phase. Details are recorded in the species_summary field
-      model_phases.",
-      incomplete, total, species_name))
-    }
-
-  }
-  
-  transcripts_ <- transcripts_ %>>% {
-
-    "Abominable hack. To get around the GenomicFeatures issue reported
-    [here](https://support.bioconductor.org/p/101245/), I encode the phase
-    information in the CDS name. Here I extract that data and offset the
-    reading frame as needed."
-
-    ori <- .
-
-    unlist(ori) %>%
-      {
-        meta <- GenomicRanges::mcols(.)
-        meta$phase <- as.integer(meta$cds_name)
-        GenomicRanges::start(.) <- ifelse(
-          meta$exon_rank == 1,
-          GenomicRanges::start(.) + meta$phase,
-          GenomicRanges::start(.)
-        )
-        .
-      } %>%
-      relist(ori)
-
+  .view <- function(m, tag){
+    rmonad::view(m, tag, species_name)
   }
 
-  aa_ <-
-    rmonad::funnel(
-      x = dna_,
-      transcripts = transcripts_
-    ) %*>%
-    GenomicFeatures::extractTranscriptSeqs %>>%
-    {
-      list(format_warnings=format_translation_warning)
-      Biostrings::translate(., if.fuzzy.codon="solve")
-    }
+  .tag <- function(m, tag){
+    rmonad::tag(m, tag, species_name)
+  }
 
-  aa_model_phase_ <- rmonad::funnel(phases = aa_model_phase_, aa = aa_) %*>% {
-    # This should always be true. If it is not, there is a logical problem in
-    # the code, not the data.
-    stopifnot(length(aa) == length(phases)) 
-
-    list(
-      summary = factor(phases) %>% summary,
-      incomplete_models = names(aa)[phases != 0]
+  get_gff_from_txdb <- function(x, ...){
+    synder::as_gff(
+      x,
+      id=GenomicRanges::mcols(x)$tx_name,
+      ...
     )
   }
 
-  aa.file_ <- aa_ %>>% to_cache(label="aa", group=species_name)
-  aa.summary_ <- aa_ %>>% summarize_faa
-  rm(aa_); gc()
+  # genome and summary_genome
+  #- _ :: SpeciesName -> FolderPath -> FilePath
+  get_readable_filename(
+    species_name,
+    dir = con@input@fna_dir,
+    ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
+  )  %>>%
+    #- _ :: FilePath -> Genome
+    load_dna %>%
+      .tag("genomeDB") %>>%
+      #- _ :: Genome -> DNASummary
+      summarize_dna %>%
+      .tag("summary_genome") %>%
 
-  trans_ <-
-    rmonad::funnel(
-      x = dna_,
-      transcripts = txdb_ %>>% GenomicFeatures::exonsBy(by="tx", use.names=TRUE)
-    ) %*>%
-    GenomicFeatures::extractTranscriptSeqs %>>%
-    {
+    # seqinfo
+    .view("genomeDB") %>>%
+      convert_FaFile_to_XStringSet %>% .tag('genomeSeq') %>>%
+      make_seqinfo(species_name) %>% .tag('seqinfo') %>%
 
-      "Ensure all transcripts are named. If any of the names are missing (NA),
-      then the Biostrings::writeXStringSet will report an error as a note,
-      which won't stop processing. By checking here I can stop analysis at the
-      right time.
-      
-      If any transcripts do have missing names, then these are removed with a
-      warning.
-      "
+    # nstring and summary_nstring
+    .view("genomeSeq") %>>%
+      #- _ :: GenomeSeq -> NString
+      derive_nstring %>% .tag("nstring") %>>%
+      #- _ :: NString -> NStringSummary
+      summarize_nstring %>% .tag("summary_nstring") %>%
 
-      na_indices <- which(is.na(names(.)))
+    .view("genomeDB") %__%
 
-      if(length(na_indices) > 0){ msg <-
-"%s of %s transcripts had missing names. This is not good. You should look into
-the problem. For now, the offending transcripts have been removed."
-        warning(sprintf(msg, length(na_indices), length(.)))
-        . <- .[-na_indices] 
-      }
-
-      .
-
-    } %>>% {
-
-      "Print the transcripts to a temporary file"
-
-      filepath <- file.path(con@archive, paste0(".", species_name, "_trans.fna"))
-      Biostrings::writeXStringSet(., filepath=filepath)
-      filepath
-
-    } %>>% {
-
-      "Build an indexed version of the genome"
-
-      Rsamtools::indexFa(.)
-
-      .
-
-    } %>>% {
-
-      "Get a reference to the genome"
-
-      Rsamtools::FaFile(.)
-
-    }
-
-  dna.file_ <- dna_ %>>% to_cache(label="dna", group=species_name)
-  dna.summary_ <- dna_ %>>% summarize_dna
-  rm(dna_); gc()
-
-  gff.file_ <- txdb_ %>>% to_cache(label="gff", group=species_name)
-  gff.summary_ <- txdb_ %>>% summarize_gff
-
-  transorfgff_ <- trans_ %>>% scanFa_trw %>>% derive_orfgff
-
-  transorffaa_ <-
-    rmonad::funnel(
-      dna = trans_,
-      gff = transorfgff_
-    ) %*>%
-    extractWithComplements %>>%
-    {
-      list(format_warnings=format_translation_warning)
-      Biostrings::translate(., if.fuzzy.codon="solve")
-    }
-
-  trans.file_       <- trans_       %>>% to_cache( label="trans"       , group=species_name )
-  orffaa.file_      <- orffaa_      %>>% to_cache( label="orffaa"      , group=species_name )
-  transorfgff.file_ <- transorfgff_ %>>% to_cache( label="transorfgff" , group=species_name )
-  transorffaa.file_ <- transorffaa_ %>>% to_cache( label="transorffaa" , group=species_name )
-
-  trans.summary_       <- trans_       %>>% summarize_dna
-  orffaa.summary_      <- orffaa_      %>>% summarize_faa
-  transorfgff.summary_ <- transorfgff_ %>>% summarize_granges
-  transorffaa.summary_ <- transorffaa_ %>>% summarize_faa
-
-  rm(trans_, orffaa_, transorfgff_, transorffaa_); gc()
-
-  specsum_ <- rmonad::funnel(
-    gff.summary         = gff.summary_,
-    dna.summary         = dna.summary_,
-    aa.summary          = aa.summary_,
-    trans.summary       = trans.summary_,
-    orfgff.summary      = orfgff.summary_,
-    orffaa.summary      = orffaa.summary_,
-    transorfgff.summary = transorfgff.summary_,
-    transorffaa.summary = transorffaa.summary_,
-    nstring.summary     = nstring.summary_,
-    model_phases        = aa_model_phase_
-  ) %*>%
-    new(Class="species_summaries") %>_%
-  {
-
-    "Warn if any proteins have internal stop codons"
-
-    stops <- .@aa.summary@has_internal_stop
-    tab <- .@aa.summary@table
-
-    if(any(stops)){
-      n <- sum(stops)
-      total <- length(stops)
-      offenders <- tab[stops, ]$seqids %>% as.character %>%
-        paste0(collapse=", ")
-      msg <- "%s of %s proteins in %s have internal stops. These amino acid sequences were constructed from the mRNA models specified in the GFF file: %s"
-      warning(sprintf(msg, n, total, species_name, offenders))
-    }
-
-  } %>_% {
-
-    "Warn if names used in the protein file do not match those of the transcripts"
-
-    aaids <- .@aa.summary@table$seqids
-    trids <- .@trans.summary@table$seqids
-
-    if(! setequal(aaids, trids)){
-
-      not_in_tr <- setdiff(aaids, trids)
-      not_in_aa <- setdiff(trids, aaids)
-
-      msg <- paste(
-        "Protein and transcript names in %s do not match:",
-        "transcript ids missing in proteins: %s",
-        "protein ids missing in transcript: %s",
-        sep="\n"
-      )
-
-      warning(sprintf(
-        msg,
-        species_name,
-        paste(not_in_aa, collapse=", "),
-        paste(not_in_tr, collapse=", ")
-      ))
-    }
-
-  }
-
-  specfile_ <- rmonad::funnel(
-    gff.file         = gff.file_,
-    dna.file         = dna.file_,
-    aa.file          = aa.file_,
-    trans.file       = trans.file_,
-    orfgff.file      = orfgff.file_,
-    orffaa.file      = orffaa.file_,
-    transorfgff.file = transorfgff.file_,
-    transorffaa.file = transorffaa.file_,
-    nstring.file     = nstring.file_
-  ) %*>%
-    new(Class="species_data_files")
-
-  rmonad::funnel(
-    files     = specfile_,
-    summaries = specsum_ %>>% to_cache( label="summaries", group=species_name ),
-    seqinfo   = seqinfo_
-  ) %*>%
-    new(Class="species_meta")
-
-}
-
-
-load_synmap_meta <- function(tspec, fspec, syndir){
-
-  "Load the synteny map for the given focal and target species. Then cache the
-  synteny map and return the cached filename and a summary of the map as a
-  `synteny_meta` object."
-
-  target_species <- GenomeInfoDb::genome(tspec@seqinfo) %>% unique
-  focal_species <- GenomeInfoDb::genome(fspec@seqinfo) %>% unique
-
-  if(length(target_species) != 1  ||  length(focal_species) != 1){
-    stop("More than one species found in Seqinfo file, this should not happen.")
-  }
-
-  if(any(is.na(target_species)) || any(is.na(focal_species))){
-    stop("Species must be set in each Seqinfo object (must not be NA)")
-  }
-
-  rmonad::funnel(
-    focal_name  = focal_species,
-    target_name = target_species,
-    dir         = syndir
-  ) %*>%
-    get_synmap_filename %v>%
-    synder::read_synmap(
-      seqinfo_a = fspec@seqinfo,
-      seqinfo_b = tspec@seqinfo
+    # gff and summary_gff
+    #- _ :: SpeciesName -> FolderPath -> FilePath
+    get_readable_filename(
+      species_name,
+      dir = con@input@gff_dir,
+      ext = c("gff3","gff")
     ) %>%
-    {
+      #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
       rmonad::funnel(
-        synmap.file = . %>>% to_cache(label="synmap", group=target_species),
-        synmap.summary = . %>>% summarize_syn
-      )
-    } %*>%
-      new(Class="synteny_meta")
+        file = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>% load_gene_models %>% .tag("gffDB") %>>%
+      #- _ :: GeneModels -> GFFSummary
+      summarize_gff %>% .tag("summary_gff") %>%
+
+    # GeneModels -> mRNA
+    .view("gffDB") %>>%
+      GenomicFeatures::transcripts() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "mRNA") %>% .tag("mRNA") %>%
+
+    # GeneModels -> CDS
+    .view("gffDB") %>>%
+      GenomicFeatures::cds() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "CDS") %>% .tag("CDS") %>%
+
+    # GeneModels -> Exon
+    .view("gffDB") %>>%
+      GenomicFeatures::exons() %>%
+      rmonad::funnel(
+        x = .,
+        seqinfo_ = .view(., "seqinfo")
+      ) %*>%
+      get_gff_from_txdb(type = "exon") %>% .tag("exon") %>%
+
+    # orfgff and summary_orfgff
+    .view("genomeSeq") %>>%
+      #- _ :: GenomeSeq -> ORFRanges
+      derive_genomic_ORFs(con) %>>%
+      convert_GRanges_to_SynderGFF %>%
+      .tag("orfgff") %>>%
+      #- _ :: GRanges -> GRangesSummary
+      summarize_granges %>%
+      .tag("summary_orfgff") %>%
+
+    #- Genome -> ORFRanges -> DNASeqs
+    {rmonad::funnel(
+      dna = .view(., "genomeDB"),
+      gff = .view(., "orfgff")
+    )} %*>%
+      extractWithComplements %>>%
+      fuzzy_translate(label=species_name) %>% .tag("orffaa") %>>%
+      #- AASeqs -> AASummary
+      summarize_faa %>% .tag("summary_orffaa") %>%
+
+    {rmonad::funnel(
+      gffDB    = .view(., "gffDB"),
+      genomeDB = .view(., "genomeDB")
+    )} %*>% m_get_proteins(species_name=species_name) %>%
+
+    # aa_model_phase
+    .view("faa") %>%
+      #- [Phase] -> AASeqs -> {
+      #-   summary = NamedList (0 = Count, 1 = Count, 2 = Count),
+      #-   incomplete_models = [Seqid]
+      #- }
+      rmonad::funnel(phases = .view(., "aa_model_phase"), aa = .) %*>%
+      summarize_phase %>% .tag("summary_phase") %>%
+
+    # transfna
+    .view("gffDB") %>>%
+      #- GeneModels -> GenomicRanges
+      GenomicFeatures::exonsBy(by="tx", use.names=TRUE) %>%
+      #- Genome -> GenomicRanges -> Transcriptome
+      rmonad::funnel(
+        x = .view(., "genomeDB"),
+        transcripts = .
+      ) %*>%
+      get_trans_dna(species_name=species_name) %>% .tag("transcriptomeDB") %>>%
+      #- Transcriptome -> DNASummary
+      summarize_dna %>% .tag("summary_transfna") %>%
+
+    # transorfgff
+    .view("transcriptomeDB") %>>%
+      #- Transcriptome -> TranscriptomeSeq
+      convert_FaFile_to_XStringSet %>>%
+      #- TranscriptomeSeq -> ORFRange
+      derive_transcript_ORFs(con) %>>%
+      #- ORFRange -> ORFRange  -- slightly different format, some checking
+      convert_GRanges_to_SynderGFF %>% .tag("transorfgff") %>>%
+      #- ORFRange -> GRangesSummary
+      summarize_granges %>% .tag("summary_transorfgff") %>%
+      #- AASummary -> GRangesSummary -> *Warning
+      {rmonad::funnel(
+        aa_summary    = .view(., "summary_aa"),
+        trans_summary = .view(., "summary_transorfgff")
+      )} %*>%
+      check_protein_transcript_match %>%
+
+    .view("transcriptomeDB") %>>%
+      convert_FaFile_to_XStringSet %>% .tag("transcriptomeSeq") %>%
+
+    #- Transcriptome -> ORFRange -> CDS
+    {rmonad::funnel(
+      dna = .view(., "transcriptomeDB"),
+      gff = .view(., "transorfgff")
+    )} %*>%
+      extractWithComplements %>>%
+      #- CDS -> AASeqs
+      fuzzy_translate(label=species_name) %>% .tag("transorfaa") %>>%
+      #- AASeqs -> AASummary
+      summarize_faa %>% .tag("summary_transorfaa")
 }
 
+load_synmap_meta <- function(m, focal, target, syndir){
+  m %__%
+    get_synmap_filename(
+      focal_name  = focal,
+      target_name = target,
+      dir         = syndir
+    ) %>% rmonad::tag("synmap_file", target) %>%
+    funnel(
+      seqinfo_a = view(., "seqinfo", focal),
+      seqinfo_b = view(., "seqinfo", target) 
+    ) %*>%
+      synder::read_synmap %>% rmonad::tag("synmap", target) %>>%
+      summarize_syn %>% rmonad::tag("synmap_summary", target)
+}
 
 #' Load primary data
 #'
@@ -351,7 +254,7 @@ primary_data <- function(con){
   "
   Derive secondary data from the minimal required inputs
   
-  The required inputs to Fagin are genomes fasta files, GFFs, synteny maps, a
+  The required inputs to Fagin are genome fasta files, GFFs, synteny maps, a
   species tree, and the focal species name. This function derives all required
   secondary data, but does no analysis specific to the query intervals (e.g.
   the orphan genes candidates).
@@ -361,83 +264,29 @@ primary_data <- function(con){
   role of the `validate_derived_inputs` function.
   "
 
-  # set as monad here, so other functions will uniquely map to it
-  con_ <- rmonad::as_monad(con)
+  {
+    as_monad(get_species(con)) %>%
+    rmonad::loop(
+      FUN = load_species,
+      con = con
+    ) %__%
 
-  tree_ <- con_ %>>% { load_tree(.@input@tree) }
+    con@input@query_gene_list %>>%
+      load_gene_list %>% rmonad::tag("query_genes") %__%
 
-  species_names_ <- tree_ %>>% {
+    con@input@control_gene_list %>>%
+      load_gene_list %>% rmonad::tag("control_genes")
 
-    "Extract species list from the species tree. The tree, rather than the
-    input files, determines which species are used in the analysis."
+  } -> m
 
-    .$tip.label
-
-  } %>>% {
-
-    "Remove spaces in the species names."
-
-    gsub(" ", "_", .)
-
+  for(target in get_targets(con)){
+    m <- load_synmap_meta(
+      m,
+      focal  = con@input@focal_species,
+      target = target,
+      syndir = con@input@syn_dir
+    )
   }
 
-  focal_species_ <- con_ %>>% { .@input@focal_species } %>%
-  rmonad::funnel(specs=species_names_) %*>% {
-    
-    "Assert that the focal species is in the phylogenetic tree"
-
-    if(! (. %in% specs)){
-      msg <- "Focal species '%s' is not in the species tree [%s]"
-      stop(sprintf(msg, ., paste(specs, collapse=", ")))
-    }
-
-    .
-
-  }
-
-  species_meta_list_ <- rmonad::funnel(specs=species_names_, con=con_) %*>%
-    {
-
-      "For each species, collect and cache all required data"
-
-      ss <- lapply(specs, load_species, con)
-      names(ss) <- specs
-
-      rmonad::combine(ss)
-
-    }
-
-  synmap_meta_list_ <-
-    rmonad::funnel(
-      syndir = con@input@syn_dir,
-      fspec  = species_meta_list_ %>>% { .[[con@input@focal_species]] },
-      tspecs = species_meta_list_ %>>% {.[names(.) != con@input@focal_species]}
-    ) %*>%
-    {
-
-      "Load synteny map for focal species against each target species"
-
-      ss <- lapply(
-        tspecs,
-        load_synmap_meta,
-        fspec  = fspec,
-        syndir = syndir
-      )
-
-      rmonad::combine(ss)
-    }
-
-  queries_ <- con_ %>>% { load_gene_list(.@input@query_gene_list) }
-  control_ <- con_ %>>% { load_gene_list(.@input@control_gene_list) }
-
-  rmonad::funnel(
-    tree          = tree_,
-    focal_species = focal_species_,
-    queries       = queries_,
-    control       = control_,
-    species       = species_meta_list_,
-    synmaps       = synmap_meta_list_
-  ) %*>%
-    new(Class="derived_input")
-
+  m
 }

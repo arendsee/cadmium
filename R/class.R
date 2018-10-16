@@ -67,7 +67,7 @@ config_alignment <- setClass(
   prototype(
     thresholds = config_alignment_thresholds(),
     simulation = config_alignment_simulation(),
-    dna2dna_maxspace = 1e7L,
+    dna2dna_maxspace = 1e8L,
     indel_threshold  = 0.25
   )
 )

@@ -1,3 +1,7 @@
+# v0.11.0
+
+ * fix missing newlines in warning messages
+
 # v0.10.0
 
  * fix ORF identification with the ORFik package

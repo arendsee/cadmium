@@ -12,7 +12,7 @@ filter_with_warning__unnamed_entries <- function(gr, label=NULL){
   if(any(is.na(names(gr)))){
     n_cds_with_unnamed_mRNA <- gr[is.na(names(gr))] %>% length
     total <- GenomicRanges::seqnames(gr) %>% length
-    warning(glue::glue(sep=" ",
+    warning(glue::glue(.sep=" ",
       "{.label(label)}: {n_cds_with_unnamed_mRNA} out of {total} entries",
       "have no name associated with them. This may be bad.",
       "All of these entries will be removed from the analysis"

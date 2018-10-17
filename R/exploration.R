@@ -315,7 +315,6 @@ makeResultArchive <- function(con){
 #' Make a table of the secondary labels for each query gene
 #'
 #' @param m Rmonad object
-#' @return
 makeSecondaryTable <- function(m){
   labels <- .extract(m, "query_labels")[[1]]$labels
   speciesOrder <- names(labels)

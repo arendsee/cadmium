@@ -212,7 +212,7 @@ load_species <- function(species_name, con){
       #- AASummary -> GRangesSummary -> *Warning
       {rmonad::funnel(
         aa_summary    = .view(., "summary_aa"),
-        trans_summary = .view(., "summary_transorfgff")
+        trans_summary = .view(., "summary_transfna")
       )} %*>%
       check_protein_transcript_match %>%
 

@@ -167,7 +167,7 @@ load_species <- function(species_name, con){
       dna = .view(., "genomeDB"),
       gff = .view(., "orfgff")
     )} %*>%
-      extractWithComplements %>>%
+      extract_with_complements %>>%
       fuzzy_translate(label=species_name) %>% .tag("orffaa") %>>%
       #- AASeqs -> AASummary
       summarize_faa %>% .tag("summary_orffaa") %>%
@@ -224,7 +224,7 @@ load_species <- function(species_name, con){
       dna = .view(., "transcriptomeDB"),
       gff = .view(., "transorfgff")
     )} %*>%
-      extractWithComplements %>>%
+      extract_with_complements %>>%
       #- CDS -> AASeqs
       fuzzy_translate(label=species_name) %>% .tag("transorfaa") %>>%
       #- AASeqs -> AASummary

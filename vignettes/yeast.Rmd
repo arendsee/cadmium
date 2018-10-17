@@ -42,7 +42,7 @@ plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
 
 ```{r, echo=FALSE}
 # Get a list of input summaries
-summaries <- getSummaries(m)
+summaries <- get_summaries(m)
 ```
 
 ```{r nscaffold_table}
@@ -66,19 +66,19 @@ genomic_composition(m) %>% knitr::kable()
 ```
 
 ```{r genome_table}
-makeGenomeTable(m, speciesOrder=get_species(con)) %>% knitr::kable()
+make_genome_table(m, species_order=get_species(con)) %>% knitr::kable()
 ```
 
 ```{r synmap_table}
-makeSynmapTable(m) %>% knitr::kable()
+make_synmap_table(m) %>% knitr::kable()
 ```
 
 ```{r synder_table}
-makeSynderTable(m) %>% knitr::kable()
+make_synder_table(m) %>% knitr::kable()
 ```
 
 ```{r synder_flag_table}
-makeSynderFlagTable(m) %>% knitr::kable()
+make_synder_flag_table(m) %>% knitr::kable()
 ```
 
 
@@ -86,7 +86,7 @@ makeSynderFlagTable(m) %>% knitr::kable()
 ## Input data summary
 
 ```{r, echo=FALSE, eval=TRUE}
-ss <- getSummaries(m)
+ss <- get_summaries(m)
 ```
 
 ```{r, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
@@ -94,16 +94,16 @@ plot(ape::read.tree(con@input@tree))
 ```
 
 ```{r, echo=FALSE, result='asis', eval=TRUE}
-speciesOrder <- getSpeciesPhylogeneticOrder(con)
+species_order <- get_species_phylogenetic_order(con)
 knitr::kable(
-  makeGenomeTable(m, speciesOrder),
+  make_genome_table(m, species_order),
   caption="**Genomic statistics**. *scafs* - number of scaffolds in the genome. *bases* - total number of bases in the genome. *prots* - total number of protein coding models. *GC* - the percent of G and C nucleotides in the genome. *oddstart* - number of coding sequences that do not begin with M. *oddstop* - number of coding sequences that do not end with a stop (\\*). *p_N* - number of unknown nucleotides (N) in the genome. *n_stop* - number of coding sequences with an internal stop."
 )
 ```
 
 ```{r, echo=FALSE, result='asis', eval=TRUE}
 knitr::kable(
-    makeSynmapTable(m),
+    make_synmap_table(m),
     caption="Lengths of homologous links in each synteny map."
 )
 ```
@@ -112,7 +112,7 @@ knitr::kable(
 
 ```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
 knitr::kable(
-    makeSynderTable(m),
+    make_synder_table(m),
     caption="Search interval widths"
 )
 ```
@@ -120,17 +120,17 @@ knitr::kable(
 ## Fagin output
 
 ```{r, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
-plotSecondaryLabels(m, speciesOrder, fill='secondary')
+plot_secondary_labels(m, species_order, fill='secondary')
 ```
 
 ```{r, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
-plotSecondaryLabels(m, speciesOrder, fill='species')
+plot_secondary_labels(m, species_order, fill='species')
 ```
 
 ## Origin classifications
 
 ```{r classSums}
-makeOriginTable(m) %>% knitr::kable()
+make_origin_table(m) %>% knitr::kable()
 ```
 
 ## System info

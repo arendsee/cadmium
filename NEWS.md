@@ -1,6 +1,7 @@
 # v0.11.0
 
  * fix missing newlines in warning messages
+ * standardize naming conventions (snakecase for functions)
 
 # v0.10.0
 

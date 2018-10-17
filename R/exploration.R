@@ -43,7 +43,7 @@
 }
 
 # Summarize a list numeric vectors
-makeNumericSummaryTable <- function(nd){
+make_numeric_summary_table <- function(nd){
     data.frame(
         min    = sapply(nd, function(x) x@min)
       , q25    = sapply(nd, function(x) x@q25)
@@ -59,7 +59,7 @@ makeNumericSummaryTable <- function(nd){
 # Given a data.frame with species as rownames: 1) create a new 'species'
 # column, 2) remove the rownames, 3) sort by the vector 'levels' (this will
 # normally be the phylogenetic order).
-rownamesAsSpecies <- function(x, levels=unique(rownames(x))){
+rownames_as_species <- function(x, levels=unique(rownames(x))){
   x$species <- rownames(x) %>% factor(levels=levels)
   rownames(x) <- NULL
   dplyr::arrange(x, species) %>%
@@ -71,7 +71,7 @@ rownamesAsSpecies <- function(x, levels=unique(rownames(x))){
 #'
 #' @param m Rmonad
 #' @export
-getSummaries <- function(m){
+get_summaries <- function(m){
   list(
     aa          = .extract(m, "summary_aa"),
     genome      = .extract(m, "summary_genome"),
@@ -141,16 +141,16 @@ genomic_composition <- function(m){
 #'
 #' @param con Config object
 #' @export
-getSpeciesPhylogeneticOrder <- function(con){
+get_species_phylogenetic_order <- function(con){
   get_species(con)
 }
 
 #' Tabulate states for each genome
 #'
 #' @param m Rmonad
-#' @param speciesOrder all species in tree order
+#' @param species_order all species in tree order
 #' @export
-makeGenomeTable <- function(m, speciesOrder){
+make_genome_table <- function(m, species_order){
   nscaf <- number_of_scaffolds(m)
   initialRes <- initial_protein_residue_counts(m)
   finalRes <- final_protein_residue_counts(m)
@@ -158,11 +158,11 @@ makeGenomeTable <- function(m, speciesOrder){
   genComp <- as.data.frame(genomic_composition(m))
   genComp$GC <- (genComp$G + genComp$C) / (genComp$G + genComp$C + genComp$A + genComp$T)
 
-  species  <- factor(speciesOrder, levels=speciesOrder)
-  scafs    <- as.matrix(nscaf)[speciesOrder, ]
+  species  <- factor(species_order, levels=species_order)
+  scafs    <- as.matrix(nscaf)[species_order, ]
   bases    <- sapply(.extract(m, "summary_genome"), function(x) x@table$length %>% sum)
   prots    <- sapply(.extract(m, "summary_aa"), function(x) sum(x@initial_residue))
-  GC       <- as.matrix(genComp)[speciesOrder, 'GC']
+  GC       <- as.matrix(genComp)[species_order, 'GC']
   oddstart <- apply(initialRes, 1, function(x) { sum(x) - x['M'] })
   oddstop  <- apply(finalRes, 1, function(x) { sum(x) - x['STOP'] })
   p_N      <- as.matrix(genComp)[, "N"]
@@ -170,14 +170,14 @@ makeGenomeTable <- function(m, speciesOrder){
 
   data.frame(
       species  = species
-    , scafs    = scafs[speciesOrder]
-    , bases    = bases[speciesOrder]
-    , prots    = prots[speciesOrder]
-    , GC       = GC[speciesOrder]
-    , oddstart = oddstart[speciesOrder]
-    , oddstop  = oddstop[speciesOrder]
-    , p_N      = p_N[speciesOrder]
-    , n_stop   = n_stop[speciesOrder]
+    , scafs    = scafs[species_order]
+    , bases    = bases[species_order]
+    , prots    = prots[species_order]
+    , GC       = GC[species_order]
+    , oddstart = oddstart[species_order]
+    , oddstop  = oddstop[species_order]
+    , p_N      = p_N[species_order]
+    , n_stop   = n_stop[species_order]
   ) %>% dplyr::arrange(species)
 }
 
@@ -185,7 +185,7 @@ makeGenomeTable <- function(m, speciesOrder){
 #'
 #' @param m Rmonad
 #' @export
-makeSynmapTable <- function(m){
+make_synmap_table <- function(m){
   .extract(m, 'synmap_summary') %>%
     lapply(function(x) {
        w <- x@width
@@ -201,7 +201,7 @@ makeSynmapTable <- function(m){
 #' @param m Rmonad object
 #' @param group string - either "query" or "control"
 #' @export
-makeSynderTable <- function(m){
+make_synder_table <- function(m){
   .extract(m, 'synder_out') %>%
     # target and query are actually the same, so no need to do both
     .select_tag(paste0("/query$")) %>%
@@ -210,14 +210,14 @@ makeSynderTable <- function(m){
        GenomicRanges::width() %>%
        fagin::summarize_numeric()
      }) %>%
-       makeNumericSummaryTable
+       make_numeric_summary_table
 }
 
 #' Summarize the synder flags for each species
 #'
 #' @param m Romand object
 #' @param group string - either "query" or "control"
-makeSynderFlagTable <- function(m, group="query"){
+make_synder_flag_table <- function(m, group="query"){
   .extract(m, 'summary_synder_flags') %>%
     .select_tag(paste0("/", group, "$")) %>%
     lapply(function(d){
@@ -259,59 +259,99 @@ label_desc <- data.frame(
    )
 )
 
+#' Make a table of the secondary labels for each query gene
+#'
+#' @param m Rmonad object
+#' @export
+make_secondary_genewise_table <- function(m){
+  labels <- .extract(m, "query_labels")[[1]]$labels
+  species_order <- names(labels)
+  lapply(
+    names(labels),
+    function(x) {
+      dplyr::select(labels[[x]], seqid, secondary) %>%
+        { names(.)[2] <- x; . }
+    }
+  ) %>% Reduce(f=merge) %>% { .[, c('seqid', species_order[-1])] } 
+}
+
+#' Summarize secondary labels as a table
+#'
+#' @param m Rmonad
+#' @param species_order all target species in tree order
+#' @export
+make_secondary_labels_table <- function(m, species_order){
+  parse_labels <- function(labels, group){
+    labels %>%
+      lapply(
+        function(x) {
+            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+        }
+      ) %>%
+      dplyr::bind_rows(.id='species') %>%
+      {
+        .$species <- factor(.$species, levels=species_order)
+        . <- merge(., label_desc)
+        .$desc <- paste(.$secondary, .$desc, sep=': ')
+        .$group <- group
+        .
+      }
+  }
+
+  rbind(
+    parse_labels(.extract(m, "query_labels")[[1]]$labels, "query"),
+    parse_labels(.extract(m, "control_labels")[[1]]$labels, "control")
+  )
+}
+
 #' Plot the secondary labels
 #'
 #' @param m Rmonad
-#' @param speciesOrder all target species in tree order
+#' @param species_order all target species in tree order
 #' @param fill character - either 'secondary' or not
 #' @export
-plotSecondaryLabels <- function(m, speciesOrder, fill='secondary'){ 
-    parse_labels <- function(labels, group){
-      labels %>%
-        lapply(
-          function(x) {
-              dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
-          }
-        ) %>%
-        dplyr::bind_rows(.id='species') %>%
-        {
-          .$species <- factor(.$species, levels=speciesOrder)
-          . <- merge(., label_desc)
-          .$desc <- paste(.$secondary, .$desc, sep=': ')
-          .$group <- group
-          .
-        }
-    }
+plot_secondary_labels <- function(m, species_order, fill='secondary'){ 
 
-    dat <- rbind(
-      parse_labels(.extract(m, "query_labels")[[1]]$labels, "query"),
-      parse_labels(.extract(m, "control_labels")[[1]]$labels, "control")
-    )
+  dat <- make_secondary_labels_table(m, species_order)
 
-    if(fill == 'secondary'){
-      ggplot2::ggplot(dat) +
-        ggplot2::geom_bar(ggplot2::aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
-        ggplot2::scale_fill_brewer(palette="Paired") +
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle=270, hjust=0, vjust=1)) +
-        ggplot2::labs(
-          fill="Classification",
-          x="Target species",
-          y="# of focal genes"
-        ) +
-        ggplot2::facet_grid(group ~ .)
-    } else {
-      ggplot2::ggplot(dat) +
-        ggplot2::scale_fill_brewer(palette="Paired") +
-        ggplot2::geom_bar(ggplot2::aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
-        ggplot2::theme(axis.text.x = ggplot2::element_text(angle=325, hjust=0, vjust=1)) +
-        ggplot2::labs(
-          fill="Target species",
-          x="Classification",
-          y="# of focal genes"
-        ) +
-        ggplot2::facet_grid(group ~ .)
-    }
+  if(fill == 'secondary'){
+    ggplot2::ggplot(dat) +
+      ggplot2::geom_bar(ggplot2::aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
+      ggplot2::scale_fill_brewer(palette="Paired") +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle=270, hjust=0, vjust=1)) +
+      ggplot2::labs(
+        fill="Classification",
+        x="Target species",
+        y="# of focal genes"
+      ) +
+      ggplot2::facet_grid(group ~ .)
+  } else {
+    ggplot2::ggplot(dat) +
+      ggplot2::scale_fill_brewer(palette="Paired") +
+      ggplot2::geom_bar(ggplot2::aes(x=desc, y=n, fill=species), position="dodge", stat="identity")+
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle=325, hjust=0, vjust=1)) +
+      ggplot2::labs(
+        fill="Target species",
+        x="Classification",
+        y="# of focal genes"
+      ) +
+      ggplot2::facet_grid(group ~ .)
+  }
 }
+
+#' Make a table of the origin summaries for each gene
+#'
+#' @param m Rmonad object
+#' @export
+make_origin_table <- function(m){
+  query <- get_value(m, tag='query_origins')[[1]]$classSum
+  cntrl <- get_value(m, tag='control_origins')[[1]]$classSum
+  tbl <- merge(query, cntrl, by='group', all=TRUE)
+  tbl[is.na(tbl)] <- 0
+  names(tbl) <- c('group', 'query', 'control')
+  tbl
+}
+
 
 #' Organize output data into a small archive
 #'
@@ -321,65 +361,35 @@ plotSecondaryLabels <- function(m, speciesOrder, fill='secondary'){
 #'
 #' @param con Config object
 #' @return filename of the output archive
-makeResultArchive <- function(con){
+make_result_archive <- function(con){
   stop("This function is a stub")
-}
-
-
-#' Make a table of the secondary labels for each query gene
-#'
-#' @param m Rmonad object
-#' @export
-makeSecondaryTable <- function(m){
-  labels <- .extract(m, "query_labels")[[1]]$labels
-  speciesOrder <- names(labels)
-  lapply(
-    names(labels),
-    function(x) {
-      dplyr::select(labels[[x]], seqid, secondary) %>%
-        { names(.)[2] <- x; . }
-    }
-  ) %>% Reduce(f=merge) %>% { .[, c('seqid', speciesOrder[-1])] } 
-}
-
-#' Make a table of the origin summaries for each gene
-#'
-#' @param m Rmonad object
-#' @export
-makeOriginTable <- function(m){
-  query <- get_value(m, tag='query_origins')[[1]]$classSum
-  cntrl <- get_value(m, tag='control_origins')[[1]]$classSum
-  tbl <- merge(query, cntrl, by='group', all=TRUE)
-  tbl[is.na(tbl)] <- 0
-  names(tbl) <- c('group', 'query', 'control')
-  tbl
 }
 
 #' Create an excel spreadsheet of fagin results
 #'
-#' Contains all the tabular data created by the \code{makeResultArchive} function.
+#' Contains all the tabular data created by the \code{make_result_archive} function.
 #'
 #' @param con Config object
-makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
+make_excel_spreadsheet <- function(m, filename="fagin-result.xlsx"){
   # TODO: if I can save the image as an EMF, it can be edited in Excel (at
   # least on windows), but currently there seems to be a bug in XLConnect (or
   # some dependency) that prevents this. See
   # https://github.com/miraisolutions/xlconnect issue #22
 
-  ss <- getSummaries(m)
-  speciesOrder <- getSpeciesPhylogeneticOrder(con)
+  ss <- get_summaries(m)
+  species_order <- get_species_phylogenetic_order(con)
 
   wb <- XLConnect::loadWorkbook(filename, create=TRUE)
 
-  gentab <- makeGenomeTable(ss, speciesOrder)
+  gentab <- make_genome_table(ss, species_order)
   XLConnect::createSheet(wb, "Genome Summaries")
   XLConnect::writeWorksheet(wb, data=gentab, sheet="Genome Summaries")
 
-  maptab <- makeSynmapTable(con, speciesOrder)
+  maptab <- make_synmap_table(con, species_order)
   XLConnect::createSheet(wb, "Synmap Summaries")
   XLConnect::writeWorksheet(wb, data=maptab, sheet="Synmap Summaries")
 
-  syntab <- makeSynderTable(con)
+  syntab <- make_synder_table(con)
   XLConnect::createSheet(wb, "Synder Summaries")
   XLConnect::writeWorksheet(wb, data=syntab, sheet="Synder Summaries")
 
@@ -388,7 +398,7 @@ makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
   XLConnect::createSheet(wb, "Key")
   XLConnect::writeWorksheet(wb, data=key, sheet="Key")
 
-  labtab <- makeSecondaryTable(con, speciesOrder)
+  labtab <- make_secondary_table(con, species_order)
   XLConnect::createSheet(wb, "Labels")
   XLConnect::writeWorksheet(wb, data=labtab, sheet="Labels")
 
@@ -399,7 +409,7 @@ makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
   fig2_path <- file.path(dir, 'figures', 'fig2.png')
 
   png(filename=fig1_path)
-    plotSecondaryLabels(con, speciesOrder)
+    plot_secondary_labels(con, species_order)
   dev.off()
   XLConnect::createSheet(wb, "Fig1")
   XLConnect::createName(
@@ -415,7 +425,7 @@ makeExcelSpreadsheet <- function(m, filename="fagin-result.xlsx"){
   )
 
   png(filename=fig2_path)
-    plotSecondaryLabels(con, speciesOrder, fill='species')
+    plot_secondary_labels(con, species_order, fill='species')
   dev.off()
   XLConnect::createSheet(wb, "Fig2")
   XLConnect::createName(

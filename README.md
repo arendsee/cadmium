@@ -52,23 +52,6 @@ This will need to be tailored to your specific needs. To run the full fagin anal
 run_fagin(con)
 ```
 
-All results of the analysis will be archived (in the folder `ARCHIVE` by
-default, this can be customized in the config). The archive contains the
-following Rdata files:
-
- 1. `d1.Rda` - gathering and checking raw data
-
- 2. `d2.Rda` - comparisons of target species to the focal species
-
- 3. `d3.Rda` - building a feature table from the target/focal comparisons
-
- 4. `d4.Rda` - labels and trees built from the feature table
-
- 5. `d5.Rda` - results of superimposing labels on the phylogenetic tree
-
- 6. `final_obj.Rda` -  the final rmonad object
-
-
 ## Pipeline
 
  - Identify target genes that overlap the search space.

@@ -3,6 +3,8 @@ title: "Yeast Report"
 author: "Zebulun Arendsee"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+geometry: margin=1cm
+fontsize: 8
 vignette: >
   %\VignetteIndexEntry{Yeast Report}
   %\VignetteEngine{knitr::rmarkdown}

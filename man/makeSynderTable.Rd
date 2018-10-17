@@ -4,7 +4,7 @@
 \alias{makeSynderTable}
 \title{Tabulate states for each genome}
 \usage{
-makeSynderTable(m, group = "query")
+makeSynderTable(m)
 }
 \arguments{
 \item{m}{Rmonad object}

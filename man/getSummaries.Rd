@@ -6,6 +6,9 @@
 \usage{
 getSummaries(m)
 }
+\arguments{
+\item{m}{Rmonad}
+}
 \description{
 Transpose the species data summaries
 }

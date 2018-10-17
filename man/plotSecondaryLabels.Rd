@@ -6,6 +6,13 @@
 \usage{
 plotSecondaryLabels(m, speciesOrder, fill = "secondary")
 }
+\arguments{
+\item{m}{Rmonad}
+
+\item{speciesOrder}{all target species in tree order}
+
+\item{fill}{character - either 'secondary' or not}
+}
 \description{
 Plot the secondary labels
 }

@@ -23,14 +23,17 @@
 # @param xs named list of named vectors
 # @param fill ANY - value to replace missing cells with
 # @param sort logical - sort the columns
-# @param remove_empty logical - should columns with no data be removed?
-.rbindlist <- function(xs, fill=0, sort=TRUE, remove_empty=TRUE){
+# @param remove_empty should columns filled with only this value be removed?
+.rbindlist <- function(xs, fill=0, sort=TRUE, remove_empty=FALSE){
   chars <- lapply(xs, names) %>% unlist %>% unique
   if(sort)
     chars <- sort(chars)
   tbl <- do.call(rbind, lapply(xs, function(x) x[match(chars, names(x))]))
   colnames(tbl) <- chars
   tbl[is.na(tbl)] <- fill
+  if(remove_empty){
+    tbl <- tbl[, apply(tbl, 2, function(x) !all(x == fill))]
+  }
   tbl
 }
 
@@ -39,9 +42,34 @@
   (x['G'] + x['C']) / (x['G'] + x['C'] + x['A'] + x['T'])
 }
 
+# Summarize a list numeric vectors
+makeNumericSummaryTable <- function(nd){
+    data.frame(
+        min    = sapply(nd, function(x) x@min)
+      , q25    = sapply(nd, function(x) x@q25)
+      , median = sapply(nd, function(x) x@median)
+      , q75    = sapply(nd, function(x) x@q75)
+      , max    = sapply(nd, function(x) x@max)
+      , mean   = sapply(nd, function(x) x@mean)
+      , sd     = sapply(nd, function(x) x@sd)
+      , n      = sapply(nd, function(x) x@n)
+    )
+}
+
+# Given a data.frame with species as rownames: 1) create a new 'species'
+# column, 2) remove the rownames, 3) sort by the vector 'levels' (this will
+# normally be the phylogenetic order).
+rownamesAsSpecies <- function(x, levels=unique(rownames(x))){
+  x$species <- rownames(x) %>% factor(levels=levels)
+  rownames(x) <- NULL
+  dplyr::arrange(x, species) %>%
+    { .[c(ncol(.), 1:(ncol(.)-1))] } # put species first
+}
+
 
 #' Transpose the species data summaries
 #'
+#' @param m Rmonad
 #' @export
 getSummaries <- function(m){
   list(
@@ -60,6 +88,7 @@ getSummaries <- function(m){
 
 #' Get a table listing the scaffold count for each species
 #'
+#' @param m Rmonad
 #' @export
 number_of_scaffolds <- function(m){
   .extract(m, "summary_genome") %>% lapply(function(s) nrow(s@table)) %>%
@@ -68,8 +97,9 @@ number_of_scaffolds <- function(m){
 
 #' Get a table listing the first protein residue counts for each species
 #'
+#' @param m Rmonad
 #' @export
-initial_protein_residue_counts <- function(x){
+initial_protein_residue_counts <- function(m){
   .extract(m, "summary_aa") %>%
     lapply(function(s) s@initial_residue) %>%
     lapply(function(x) {names(x)[which(names(x) == '*')] <- "STOP"; x}) %>%
@@ -78,6 +108,7 @@ initial_protein_residue_counts <- function(x){
 
 #' Get a table listing the last protein residue proportions for each species
 #'
+#' @param m Rmonad
 #' @export
 final_protein_residue_counts <- function(m){
   .extract(m, "summary_aa") %>%
@@ -88,8 +119,9 @@ final_protein_residue_counts <- function(m){
 
 #' Count the internal stop codons in each species protein models
 #'
+#' @param m Rmonad
 #' @export
-protein_has_internal_stop <- function(x){
+protein_has_internal_stop <- function(m){
   .extract(m, "summary_aa") %>%
     lapply(function(s) s@has_internal_stop) %>%
     lapply(sum)
@@ -97,11 +129,12 @@ protein_has_internal_stop <- function(x){
 
 #' Summarize the genomic composition of each species
 #'
+#' @param m Rmonad
 #' @export
-genomic_composition <- function(x){
+genomic_composition <- function(m){
   .extract(m, "summary_genome") %>%
     lapply(function(s) s@comp %>% colSums) %>%
-    .rbindlist(sort=FALSE)
+    .rbindlist(sort=FALSE, remove_empty=TRUE)
 }
 
 #' Get the phylogenetic order of species (mostly useful for plotting)
@@ -114,7 +147,8 @@ getSpeciesPhylogeneticOrder <- function(con){
 
 #' Tabulate states for each genome
 #'
-#' @param list  Summarized data as output by \code{invertSummaries}
+#' @param m Rmonad
+#' @param speciesOrder all species in tree order
 #' @export
 makeGenomeTable <- function(m, speciesOrder){
   nscaf <- number_of_scaffolds(m)
@@ -147,33 +181,9 @@ makeGenomeTable <- function(m, speciesOrder){
   ) %>% dplyr::arrange(species)
 }
 
-# Summarize a list numeric vectors
-makeNumericSummaryTable <- function(nd){
-    data.frame(
-        min    = sapply(nd, function(x) x@min)
-      , q25    = sapply(nd, function(x) x@q25)
-      , median = sapply(nd, function(x) x@median)
-      , q75    = sapply(nd, function(x) x@q75)
-      , max    = sapply(nd, function(x) x@max)
-      , mean   = sapply(nd, function(x) x@mean)
-      , sd     = sapply(nd, function(x) x@sd)
-      , n      = sapply(nd, function(x) x@n)
-    )
-}
-
-# Given a data.frame with species as rownames: 1) create a new 'species'
-# column, 2) remove the rownames, 3) sort by the vector 'levels' (this will
-# normally be the phylogenetic order).
-rownamesAsSpecies <- function(x, levels=unique(rownames(x))){
-  x$species <- rownames(x) %>% factor(levels=levels)
-  rownames(x) <- NULL
-  dplyr::arrange(x, species) %>%
-    { .[c(ncol(.), 1:(ncol(.)-1))] } # put species first
-}
-
 #' Tabulate states for each genome
 #'
-#' @param con Config object
+#' @param m Rmonad
 #' @export
 makeSynmapTable <- function(m){
   .extract(m, 'synmap_summary') %>%
@@ -191,9 +201,10 @@ makeSynmapTable <- function(m){
 #' @param m Rmonad object
 #' @param group string - either "query" or "control"
 #' @export
-makeSynderTable <- function(m, group="query"){
+makeSynderTable <- function(m){
   .extract(m, 'synder_out') %>%
-    .select_tag(paste0("/", group, "$")) %>%
+    # target and query are actually the same, so no need to do both
+    .select_tag(paste0("/query$")) %>%
     lapply(function(x){
        CNEr::second(x) %>%
        GenomicRanges::width() %>%
@@ -250,6 +261,9 @@ label_desc <- data.frame(
 
 #' Plot the secondary labels
 #'
+#' @param m Rmonad
+#' @param speciesOrder all target species in tree order
+#' @param fill character - either 'secondary' or not
 #' @export
 plotSecondaryLabels <- function(m, speciesOrder, fill='secondary'){ 
     parse_labels <- function(labels, group){
@@ -315,6 +329,7 @@ makeResultArchive <- function(con){
 #' Make a table of the secondary labels for each query gene
 #'
 #' @param m Rmonad object
+#' @export
 makeSecondaryTable <- function(m){
   labels <- .extract(m, "query_labels")[[1]]$labels
   speciesOrder <- names(labels)
@@ -325,6 +340,19 @@ makeSecondaryTable <- function(m){
         { names(.)[2] <- x; . }
     }
   ) %>% Reduce(f=merge) %>% { .[, c('seqid', speciesOrder[-1])] } 
+}
+
+#' Make a table of the origin summaries for each gene
+#'
+#' @param m Rmonad object
+#' @export
+makeOriginTable <- function(m){
+  query <- get_value(m, tag='query_origins')[[1]]$classSum
+  cntrl <- get_value(m, tag='control_origins')[[1]]$classSum
+  tbl <- merge(query, cntrl, by='group', all=TRUE)
+  tbl[is.na(tbl)] <- 0
+  names(tbl) <- c('group', 'query', 'control')
+  tbl
 }
 
 #' Create an excel spreadsheet of fagin results

@@ -4,7 +4,10 @@
 \alias{protein_has_internal_stop}
 \title{Count the internal stop codons in each species protein models}
 \usage{
-protein_has_internal_stop(x)
+protein_has_internal_stop(m)
+}
+\arguments{
+\item{m}{Rmonad}
 }
 \description{
 Count the internal stop codons in each species protein models

@@ -6,6 +6,9 @@
 \usage{
 number_of_scaffolds(m)
 }
+\arguments{
+\item{m}{Rmonad}
+}
 \description{
 Get a table listing the scaffold count for each species
 }

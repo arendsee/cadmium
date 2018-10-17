@@ -7,7 +7,7 @@
 makeSynmapTable(m)
 }
 \arguments{
-\item{con}{Config object}
+\item{m}{Rmonad}
 }
 \description{
 Tabulate states for each genome

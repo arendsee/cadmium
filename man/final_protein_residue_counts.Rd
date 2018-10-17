@@ -6,6 +6,9 @@
 \usage{
 final_protein_residue_counts(m)
 }
+\arguments{
+\item{m}{Rmonad}
+}
 \description{
 Get a table listing the last protein residue proportions for each species
 }

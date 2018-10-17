@@ -24,7 +24,7 @@ species_name=con@input@focal_species
 
 # if the last result is present in the archive, use it
 m_sav <- file.path(con@archive, 'm.Rda')
-if(exists(m_sav)){
+if(file.exists(m_sav)){
     m <- readRDS(m_sav)
 # otherwise run the full analysis
 } else {
@@ -32,14 +32,56 @@ if(exists(m_sav)){
     saveRDS(m, m_sav)
 }
 
-# plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
 missues(m) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(m, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+```
+
+```{r rmonad_plot, dpi=300, fig.width=6, fig.height=6}
+plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
+```
+
+```{r, echo=FALSE}
 # Get a list of input summaries
 summaries <- getSummaries(m)
-# # TODO: reconfigure exploration tools for rmonad (keep pure)
-# makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 ```
+
+```{r nscaffold_table}
+number_of_scaffolds(m) %>% knitr::kable()
+```
+
+```{r initial_residue}
+initial_protein_residue_counts(m) %>% knitr::kable()
+```
+
+```{r final_residue}
+final_protein_residue_counts(m) %>% knitr::kable()
+```
+
+```{r has_stop}
+protein_has_internal_stop(m)
+```
+
+```{r genome_comp_table}
+genomic_composition(m) %>% knitr::kable()
+```
+
+```{r genome_table}
+makeGenomeTable(m, speciesOrder=get_species(con)) %>% knitr::kable()
+```
+
+```{r synmap_table}
+makeSynmapTable(m) %>% knitr::kable()
+```
+
+```{r synder_table}
+makeSynderTable(m) %>% knitr::kable()
+```
+
+```{r synder_flag_table}
+makeSynderFlagTable(m) %>% knitr::kable()
+```
+
+
 
 ## Input data summary
 
@@ -47,7 +89,7 @@ summaries <- getSummaries(m)
 ss <- getSummaries(m)
 ```
 
-```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE, eval=TRUE}
+```{r, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
 plot(ape::read.tree(con@input@tree))
 ```
 
@@ -77,18 +119,22 @@ knitr::kable(
 
 ## Fagin output
 
-```{r, fig.width=8, fig.height=6, echo=FALSE, eval=TRUE}
+```{r, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
 plotSecondaryLabels(m, speciesOrder, fill='secondary')
 ```
 
-```{r, fig.width=8, fig.height=4, echo=FALSE, eval=TRUE}
+```{r, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
 plotSecondaryLabels(m, speciesOrder, fill='species')
 ```
 
 ## Origin classifications
 
-**TODO - fill this out**
+```{r classSums}
+makeOriginTable(m) %>% knitr::kable()
+```
 
 ## System info
 
-**TODO - dump the collected session info here**
+```{r session_info}
+sessionInfo()
+```

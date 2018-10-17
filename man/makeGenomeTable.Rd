@@ -7,7 +7,9 @@
 makeGenomeTable(m, speciesOrder)
 }
 \arguments{
-\item{list}{Summarized data as output by \code{invertSummaries}}
+\item{m}{Rmonad}
+
+\item{speciesOrder}{all species in tree order}
 }
 \description{
 Tabulate states for each genome

@@ -91,7 +91,7 @@ make_synder_flag_table(m) %>% knitr::kable()
 ss <- get_summaries(m)
 ```
 
-```{r, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
+```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
 plot(ape::read.tree(con@input@tree))
 ```
 
@@ -121,11 +121,11 @@ knitr::kable(
 
 ## Fagin output
 
-```{r, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
+```{r secondary_1, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
 plot_secondary_labels(m, species_order, fill='secondary')
 ```
 
-```{r, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
+```{r secondary_2, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
 plot_secondary_labels(m, species_order, fill='species')
 ```
 

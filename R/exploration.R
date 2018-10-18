@@ -318,7 +318,7 @@ plot_secondary_labels <- function(m, species_order, fill='secondary'){
     ggplot2::ggplot(dat) +
       ggplot2::geom_bar(ggplot2::aes(x=species, y=n, fill=desc), position="dodge", stat="identity") +
       ggplot2::scale_fill_brewer(palette="Paired") +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle=270, hjust=0, vjust=1)) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle=325, hjust=0, vjust=1)) +
       ggplot2::labs(
         fill="Classification",
         x="Target species",

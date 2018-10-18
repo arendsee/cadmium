@@ -1,18 +1,22 @@
+# v0.11.1
+
+ * Update yeast query and control genes. Now the query genes are the
+   Saccharomyces-specific genes (from `phylostratr`) and the controls are an
+   equal number of random non-Saccharomyves-specific genes.
+ * Update vignette to include more summary info
+
 # v0.11.0
 
- * fix missing newlines in warning messages
- * standardize naming conventions (snakecase for functions)
+ * Fix missing newlines in warning messages
+ * Standardize naming conventions (snakecase for functions)
 
 # v0.10.0
 
- * fix ORF identification with the ORFik package
+ * Fix ORF identification with the ORFik package
 
 # v0.9.0
 
- * add complete yeast data set
-
- * replace bisquares regression with L1 regression 
-
- * increase rmonad granularity
-
- * add battery of GFF tests and transforms before conversion to TxDb object
+ * Add complete yeast data set
+ * Replace bisquares regression with L1 regression 
+ * Increase rmonad granularity
+ * Add battery of GFF tests and transforms before conversion to TxDb object

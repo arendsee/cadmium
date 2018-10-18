@@ -183,7 +183,7 @@ derive_transcript_ORFs <- function(dna, con) {
 #' @param gff Intervals to extract
 #' @export
 #' @return DNAStringSet
-extractWithComplements <- function(dna, gff){
+extract_with_complements <- function(dna, gff){
 
   "
   Extract a set of sequences from a genome given a GFF. Assumptions:

@@ -28,7 +28,7 @@ make_format_translation_warning <- function(label=NULL){
       n <- length(model_ids)
       total <- length(x)
       truncated <- paste0(names(x[model_ids]), collapse=', ')
-      msg <- glue::glue(
+      msg <- glue::glue(.sep="\n",
         "{.label(label)}{n} of {total} gene models are truncated (CDS length is not a",
         "multiple of 3). This is AFTER adjusting for cases where the phase of the",
         "first CDS is not 0 (which means that the model is incomplete on the 5'",

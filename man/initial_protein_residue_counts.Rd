@@ -4,7 +4,10 @@
 \alias{initial_protein_residue_counts}
 \title{Get a table listing the first protein residue counts for each species}
 \usage{
-initial_protein_residue_counts(x)
+initial_protein_residue_counts(m)
+}
+\arguments{
+\item{m}{Rmonad}
 }
 \description{
 Get a table listing the first protein residue counts for each species

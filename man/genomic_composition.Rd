@@ -4,7 +4,10 @@
 \alias{genomic_composition}
 \title{Summarize the genomic composition of each species}
 \usage{
-genomic_composition(x)
+genomic_composition(m)
+}
+\arguments{
+\item{m}{Rmonad}
 }
 \description{
 Summarize the genomic composition of each species

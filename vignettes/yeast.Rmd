@@ -3,6 +3,8 @@ title: "Yeast Report"
 author: "Zebulun Arendsee"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+geometry: margin=1cm
+fontsize: 8
 vignette: >
   %\VignetteIndexEntry{Yeast Report}
   %\VignetteEngine{knitr::rmarkdown}
@@ -24,7 +26,7 @@ species_name=con@input@focal_species
 
 # if the last result is present in the archive, use it
 m_sav <- file.path(con@archive, 'm.Rda')
-if(exists(m_sav)){
+if(file.exists(m_sav)){
     m <- readRDS(m_sav)
 # otherwise run the full analysis
 } else {
@@ -32,36 +34,78 @@ if(exists(m_sav)){
     saveRDS(m, m_sav)
 }
 
-# plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
 missues(m) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(m, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
-# Get a list of input summaries
-summaries <- getSummaries(m)
-# # TODO: reconfigure exploration tools for rmonad (keep pure)
-# makeExcelSpreadsheet(con, filename="ARCHIVE/results.xlsx")
 ```
+
+```{r rmonad_plot, dpi=300, fig.width=6, fig.height=6}
+plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
+```
+
+```{r, echo=FALSE}
+# Get a list of input summaries
+summaries <- get_summaries(m)
+```
+
+```{r nscaffold_table}
+number_of_scaffolds(m) %>% knitr::kable()
+```
+
+```{r initial_residue}
+initial_protein_residue_counts(m) %>% knitr::kable()
+```
+
+```{r final_residue}
+final_protein_residue_counts(m) %>% knitr::kable()
+```
+
+```{r has_stop}
+protein_has_internal_stop(m)
+```
+
+```{r genome_comp_table}
+genomic_composition(m) %>% knitr::kable()
+```
+
+```{r genome_table}
+make_genome_table(m, species_order=get_species(con)) %>% knitr::kable()
+```
+
+```{r synmap_table}
+make_synmap_table(m) %>% knitr::kable()
+```
+
+```{r synder_table}
+make_synder_table(m) %>% knitr::kable()
+```
+
+```{r synder_flag_table}
+make_synder_flag_table(m) %>% knitr::kable()
+```
+
+
 
 ## Input data summary
 
 ```{r, echo=FALSE, eval=TRUE}
-ss <- getSummaries(m)
+ss <- get_summaries(m)
 ```
 
-```{r, fig.width=6, fig.height=4, echo=FALSE, message=FALSE, eval=TRUE}
+```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
 plot(ape::read.tree(con@input@tree))
 ```
 
 ```{r, echo=FALSE, result='asis', eval=TRUE}
-speciesOrder <- getSpeciesPhylogeneticOrder(con)
+species_order <- get_species_phylogenetic_order(con)
 knitr::kable(
-  makeGenomeTable(m, speciesOrder),
+  make_genome_table(m, species_order),
   caption="**Genomic statistics**. *scafs* - number of scaffolds in the genome. *bases* - total number of bases in the genome. *prots* - total number of protein coding models. *GC* - the percent of G and C nucleotides in the genome. *oddstart* - number of coding sequences that do not begin with M. *oddstop* - number of coding sequences that do not end with a stop (\\*). *p_N* - number of unknown nucleotides (N) in the genome. *n_stop* - number of coding sequences with an internal stop."
 )
 ```
 
 ```{r, echo=FALSE, result='asis', eval=TRUE}
 knitr::kable(
-    makeSynmapTable(m),
+    make_synmap_table(m),
     caption="Lengths of homologous links in each synteny map."
 )
 ```
@@ -70,25 +114,29 @@ knitr::kable(
 
 ```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
 knitr::kable(
-    makeSynderTable(m),
+    make_synder_table(m),
     caption="Search interval widths"
 )
 ```
 
 ## Fagin output
 
-```{r, fig.width=8, fig.height=6, echo=FALSE, eval=TRUE}
-plotSecondaryLabels(m, speciesOrder, fill='secondary')
+```{r secondary_1, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
+plot_secondary_labels(m, species_order, fill='secondary')
 ```
 
-```{r, fig.width=8, fig.height=4, echo=FALSE, eval=TRUE}
-plotSecondaryLabels(m, speciesOrder, fill='species')
+```{r secondary_2, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
+plot_secondary_labels(m, species_order, fill='species')
 ```
 
 ## Origin classifications
 
-**TODO - fill this out**
+```{r classSums}
+make_origin_table(m) %>% knitr::kable()
+```
 
 ## System info
 
-**TODO - dump the collected session info here**
+```{r session_info}
+sessionInfo()
+```

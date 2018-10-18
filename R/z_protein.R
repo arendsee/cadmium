@@ -26,7 +26,7 @@ filter_with_warnings__zero_length_proteins <- function(aa, label=NULL){
     bad   <- length(zero_width_models)
     total <- length(aa)
     lost  <- paste(zero_width_models, collapse=", ")
-    warning(glue::glue(sep=" ",
+    warning(glue::glue(.sep=" ",
       "{.label(label)}{bad} of {total} mRNAs code for a 0 length protein.",
       " This is bad. The following mRNA IDs are being removed: {lost}"
     ))
@@ -53,7 +53,7 @@ trim_CDS_with_non_zero_phase <- function(grlist, label=NULL){
 
   # Assert that the CDS name is in the set {0,1,2}
   if(! all(meta$cds_name %in% 0:2)){
-    stop(glue::glue(sep=" ",
+    stop(glue::glue(.sep=" ",
       "{.label(label)}expected the `cds_name` field to be overloaded with phase info [0,1,2].",
       "But it is not. This is a bug in the code."
     ))
@@ -108,7 +108,7 @@ check_for_incomplete_models <- function(phases, label=NULL){
   total <- length(phases)
 
   if(incomplete > 0){
-    warning(glue::glue(sep=" ",
+    warning(glue::glue(.sep=" ",
       "{.label(label)}{incomplete} of {total} gene models are incomplete",
       "(the phase of the first CDS is not equal to 0). This does not include",
       "partial gene models that happen to begin in-phase. Details are recorded",
@@ -155,7 +155,7 @@ check_for_internal_stops <- function(aa_summary, label=NULL){
     n <- sum(stops)
     total <- length(stops)
     bad <- tab[stops, ]$seqids %>% as.character %>% paste0(collapse=", ")
-    warning(glue::glue(sep=" ",
+    warning(glue::glue(.sep=" ",
       "{.label(label)}{n} of {total} proteins have internal stops.",
       "These amino acid sequences were constructed",
       "from the mRNA models specified in the GFF file: {bad}"
@@ -174,7 +174,7 @@ check_protein_transcript_match <- function(aa_summary, trans_summary, label=NULL
   if(! setequal(aaids, trids)){
     not_in_tr <- paste(setdiff(aaids, trids), collapse=", ")
     not_in_aa <- paste(setdiff(trids, aaids), collapse=", ")
-    warning(glue::glue(sep="\n",
+    warning(glue::glue(.sep="\n",
       "{.label(label)}protein and transcript names do not match:",
       "transcript ids missing in proteins: {not_in_tr}",
       "protein ids missing in transcript: {not_in_aa}"

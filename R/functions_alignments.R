@@ -233,10 +233,11 @@ align_by_map <- function(
     map <- map[map$query %in% names(queseq),  ]
   }
 
+  # Pair the focal gene to each target sequence
   queseq <- queseq[ match(map$query,  names(queseq)) ]
   tarseq <- tarseq[ match(map$target, names(tarseq)) ]
 
-  AA_aln(queseq, tarseq, nsims=1000, ...)
+  AA_aln(queseq, tarseq, ...)
 }
 
 

@@ -217,6 +217,7 @@ make_synder_table <- function(m){
 #'
 #' @param m Romand object
 #' @param group string - either "query" or "control"
+#' @export
 make_synder_flag_table <- function(m, group="query"){
   .extract(m, 'summary_synder_flags') %>%
     .select_tag(paste0("/", group, "$")) %>%
@@ -385,7 +386,7 @@ make_excel_spreadsheet <- function(m, filename="fagin-result.xlsx"){
   XLConnect::createSheet(wb, "Genome Summaries")
   XLConnect::writeWorksheet(wb, data=gentab, sheet="Genome Summaries")
 
-  maptab <- make_synmap_table(con, species_order)
+  maptab <- make_synmap_table(con)
   XLConnect::createSheet(wb, "Synmap Summaries")
   XLConnect::writeWorksheet(wb, data=maptab, sheet="Synmap Summaries")
 

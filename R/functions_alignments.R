@@ -35,6 +35,10 @@ qgumbel <- function(p, mu, s){
 }
 
 
+# Given simulated data, generate functions for assigning significance to
+# scores.
+#
+# @param sam data.frame with columns 'query', 'score', and 'logmn'
 fit.gumbel <- function(sam){
 
   stopifnot(c('query', 'score', 'logmn') %in% names(sam))

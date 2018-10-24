@@ -199,19 +199,65 @@ make_synmap_table <- function(m){
 #' Tabulate states for each genome
 #'
 #' @param m Rmonad object
+#' @param genes character list of genes to subset the table by
 #' @param group string - either "query" or "control"
 #' @export
-make_synder_table <- function(m){
+make_synder_table <- function(m, genes=NULL){
   .extract(m, 'synder_out') %>%
     # target and query are actually the same, so no need to do both
     .select_tag(paste0("/query$")) %>%
     lapply(function(x){
-       CNEr::second(x) %>%
-       GenomicRanges::width() %>%
-       fagin::summarize_numeric()
-     }) %>%
-       make_numeric_summary_table
+      if(!is.null(genes)){
+        x <- x[S4Vectors::mcols(x)$attr %in% genes]
+      }
+      CNEr::second(x) %>%
+      GenomicRanges::width() %>%
+      fagin::summarize_numeric()
+    }) %>%
+      make_numeric_summary_table
 }
+
+#' Get tables of number of search intervals
+#'
+#' @param m Rmonad object
+#' @export
+get_synder_nsi <- function(m){
+  xs <- .extract(m, 'synder_out') %>%
+    # target and query are actually the same, so no need to do both
+    .select_tag(paste0("/query$"))
+
+  tabs <- lapply(xs, function(x){
+    S4Vectors::mcols(x)$attr %>% as.factor %>% table %>%
+      {data.frame(
+        seqid = names(.),
+        count = as.integer(.)
+      )}
+  })
+
+  .merge <- function(x, y){
+    merge(x, y, by='seqid', all=TRUE)
+  }
+
+  tab <- Reduce(f=.merge, x=tabs[-1], init=tabs[[1]])
+  names(tab)[-1] <- names(tabs)
+  tab[is.na(tab)] <- 0
+
+  tab
+  # mtab <- reshape2::melt(tab) %>%
+  #   dplyr::group_by(variable, value) %>%
+  #   dplyr::summarize(n_blocks=value[1], count=length(value))
+  # # mtab$value <- .bincode(mtab$value, c(0:40, 100, Inf), right=F, include.low=T)
+  # # mtab$value <- as.factor(mtab$value - 1)
+  # # levels(mtab$value)[-(1:(nlevels(mtab$value)-2))] <- c("40-99", ">100")
+  #
+  # ggplot2::ggplot(mtab) +
+  #   ggplot2::geom_point(aes(x=n_blocks, y=count)) +
+  #   ggplot2::geom_line(aes(x=n_blocks, y=count), alpha=0.2) +
+  #   ggplot2::xlim(0,35) +
+  #   ggplot2::scale_y_log10() +
+  #   ggplot2::facet_grid(. ~ variable)
+}
+
 
 #' Summarize the synder flags for each species
 #'

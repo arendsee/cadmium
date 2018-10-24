@@ -4,10 +4,12 @@
 \alias{make_synder_table}
 \title{Tabulate states for each genome}
 \usage{
-make_synder_table(m)
+make_synder_table(m, genes = NULL)
 }
 \arguments{
 \item{m}{Rmonad object}
+
+\item{genes}{character list of genes to subset the table by}
 
 \item{group}{string - either "query" or "control"}
 }

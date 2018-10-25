@@ -22,8 +22,6 @@ con <- config()
 con@synder@offsets = c(1L,1L) # offsets for Satsuma
 con@alignment@dna2dna_maxspace = 1e8L
 validate_config(con)
-species_name=con@input@focal_species
-
 # if the last result is present in the archive, use it
 m_sav <- file.path(con@archive, 'm.Rda')
 if(file.exists(m_sav)){
@@ -119,6 +117,14 @@ knitr::kable(
 )
 ```
 
+```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
+genes <- .extract(m, 'query_genes')[[1]]
+knitr::kable(
+    make_synder_table(m),
+    caption="Search interval widths for query genes"
+)
+```
+
 ## Fagin output
 
 ```{r secondary_1, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
@@ -133,6 +139,86 @@ plot_secondary_labels(m, species_order, fill='species')
 
 ```{r classSums}
 make_origin_table(m) %>% knitr::kable()
+```
+
+```{r origin_study}
+x <- rmonad::get_value(m, tag='query_origins')[[1]]
+origins <- list(
+    orphans = x$classStr[grepl("^[^O]+$", x$classStr)]
+  , s1 = x$classStr[grepl("O[^O]{4}", x$classStr, perl=TRUE)]
+  , s2 = x$classStr[grepl(".{1}O[^O]{3}", x$classStr, perl=TRUE)]
+  , s3 = x$classStr[grepl(".{2}O[^O]{2}", x$classStr, perl=TRUE)]
+  , s4 = x$classStr[grepl(".{3}O[^O]{1}", x$classStr, perl=TRUE)]
+  , s5 = x$classStr[grepl(".{4}O", x$classStr, perl=TRUE)]
+)
+lapply(origins, function(x) summary(factor(x)))
+
+
+feats <- rmonad::get_value(m, tag='feature_table/query') %>%
+    lapply(function(d){
+        d[, c("seqid",
+              "gen", "trn", "orf", # ORFic
+              "nuc", "cds", "exo", # non-ORFic
+              "rna", "tec", "una", "ind", "nst", "scr" # Unknown
+              )]
+    })
+
+gene_profile <- function(seqid){
+    y <- lapply(feats, function(f) f[f$seqid == seqid, -1]) %>% do.call(what=rbind)
+    rownames(y) <- sub("feature_table/query/Saccharomyces_", "", rownames(y))
+    y
+}
+
+group_profile <- function(group){
+    mats <- lapply(names(origins[[group]]), gene_profile)
+    names(mats) <- names(origins[[group]])
+    mats
+}
+
+# # find the genes that would considered younger if only `gen` is classified as
+# # ORFic (i.e. require strong evidence for coding state).
+# relaxed_group_profile <- function(group, level){
+#     mats <- group_profile(group)
+#     mats[sapply(mats, function(mat) ! any(mat[level, 'gen']))]
+# }
+#
+# profiles <- lapply(names(origins), group_profile)
+# names(profiles) <- names(origins)
+# relaxed_profiles <- list(
+#     s1 = relaxed_group_profile('s1', 1)
+#   , s2 = relaxed_group_profile('s2', 2)
+#   , s3 = relaxed_group_profile('s3', 3)
+#   , s4 = relaxed_group_profile('s4', 4)
+#   , s5 = relaxed_group_profile('s5', 5:6)
+# )
+#
+# wouldbe_younger <-
+#   lapply(relaxed_profiles, function(ms){
+#     ms[sapply(ms, function(mat) any(mat[, 'gen']))]
+#     })
+#
+# lapply(wouldbe_younger, length)
+# lapply(wouldbe_younger, names)
+#
+# lapply(profiles, length)
+# lapply(relaxed_profiles, length)
+# lapply(wouldbe_younger, length)
+#
+# wouldbe_orphan <- lapply(names(relaxed_profiles), function(i){
+#     keep <- setdiff(names(relaxed_profiles[[i]]), names(wouldbe_younger[[i]]))
+#     relaxed_profiles[[i]][keep]
+#   })
+# names(wouldbe_orphan) <- names(relaxed_profiles)
+
+# Count something as ORFic iff it matches an annotated protein
+by_relaxed <- function(node_labels){
+  cls <- node_labels$primary
+  snd <- node_labels$secondary
+  cls[snd == "O2" | snd == "O3"] <- "Non-ORFic"
+  cls
+}
+.labels <- get_value(m, tag="query_labels")[[1]]
+relaxed_origins <- .determine_origins(.labels, con, get_classifier=by_relaxed)
 ```
 
 ## System info

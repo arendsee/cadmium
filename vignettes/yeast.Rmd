@@ -89,6 +89,16 @@ ss <- get_summaries(m)
 plot(ape::read.tree(con@input@tree))
 ```
 
+```{r yeast_strata}
+f <- system.file('yeast', 'phylostratr-strata.Rds', package='fagin')
+strata <- readRDS(f)
+dplyr::group_by(strata, mrca_name) %>%
+  dplyr::summarize(count = n()) %>%
+  knitr::kable(
+    caption="Number of genes in each phylostratum relative to the focal species *S. cerevisiae*."
+  )
+```
+
 ```{r, result='asis', eval=TRUE}
 species_order <- get_species_phylogenetic_order(con)
 knitr::kable(

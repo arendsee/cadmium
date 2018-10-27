@@ -196,12 +196,15 @@ relaxed_origins <- .determine_origins(.labels, con, get_classifier=by_relaxed)
 
 y <- do_more(relaxed_origins$classStr, feats)
 
-merge_named_vectors(x=x$strSums$orphans, y=y$strSums$orphans, .fill=0)
-merge_named_vectors(x=x$strSums$s1, y=y$strSums$s1, .fill=0)
-merge_named_vectors(x=x$strSums$s2, y=y$strSums$s2, .fill=0)
-merge_named_vectors(x=x$strSums$s3, y=y$strSums$s3, .fill=0)
-merge_named_vectors(x=x$strSums$s4, y=y$strSums$s4, .fill=0)
-merge_named_vectors(x=x$strSums$s5, y=y$strSums$s5, .fill=0)
+comparisons <- list(
+   orphans = merge_named_vectors(x=x$strSums$orphans, y=y$strSums$orphans, .fill=0)
+ , s1      = merge_named_vectors(x=x$strSums$s1,      y=y$strSums$s1,      .fill=0)
+ , s2      = merge_named_vectors(x=x$strSums$s2,      y=y$strSums$s2,      .fill=0)
+ , s3      = merge_named_vectors(x=x$strSums$s3,      y=y$strSums$s3,      .fill=0)
+ , s4      = merge_named_vectors(x=x$strSums$s4,      y=y$strSums$s4,      .fill=0)
+ , s5      = merge_named_vectors(x=x$strSums$s5,      y=y$strSums$s5,      .fill=0)
+)
+
 ```
 
 ## System info

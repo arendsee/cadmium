@@ -234,30 +234,35 @@ get_synder_nsi <- function(m){
       )}
   })
 
+  tabs <- lapply(names(tabs), function(n){
+    d <- tabs[[n]]
+    names(d)[2] <- n 
+    d
+  })
+
   .merge <- function(x, y){
     merge(x, y, by='seqid', all=TRUE)
   }
 
   tab <- Reduce(f=.merge, x=tabs[-1], init=tabs[[1]])
-  names(tab)[-1] <- names(tabs)
   tab[is.na(tab)] <- 0
 
   tab
-  # mtab <- reshape2::melt(tab) %>%
-  #   dplyr::group_by(variable, value) %>%
-  #   dplyr::summarize(n_blocks=value[1], count=length(value))
-  # # mtab$value <- .bincode(mtab$value, c(0:40, 100, Inf), right=F, include.low=T)
-  # # mtab$value <- as.factor(mtab$value - 1)
-  # # levels(mtab$value)[-(1:(nlevels(mtab$value)-2))] <- c("40-99", ">100")
-  #
-  # ggplot2::ggplot(mtab) +
-  #   ggplot2::geom_point(aes(x=n_blocks, y=count)) +
-  #   ggplot2::geom_line(aes(x=n_blocks, y=count), alpha=0.2) +
-  #   ggplot2::xlim(0,35) +
-  #   ggplot2::scale_y_log10() +
-  #   ggplot2::facet_grid(. ~ variable)
 }
 
+#' Get summary table of synder search intervals per gene counts 
+#'
+#' @param m Rmonad object
+#' @export
+get_synder_count_table <- function(m, genes=NULL){
+  x <- get_synder_nsi(m)
+  if(! is.null(genes)){
+    x <- x[x$seqid %in% genes, ]
+  }
+  x[-1] %>%
+    lapply(summarize_numeric) %>%
+    make_numeric_summary_table
+}
 
 #' Summarize the synder flags for each species
 #'

@@ -69,7 +69,7 @@ make_synmap_table(m) %>% knitr::kable()
 ```
 
 ```{r synder_table}
-make_synder_table(m) %>% knitr::kable()
+get_synder_nsi(m) %>% knitr::kable()
 ```
 
 ```{r synder_flag_table}
@@ -86,7 +86,7 @@ ss <- get_summaries(m)
 ```
 
 ```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, message=FALSE, eval=TRUE}
-plot(ape::read.tree(con@input@tree))
+plot(ape::read.tree(con@input@tree), show.node.labels=TRUE)
 ```
 
 ```{r yeast_strata}
@@ -131,6 +131,20 @@ knitr::kable(
 )
 ```
 
+```{r, results='asis', message=FALSE, eval=TRUE}
+knitr::kable(
+    get_synder_count_table(m),
+    caption="Number of search intervals found for each focal gene against each target genome"
+)
+```
+
+```{r, results='asis', message=FALSE, eval=TRUE}
+knitr::kable(
+    get_synder_count_table(m, genes),
+    caption="Number of search intervals found for each query focal gene against each target genome"
+)
+```
+
 ## Fagin output
 
 ```{r secondary_1, fig.width=8, fig.height=6, dpi=300, eval=TRUE}
@@ -162,12 +176,12 @@ group_profile <- function(group, origins, feats){
 
 do_more <- function(classStr, feats){
     strOrigins <- list(
-        orphans = classStr[grepl("^[^O]+$", classStr)]
-      , s1 = classStr[grepl("O[^O]{4}", classStr, perl=TRUE)]
-      , s2 = classStr[grepl(".{1}O[^O]{3}", classStr, perl=TRUE)]
-      , s3 = classStr[grepl(".{2}O[^O]{2}", classStr, perl=TRUE)]
-      , s4 = classStr[grepl(".{3}O[^O]{1}", classStr, perl=TRUE)]
-      , s5 = classStr[grepl(".{4}O", classStr, perl=TRUE)]
+        orphan        = classStr[grepl("^[^O]+$", classStr)]
+      , s5            = classStr[grepl("O[^O]{4}", classStr, perl=TRUE)]
+      , s4            = classStr[grepl(".{1}O[^O]{3}", classStr, perl=TRUE)]
+      , s3            = classStr[grepl(".{2}O[^O]{2}", classStr, perl=TRUE)]
+      , s2            = classStr[grepl(".{3}O[^O]{1}", classStr, perl=TRUE)]
+      , Saccharomyces = classStr[grepl(".{4}O", classStr, perl=TRUE)]
     )
     feats <- lapply(feats, function(d){
         d[, c("seqid",
@@ -198,18 +212,37 @@ by_relaxed <- function(node_labels){
   cls
 }
 .labels <- get_value(m, tag="query_labels")[[1]]
-relaxed_origins <- .determine_origins(.labels, con, get_classifier=by_relaxed)
+relaxed_origins <- fagin:::.determine_origins(.labels, con, get_classifier=by_relaxed)
 
 y <- do_more(relaxed_origins$classStr, feats)
 
 comparisons <- list(
-   orphans = merge_named_vectors(x=x$strSums$orphans, y=y$strSums$orphans, .fill=0)
- , s1      = merge_named_vectors(x=x$strSums$s1,      y=y$strSums$s1,      .fill=0)
- , s2      = merge_named_vectors(x=x$strSums$s2,      y=y$strSums$s2,      .fill=0)
- , s3      = merge_named_vectors(x=x$strSums$s3,      y=y$strSums$s3,      .fill=0)
- , s4      = merge_named_vectors(x=x$strSums$s4,      y=y$strSums$s4,      .fill=0)
- , s5      = merge_named_vectors(x=x$strSums$s5,      y=y$strSums$s5,      .fill=0)
+   orphan        = merge_named_vectors(x=x$strSums[[1]], y=y$strSums[[1]], .fill=0)
+ , s5            = merge_named_vectors(x=x$strSums[[2]], y=y$strSums[[2]], .fill=0)
+ , s4            = merge_named_vectors(x=x$strSums[[3]], y=y$strSums[[3]], .fill=0)
+ , s3            = merge_named_vectors(x=x$strSums[[4]], y=y$strSums[[4]], .fill=0)
+ , s2            = merge_named_vectors(x=x$strSums[[5]], y=y$strSums[[5]], .fill=0)
+ , Saccharomyces = merge_named_vectors(x=x$strSums[[6]], y=y$strSums[[6]], .fill=0)
 )
+
+phylostratr_ages <- split(strata, strata$mrca_name) %>%
+    lapply(function(x) x$qseqid) %>% rev
+names(phylostratr_ages)[1] <- 'orphan'
+
+fagin_ages_x <- lapply(x$strOrigins, names)
+fagin_ages_y <- lapply(y$strOrigins, names)
+
+venn <- function(group){
+    xs <- list(
+        phylostratr   = phylostratr_ages[[group]]
+      , fagin         = fagin_ages_x[[group]]
+      , fagin_relaxed = fagin_ages_y[[group]]
+    )
+    ids <- unique(unlist(xs))
+    lapply(xs, function(x) ids %in% x) %>% do.call(what=rbind) %>% t %>%
+    limma::vennCounts()
+}
+
 
 ```
 

@@ -11,7 +11,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, echo=FALSE, message=FALSE, eval=TRUE}
+```{r, message=FALSE, eval=TRUE}
 library(fagin)
 library(rmonad)
 library(knitr)
@@ -38,11 +38,6 @@ mtabulate(m, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
 
 ```{r rmonad_plot, dpi=300, fig.width=6, fig.height=6}
 plot(m, vertex.size=2, edge.arrow.size=0.2, vertex.label=NA)
-```
-
-```{r, echo=FALSE}
-# Get a list of input summaries
-summaries <- get_summaries(m)
 ```
 
 ```{r nscaffold_table}
@@ -86,14 +81,25 @@ make_synder_flag_table(m) %>% knitr::kable()
 ## Input data summary
 
 ```{r, echo=FALSE, eval=TRUE}
+# Get a list of input summaries
 ss <- get_summaries(m)
 ```
 
-```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, echo=FALSE, message=FALSE, eval=TRUE}
+```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, message=FALSE, eval=TRUE}
 plot(ape::read.tree(con@input@tree))
 ```
 
-```{r, echo=FALSE, result='asis', eval=TRUE}
+```{r yeast_strata}
+f <- system.file('yeast', 'phylostratr-strata.Rds', package='fagin')
+strata <- readRDS(f)
+dplyr::group_by(strata, mrca_name) %>%
+  dplyr::summarize(count = n()) %>%
+  knitr::kable(
+    caption="Number of genes in each phylostratum relative to the focal species *S. cerevisiae*."
+  )
+```
+
+```{r, result='asis', eval=TRUE}
 species_order <- get_species_phylogenetic_order(con)
 knitr::kable(
   make_genome_table(m, species_order),
@@ -101,7 +107,7 @@ knitr::kable(
 )
 ```
 
-```{r, echo=FALSE, result='asis', eval=TRUE}
+```{r, result='asis', eval=TRUE}
 knitr::kable(
     make_synmap_table(m),
     caption="Lengths of homologous links in each synteny map."
@@ -110,14 +116,14 @@ knitr::kable(
 
 ## `synder` output
 
-```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
+```{r, results='asis', message=FALSE, eval=TRUE}
 knitr::kable(
     make_synder_table(m),
     caption="Search interval widths"
 )
 ```
 
-```{r, echo=FALSE, results='asis', message=FALSE, eval=TRUE}
+```{r, results='asis', message=FALSE, eval=TRUE}
 genes <- .extract(m, 'query_genes')[[1]]
 knitr::kable(
     make_synder_table(m),
@@ -127,11 +133,11 @@ knitr::kable(
 
 ## Fagin output
 
-```{r secondary_1, fig.width=8, fig.height=6, dpi=300, echo=FALSE, eval=TRUE}
+```{r secondary_1, fig.width=8, fig.height=6, dpi=300, eval=TRUE}
 plot_secondary_labels(m, species_order, fill='secondary')
 ```
 
-```{r secondary_2, fig.width=8, fig.height=4, dpi=300, echo=FALSE, eval=TRUE}
+```{r secondary_2, fig.width=8, fig.height=4, dpi=300, eval=TRUE}
 plot_secondary_labels(m, species_order, fill='species')
 ```
 

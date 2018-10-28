@@ -51,6 +51,7 @@ Suggests:
     rmarkdown,
     ggplot2,
     reshape2,
+    limma,
     XLConnect
 VignetteBuilder: knitr
 RoxygenNote: 6.1.0

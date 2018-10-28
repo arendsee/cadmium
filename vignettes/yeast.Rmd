@@ -205,16 +205,16 @@ feats <- rmonad::get_value(m, tag='feature_table/query')
 x <- do_more(classStr, feats)
 
 # Count something as ORFic iff it matches an annotated protein
-by_relaxed <- function(node_labels){
+by_simple <- function(node_labels){
   cls <- node_labels$primary
   snd <- node_labels$secondary
   cls[snd == "O2" | snd == "O3"] <- "Non-ORFic"
   cls
 }
 .labels <- get_value(m, tag="query_labels")[[1]]
-relaxed_origins <- fagin:::.determine_origins(.labels, con, get_classifier=by_relaxed)
+simple_origins <- fagin:::.determine_origins(.labels, con, get_classifier=by_simple)
 
-y <- do_more(relaxed_origins$classStr, feats)
+y <- do_more(simple_origins$classStr, feats)
 
 comparisons <- list(
    orphan        = merge_named_vectors(x=x$strSums[[1]], y=y$strSums[[1]], .fill=0)
@@ -233,17 +233,20 @@ fagin_ages_x <- lapply(x$strOrigins, names)
 fagin_ages_y <- lapply(y$strOrigins, names)
 
 venn <- function(group){
-    xs <- list(
-        phylostratr   = phylostratr_ages[[group]]
-      , fagin         = fagin_ages_x[[group]]
-      , fagin_relaxed = fagin_ages_y[[group]]
-    )
-    ids <- unique(unlist(xs))
-    lapply(xs, function(x) ids %in% x) %>% do.call(what=rbind) %>% t %>%
-    limma::vennCounts()
+  xs <- list(
+      phylostratr  = phylostratr_ages[[group]]
+    , fagin        = fagin_ages_x[[group]]
+    , fagin_simple = fagin_ages_y[[group]]
+  )
+  ids <- unique(unlist(xs))
+  lapply(xs, function(x) ids %in% x) %>% do.call(what=rbind) %>% t %>%
+  limma::vennCounts()
 }
 
-
+par(mfrow=c(2,3), mar=c(0,0,0,0))
+for(n in names(comparisons)){
+    limma::vennDiagram(venn(n), main=n, asp=1, cex=1)
+}
 ```
 
 ## System info

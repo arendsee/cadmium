@@ -19,7 +19,8 @@ library(magrittr)
 
 # The default config uses the sample data for yeast
 con <- config()
-con@synder@offsets = c(1L,1L) # offsets for Satsuma
+con@synder@offsets = c(1L,1L) # offsets for mummer
+con@synder@trans = "p" # percent identity transform mummer 
 con@alignment@dna2dna_maxspace = 1e8L
 validate_config(con)
 # if the last result is present in the archive, use it

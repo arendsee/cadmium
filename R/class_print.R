@@ -91,6 +91,8 @@ print.config_synder <- function(x, ...){
   cat("Synder parameters:\n")
   prettyCat("offsets", paste(x@offsets, collapse=""), 2)
   prettyCat("k", x@k, 2)
+  prettyCat("r", x@r, 2)
+  prettyCat("trans", x@trans, 2)
 }
 setMethod("show", "config_synder",
   function(object) print(object)

@@ -163,13 +163,13 @@ run_fagin <- function(con){
 
     devtools::session_info()
 
-  } %>% tag('session_info') %__% {
+  } %>% rmonad::tag('session_info') %__% {
 
     "Store the configuration"
 
     con
 
-  } %>% tag('config') %__% {
+  } %>% rmonad::tag('config') %__% {
 
     "Create the archival directory. Warn if the directory already exists. If
     the directory does exist, everything may be fine, so long as you are

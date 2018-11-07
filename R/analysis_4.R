@@ -110,10 +110,10 @@ determine_origins <- function(m, con){
   message("Determining origins")
 
   m %>%
-    view('query_labels')   %>>%
-      .determine_origins(con) %>% tag('query_origins') %>%
-    view('control_labels') %>>%
-      .determine_origins(con) %>% tag('control_origins')
+    rmonad::view('query_labels')   %>>%
+      .determine_origins(con) %>% rmonad::tag('query_origins') %>%
+    rmonad::view('control_labels') %>>%
+      .determine_origins(con) %>% rmonad::tag('control_origins')
 }
 .determine_origins <- function(labels, con, ...){
 

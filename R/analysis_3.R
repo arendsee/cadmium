@@ -173,9 +173,9 @@ determine_labels <- function(m, con){
   }
 
   rmonad::combine(query_features) %>>%
-    .determine_labels(con) %>% tag("query_labels") %__%
+    .determine_labels(con) %>% rmonad::tag("query_labels") %__%
   rmonad::combine(control_features) %>>%
-    .determine_labels(con) %>% tag("control_labels")
+    .determine_labels(con) %>% rmonad::tag("control_labels")
 }
 .determine_labels <- function(features, con){
 

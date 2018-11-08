@@ -156,20 +156,20 @@ run_fagin <- function(con){
 
     set.seed(211)
 
-  } %__% {
+  } %>>% {
 
     "Record the date, system info, and installed packages. Of particular
     importance are the versions of `synder` and `rmonad`."
 
     devtools::session_info()
 
-  } %>% rmonad::tag('session_info') %__% {
+  } %>% rmonad::tag('session_info') %>>% {
 
     "Store the configuration"
 
     con
 
-  } %>% rmonad::tag('config') %__% {
+  } %>% rmonad::tag('config') %>>% {
 
     "Create the archival directory. Warn if the directory already exists. If
     the directory does exist, everything may be fine, so long as you are

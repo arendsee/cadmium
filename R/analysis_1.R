@@ -108,15 +108,15 @@ load_species <- function(species_name, con){
       #- _ :: NString -> NStringSummary
       summarize_nstring %>% .tag("summary_nstring") %>%
 
-    .view("genomeDB") %__%
+    .view("genomeDB") %>>%
 
     # gff and summary_gff
     #- _ :: SpeciesName -> FolderPath -> FilePath
-    get_readable_filename(
+    {get_readable_filename(
       species_name,
       dir = con@input@gff_dir,
       ext = c("gff3","gff")
-    ) %>%
+    )} %>%
       #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
       rmonad::funnel(
         file = .,
@@ -232,12 +232,17 @@ load_species <- function(species_name, con){
 }
 
 load_synmap_meta <- function(m, focal, target, syndir){
-  m %__%
-    get_synmap_filename(
-      focal_name  = focal,
-      target_name = target,
-      dir         = syndir
-    ) %>% rmonad::tag("synmap_file", target) %>%
+  m %>>%
+    {
+
+      "Load synteny maps"
+
+      get_synmap_filename(
+        focal_name  = focal,
+        target_name = target,
+        dir         = syndir
+      )
+    } %>% rmonad::tag("synmap_file", target) %>%
     funnel(
       seqinfo_a = view(., "seqinfo", focal),
       seqinfo_b = view(., "seqinfo", target) 
@@ -269,13 +274,15 @@ primary_data <- function(con){
     rmonad::loop(
       FUN = load_species,
       con = con
-    ) %__%
+    ) %>>%
 
-    con@input@query_gene_list %>>%
-      load_gene_list %>% rmonad::tag("query_genes") %__%
+    {
+      load_gene_list(con@input@query_gene_list)
+    } %>% rmonad::tag("query_genes") %>>%
 
-    con@input@control_gene_list %>>%
-      load_gene_list %>% rmonad::tag("control_genes")
+    {
+      load_gene_list(con@input@control_gene_list)
+    } %>% rmonad::tag("control_genes")
 
   } -> m
 

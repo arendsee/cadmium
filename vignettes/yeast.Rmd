@@ -69,7 +69,7 @@ make_genome_table(m, species_order=get_species(con)) %>% knitr::kable()
 make_synmap_table(m) %>% knitr::kable()
 ```
 
-```{r synder_table}
+```{r synder_table, eval=FALSE}
 get_synder_nsi(m) %>% knitr::kable()
 ```
 

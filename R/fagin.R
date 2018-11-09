@@ -177,6 +177,9 @@ run_fagin <- function(con){
     one, you should NOT use the same archive."
 
     dir.create(con@archive)
+    # Copy genome files
+    file.copy(con@input@fna_dir, con@archive, recursive=TRUE)
+    con@input@fna_dir <- file.path(con@archive, basename(con@input@fna_dir))
 
   } %__% {
     primary_data(con=con)     %>%

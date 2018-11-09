@@ -244,8 +244,8 @@ load_synmap_meta <- function(m, focal, target, syndir){
       )
     } %>% rmonad::tag("synmap_file", target) %>%
     funnel(
-      seqinfo_a = view(., "seqinfo", focal),
-      seqinfo_b = view(., "seqinfo", target) 
+      seqinfo_a = rmonad::view(., "seqinfo", focal),
+      seqinfo_b = rmonad::view(., "seqinfo", target) 
     ) %*>%
       synder::read_synmap %>% rmonad::tag("synmap", target) %>>%
       summarize_syn %>% rmonad::tag("synmap_summary", target)

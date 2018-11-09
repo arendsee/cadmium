@@ -277,6 +277,8 @@ alignToGenome <- function(
     if(permute){
       permid <- sample.int(length(subject))
       subject <- subject[permid]
+      # Reverse the base order (but DO NOT complement)
+      subject <- IRanges::reverse(subject)
       if(length(offset) == length(tarseq)){
         offset <- c(offset, offset)[permid]
       }

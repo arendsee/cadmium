@@ -87,7 +87,7 @@ ss <- get_summaries(m)
 ```
 
 ```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, message=FALSE, eval=TRUE}
-plot(ape::read.tree(con@input@tree), show.node.labels=TRUE)
+plot(ape::read.tree(con@input@tree), show.node.label=TRUE)
 ```
 
 ```{r yeast_strata}
@@ -212,7 +212,7 @@ by_simple <- function(node_labels){
   cls[snd == "O2" | snd == "O3"] <- "Non-ORFic"
   cls
 }
-.labels <- get_value(m, tag="query_labels")[[1]]
+.labels <- rmonad::get_value(m, tag="query_labels")[[1]]
 simple_origins <- fagin:::.determine_origins(.labels, con, get_classifier=by_simple)
 
 y <- do_more(simple_origins$classStr, feats)

@@ -88,7 +88,7 @@ ss <- get_summaries(m)
 ```
 
 ```{r yeast_tree, fig.width=6, fig.height=4, dpi=300, message=FALSE, eval=TRUE}
-plot(ape::read.tree(con@input@tree), show.node.labels=TRUE)
+plot(ape::read.tree(con@input@tree), show.node.label=TRUE)
 ```
 
 ```{r yeast_strata}

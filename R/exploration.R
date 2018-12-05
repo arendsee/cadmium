@@ -264,6 +264,35 @@ get_synder_count_table <- function(m, genes=NULL){
     make_numeric_summary_table
 }
 
+make_query_target_table <- function(m){
+  apply_names <- function(x, f){
+      xnames <- names(x)
+      x <- lapply(names(x), function(name) f(x[[name]], name))
+      names(x) <- xnames
+      x
+  }
+
+  # Gather binary features
+  feats <- rmonad::get_value(m, tag='feature_table/query')
+  names(feats) <- sub("feature_table/query/", "", names(feats))
+  feats <- apply_names(feats, function(d, n) {d$target_species <- n; d}) 
+  feats_table <- do.call(rbind, feats)
+  rownames(feats_table) <- NULL
+  # Gather class (e.g. UNO), primary, and secondary labels
+  seclabels <- rmonad::get_value(m, tag="query_labels")[[1]]
+  seclabels <- apply_names(seclabels$labels, function(d, n) {d$target_species <- n; d})
+  sec_table <- do.call(rbind, seclabels)
+  rownames(sec_table) <- NULL
+  # Merge it
+  big_table <- merge(feats_table, sec_table, by=c("seqid", "target_species"))
+  # Add final class
+  classStr <- rmonad::get_value(m, tag='query_origins')[[1]]$classStr
+  big_table$class <- classStr[big_table$seqid]
+  # Check it
+  stopifnot(nrow(big_table) == nrow(feats_table))
+  big_table
+}
+
 #' Summarize the synder flags for each species
 #'
 #' @param m Romand object

@@ -35,6 +35,7 @@ if(file.exists(m_sav)){
 
 missues(m) %>% kable(format='html') %>% write('ARCHIVE/issues.html')
 mtabulate(m, code=TRUE) %>% kable(format='html') %>% write('ARCHIVE/table.html')
+readr::write_tsv(make_query_target_table(m), "ARCHIVE/labels.tsv")
 ```
 
 ```{r rmonad_plot, dpi=300, fig.width=6, fig.height=6}
@@ -212,7 +213,7 @@ by_simple <- function(node_labels){
   cls[snd == "O2" | snd == "O3"] <- "Non-ORFic"
   cls
 }
-.labels <- get_value(m, tag="query_labels")[[1]]
+.labels <- rmonad::get_value(m, tag="query_labels")[[1]]
 simple_origins <- fagin:::.determine_origins(.labels, con, get_classifier=by_simple)
 
 y <- do_more(simple_origins$classStr, feats)

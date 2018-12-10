@@ -264,6 +264,15 @@ get_synder_count_table <- function(m, genes=NULL){
     make_numeric_summary_table
 }
 
+#' Tabulate the query to target relationships
+#'
+#' This function takes the final Rmonad object returned from a successful fagin
+#' run and tabulates the binary features, secondary classes, and primary
+#' classes for each focal gene against each target species. 
+#'
+#' @param m Rmonad object storing the results of a successful run
+#' @return data.frame results
+#' @export
 make_query_target_table <- function(m){
   apply_names <- function(x, f){
       xnames <- names(x)
@@ -271,7 +280,6 @@ make_query_target_table <- function(m){
       names(x) <- xnames
       x
   }
-
   # Gather binary features
   feats <- rmonad::get_value(m, tag='feature_table/query')
   names(feats) <- sub("feature_table/query/", "", names(feats))

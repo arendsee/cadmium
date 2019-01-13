@@ -13,9 +13,9 @@ vignette: >
 library(fagin)
 ```
 
-Fagin is a program for analyzing orphan genes. The first step of the analysis
-is gathering the required data. Inputs are organized into a `config` object,
-below are the default values:
+Fagin is a program desgined primarily for synteny-based analysis of de novo
+genes. The first step of the analysis is gathering the required data. Inputs
+are organized into a `config` object, below are the default values:
 
 ```{r}
 myConfig <- config()
@@ -40,20 +40,3 @@ run_fagin(myConfig)
 This will take awhile to run, from a few minutes to a few hours, depending on
 the size of your data. It may also require substantial memory, more than a
 typical desktop will have for large genomes.
-
-By default, all the results from the analysis are archived in the folder
-`ARCHIVE` in the working directory. The following files are archived:
-
- 1. `d1.Rda` - gathering and checking raw data
-
- 2. `d2.Rda` - comparisons of target species to the focal species
-
- 3. `d3.Rda` - building a feature table from the target/focal comparisons
-
- 4. `d4.Rda` - labels and trees built from the feature table
-
- 5. `d5.Rda` - results of superimposing labels on the phylogenetic tree
-
- 6. `final_obj.Rda` -  the final rmonad object
-
-These can be loaded with commands such as `load('ARCHIVE/d1.Rda')`.

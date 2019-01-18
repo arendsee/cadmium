@@ -84,11 +84,11 @@ load_species <- function(species_name, con){
 
   # genome and summary_genome
   #- _ :: SpeciesName -> FolderPath -> FilePath
-  get_readable_filename(
+  as_monad(get_readable_filename(
     species_name,
     dir = con@input@fna_dir,
     ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
-  )  %>>%
+  ))  %>>%
     #- _ :: FilePath -> Genome
     load_dna %>%
       .tag("genomeDB") %>>%

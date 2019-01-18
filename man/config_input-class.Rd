@@ -11,11 +11,11 @@ For details on input requirements, see the main package documentation
 \section{Slots}{
 
 \describe{
-\item{\code{gff_dir}}{directory of GFF files (.gff or gff3 extensions)}
+\item{\code{gff}}{named list of GFF3 files (.gff or gff3 extensions)}
 
-\item{\code{fna_dir}}{directory of genome files (fasta format)}
+\item{\code{fna}}{named list of genome files (fasta format)}
 
-\item{\code{syn_dir}}{directory of synteny maps}
+\item{\code{syn}}{named list of synteny maps}
 
 \item{\code{tree}}{directory of phylogenetic tree}
 

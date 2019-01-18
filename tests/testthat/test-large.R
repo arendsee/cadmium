@@ -3,7 +3,7 @@ context("whole pipeline")
 # This tests entire pipelines. You may want to turn it off for most tests.
 
 # a1 <- NULL
-# con <- config()
+# con <- yeast_config()
 #
 # test_that("analysis_1 works for yeast", {
 #   expect_true({

@@ -83,13 +83,8 @@ load_species <- function(species_name, con){
   }
 
   # genome and summary_genome
-  #- _ :: SpeciesName -> FolderPath -> FilePath
-  as_monad(get_readable_filename(
-    species_name,
-    dir = con@input@fna_dir,
-    ext = c("fna", "fa", "fasta") # allowed extensions genome FASTA file
-  ))  %>>%
-    #- _ :: FilePath -> Genome
+  #- _ :: FilePath -> Genome
+  as_monad(load_dna(con@input@fna[[species_name]]))
     load_dna %>%
       .tag("genomeDB") %>>%
       #- _ :: Genome -> DNASummary
@@ -108,20 +103,11 @@ load_species <- function(species_name, con){
       #- _ :: NString -> NStringSummary
       summarize_nstring %>% .tag("summary_nstring") %>%
 
-    .view("genomeDB") %>>%
-
-    # gff and summary_gff
-    #- _ :: SpeciesName -> FolderPath -> FilePath
-    {get_readable_filename(
-      species_name,
-      dir = con@input@gff_dir,
-      ext = c("gff3","gff")
-    )} %>%
+    .view("seqinfo") %>>%
       #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
-      rmonad::funnel(
-        file = .,
-        seqinfo_ = .view(., "seqinfo")
-      ) %*>% load_gene_models %>% .tag("gffDB") %>>%
+      {
+        load_gene_models(file=con@input@gff[[species_name]], seqinfo_=.)
+      } %>% .tag("gffDB") %>>%
       #- _ :: GeneModels -> GFFSummary
       summarize_gff %>% .tag("summary_gff") %>%
 
@@ -231,17 +217,12 @@ load_species <- function(species_name, con){
       summarize_faa %>% .tag("summary_transorfaa")
 }
 
-load_synmap_meta <- function(m, focal, target, syndir){
+load_synmap_meta <- function(m, focal, target, con){
   m %>>%
     {
+      "Get synteny map file from config"
 
-      "Load synteny maps"
-
-      get_synmap_filename(
-        focal_name  = focal,
-        target_name = target,
-        dir         = syndir
-      )
+      con@input@syn[[target]]
     } %>% rmonad::tag("synmap_file", target) %>%
     funnel(
       seqinfo_a = rmonad::view(., "seqinfo", focal),
@@ -291,7 +272,7 @@ primary_data <- function(con){
       m,
       focal  = con@input@focal_species,
       target = target,
-      syndir = con@input@syn_dir
+      con    = con
     )
   }
 

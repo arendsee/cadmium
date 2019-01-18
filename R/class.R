@@ -76,9 +76,9 @@ config_alignment <- setClass(
 #'
 #' For details on input requirements, see the main package documentation
 #'
-#' @slot gff_dir           directory of GFF files (.gff or gff3 extensions)
-#' @slot fna_dir           directory of genome files (fasta format)
-#' @slot syn_dir           directory of synteny maps
+#' @slot gff               named list of GFF3 files (.gff or gff3 extensions)
+#' @slot fna               named list of genome files (fasta format)
+#' @slot syn               named list of synteny maps
 #' @slot tree              directory of phylogenetic tree
 #' @slot focal_species     name of the focal species
 #' @slot query_gene_list   file containing query genes (e.g. orphan candidates)
@@ -86,22 +86,22 @@ config_alignment <- setClass(
 config_input <- setClass(
   "config_input",
   representation(
-    gff_dir           = "character",
-    fna_dir           = "character",
-    syn_dir           = "character",
+    gff               = "list",
+    fna               = "list",
+    syn               = "list",
     tree              = "character",
     focal_species     = "character",
     query_gene_list   = "character",
     control_gene_list = "character"
   ),
   prototype(
-    gff_dir           = system.file("yeast", "gff", package='fagin'),
-    fna_dir           = system.file("yeast", "fna", package='fagin'),
-    syn_dir           = system.file("yeast", "syn", package='fagin'),
-    tree              = system.file("yeast", "tree", package='fagin'),
-    focal_species     = "Saccharomyces_cerevisiae",
-    query_gene_list   = system.file("yeast", "orphan-list.txt", package='fagin'),
-    control_gene_list = system.file("yeast", "control-list.txt", package='fagin')
+    gff               = list(),
+    fna               = list(),
+    syn               = list(),
+    tree              = NA_character_,
+    focal_species     = NA_character_,
+    query_gene_list   = NA_character_,
+    control_gene_list = NA_character_
   )
 )
 
@@ -267,17 +267,20 @@ config <- function(){
 #'
 #' @export
 validate_config <- function(con){
+
+  check_files <- function(xs){
+    for(name in names(xs)){
+      if(! file.exists(xs[[name]])){
+        stop(sprintf("Cannot find file '%s' for species '%s'", xs[[name]], name))
+      }
+    }
+  }
+  check_files(con@input@gff)
+  check_files(con@input@fna)
+  check_files(con@input@syn)
+
   if(! file.exists(con@input@tree)){
     stop("Tree file not found")
-  }
-  if(! file.exists(con@input@gff_dir)){
-    stop("GFF directory not found")
-  }
-  if(! file.exists(con@input@fna_dir)){
-    stop("Genome sequence directory not found")
-  }
-  if(! file.exists(con@input@syn_dir)){
-    stop("Synteny map directory not found")
   }
   if(! file.exists(con@input@query_gene_list)){
     stop("Query gene list not found")

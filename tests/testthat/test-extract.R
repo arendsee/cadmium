@@ -6,7 +6,7 @@ gff_file <- system.file("yeast", "gff", "Saccharomyces_arboricola.gff", package=
 tiny <- system.file("tiny", package='fagin')
 
 fna <- load_dna(fna_file)
-con <- config()
+con <- yeast_config()
 con@orf@start <- "ATG"
 orf <- derive_genomic_ORFs(convert_FaFile_to_XStringSet(fna), con)
 cds <- NULL

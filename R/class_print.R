@@ -11,6 +11,13 @@ prettyCat <- function(tag, value, indent){
   cat(sprintf("%s%s = %s\n", space, tag, value))
 }
 
+prettyCatList <- function(title, xs){
+  prettyCat(title, "", 2)
+  for(name in names(xs)){
+    prettyCat(name, xs[[name]], 4)
+  }
+}
+
 # a function for avoiding giant dumps of tabular things
 prettyTable <- function(x){
   if(nrow(x) < 40){
@@ -73,9 +80,9 @@ setMethod("show", "config_alignment",
 #' @export 
 print.config_input <- function(x, ...){
   cat("Input parameters:\n")
-  prettyCat("gff_dir"           , x@gff_dir           , 2)
-  prettyCat("fna_dir"           , x@fna_dir           , 2)
-  prettyCat("syn_dir"           , x@syn_dir           , 2)
+  prettyCatList("gff"           , x@gff                  )
+  prettyCatList("fna"           , x@fna                  )
+  prettyCatList("syn"           , x@syn                  )
   prettyCat("tree"              , x@tree              , 2)
   prettyCat("focal_species"     , x@focal_species     , 2)
   prettyCat("query_gene_list"   , x@query_gene_list   , 2)

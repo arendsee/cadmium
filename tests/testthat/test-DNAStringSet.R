@@ -58,7 +58,7 @@ test_that("ngORF prediction runs", {
     {
       orfgff <<- load_dna(fna_file) %>%
         convert_FaFile_to_XStringSet %>%
-        derive_genomic_ORFs(con=config())
+        derive_genomic_ORFs(con=yeast_config())
       top_class(orfgff)
     },
     "GRanges"  

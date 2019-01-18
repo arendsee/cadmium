@@ -12,7 +12,7 @@ orf <- derive_genomic_ORFs(convert_FaFile_to_XStringSet(fna), con)
 cds <- NULL
 
 test_that("extract and translate work", {
-  expect_silent(cds <<- extractWithComplements(fna, orf))
+  expect_silent(cds <<- extract_with_complements(fna, orf))
   expect_equal(top_class(cds), "DNAStringSet")
   expect_equal(fuzzy_translate(cds) %>% top_class, "AAStringSet")
 })

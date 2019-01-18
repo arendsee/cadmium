@@ -4,8 +4,8 @@ tiny <- system.file("tiny", package='fagin')
 
 test_that("get_readable_filename", {
   expect_equal(
-    get_readable_filename("unicorn", dir=tiny, ext=c("fa", "fna", "fasta")),
-    file.path(tiny, "unicorn.fna")
+    get_readable_filename("test", dir=tiny, ext=c("fa", "fna", "fasta")),
+    file.path(tiny, "test.fna")
   )
   # die if no file found
   expect_error(

@@ -84,12 +84,10 @@ load_species <- function(species_name, con){
 
   # genome and summary_genome
   #- _ :: FilePath -> Genome
-  as_monad(load_dna(con@input@fna[[species_name]]))
-    load_dna %>%
-      .tag("genomeDB") %>>%
-      #- _ :: Genome -> DNASummary
-      summarize_dna %>%
-      .tag("summary_genome") %>%
+  as_monad(load_dna(con@input@fna[[species_name]])) %>%
+    .tag("genomeDB") %>>%
+    #- _ :: Genome -> DNASummary
+    summarize_dna %>% .tag("summary_genome") %>%
 
     # seqinfo
     .view("genomeDB") %>>%
@@ -103,11 +101,12 @@ load_species <- function(species_name, con){
       #- _ :: NString -> NStringSummary
       summarize_nstring %>% .tag("summary_nstring") %>%
 
-    .view("seqinfo") %>>%
+    .view("seqinfo") %>%
       #- _ :: FilePath -> GenomeSeqinfo -> m GeneModels
-      {
-        load_gene_models(file=con@input@gff[[species_name]], seqinfo_=.)
-      } %>% .tag("gffDB") %>>%
+      {rmonad::funnel(
+        file=con@input@gff[[species_name]],
+        seqinfo_=.
+      )} %*>% load_gene_models %>% .tag("gffDB") %>>%
       #- _ :: GeneModels -> GFFSummary
       summarize_gff %>% .tag("summary_gff") %>%
 

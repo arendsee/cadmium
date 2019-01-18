@@ -178,8 +178,11 @@ run_fagin <- function(con){
 
     dir.create(con@archive)
     # Copy genome files
-    file.copy(con@input@fna_dir, con@archive, recursive=TRUE)
-    con@input@fna_dir <- file.path(con@archive, basename(con@input@fna_dir))
+    for(species in names(con@input@fna)){
+      f <- con@input@fna[[species]]
+      file.copy(f, con@archive)
+      con@input@fna[[species]] <- file.path(con@archive, basename(f))
+    }
 
   } %__% {
     primary_data(con=con)     %>%

@@ -21,3 +21,11 @@ merge_named_vectors <- function(.fill=NA, ...){
     names(x) <- c('name', names(xs))
   x
 }
+
+.label <- function(label, ...){
+  label <- if(is.null(label)){
+    ""
+  } else {
+    glue::glue("In {label}: ")
+  }
+}

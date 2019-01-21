@@ -21,6 +21,15 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     rmonad::tag(m, tag, species, group)
   }
 
+  # ---------------------------
+  # dirty hack to get around a strange bug where some species loose their
+  # Seqinfo objects in the mRNA field. 
+  qseqinfo <- rmonad::get_value(m, tag=c('genomeSeq', con@input@focal_species))[[1]] %>%
+    make_seqinfo(con@input@focal_species)
+  tseqinfo <- rmonad::get_value(m, tag=c('genomeSeq', species))[[1]] %>%
+    make_seqinfo(species)
+  # ---------------------------
+
   nsims_prot <- con@alignment@simulation@prot2prot
   nsims_allorf <- con@alignment@simulation@prot2allorf
   nsims_transorf <- con@alignment@simulation@prot2transorf
@@ -39,6 +48,8 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       trans   = con@synder@trans,
       k       = con@synder@k,
       r       = con@synder@r,
+      tcl     = tseqinfo,
+      qcl     = qseqinfo,
       offsets = con@synder@offsets
     ) %>% .tag("synder_out") %>>%
     # synder_summary_

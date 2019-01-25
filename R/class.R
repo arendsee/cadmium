@@ -52,17 +52,19 @@ config_alignment_simulation <- setClass(
 #'
 #' For details on inputs see main package documentation
 #'
-#' @slot thresholds       p-value thresholds for hit significanc
-#' @slot simulation       simulation parameters
-#' @slot dna2dna_maxspace largest size of string to compare
-#' @slot indel_threshold  I don't remember what this does
+#' @slot thresholds         p-value thresholds for hit significanc
+#' @slot simulation         simulation parameters
+#' @slot substitutionMatrix the Smith-Waterman amino acid substitution matrix
+#' @slot dna2dna_maxspace   largest size of string to compare
+#' @slot indel_threshold    I don't remember what this does (FIXME: the fuck kind of documentation is this?)
 config_alignment <- setClass(
   "config_alignment",
   representation(
-    thresholds       = "config_alignment_thresholds",
-    simulation       = "config_alignment_simulation",
-    dna2dna_maxspace = "integer",
-    indel_threshold  = "numeric"
+    thresholds         = "config_alignment_thresholds",
+    simulation         = "config_alignment_simulation",
+    substitutionMatrix = "BLOSUM80",
+    dna2dna_maxspace   = "integer",
+    indel_threshold    = "numeric"
   ),
   prototype(
     thresholds = config_alignment_thresholds(),

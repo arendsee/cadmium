@@ -33,6 +33,7 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   nsims_prot <- con@alignment@simulation@prot2prot
   nsims_allorf <- con@alignment@simulation@prot2allorf
   nsims_transorf <- con@alignment@simulation@prot2transorf
+  subMat <- con@alignment@substitutionMatrix
 
   # SyntenyMap -> mRNA -> SearchIntervals
   .view_target(m, "synmap") %>%
@@ -125,7 +126,8 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       map     = .view(., "f_si_map"),
       queries = rmonad::view(., gene_tag)
     )
-  } %*>% align_by_map(nsims=nsims_prot) %>% .tag("aa2aa") %>%
+  } %*>% align_by_map(nsims=nsims_prot, substitutionMatrix=subMat) %>%
+         .tag("aa2aa") %>%
 
   # # Run the exact test above, but with the query indices scrambled. For a
   # # reasonably sized genome, there should be very few hits (I should do the
@@ -145,7 +147,8 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       map     = .view(., "f_si_map_orf"),
       queries = rmonad::view(., gene_tag)
     )
-  } %*>% align_by_map(nsims=nsims_allorf) %>% .tag("aa2orf") %>%
+  } %*>% align_by_map(nsims=nsims_allorf, substitutionMatrix=subMat) %>%
+         .tag("aa2orf") %>%
 
   # rand_aa2orf_ <- rmonad::funnel(
   #   queseq  = f_faa_,
@@ -188,7 +191,8 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
       map     = .view(., "f_si_map_transorf"),
       queries = rmonad::view(., gene_tag)
     )
-  } %*>% align_by_map(nsims=nsims_transorf) %>% .tag('aa2transorf') %>%
+  } %*>% align_by_map(nsims=nsims_transorf, substitutionMatrix=subMat) %>%
+         .tag('aa2transorf') %>%
 
   # gene2genome - align query DNA sequence against the SI
   {

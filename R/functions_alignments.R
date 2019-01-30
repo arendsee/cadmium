@@ -106,13 +106,13 @@ fit.gumbel <- function(sam){
 
 nothing <- function(x) NULL
 
-aln_xy <- function(x, y, substitutionMatrix="BLOSUM80", simulation=FALSE){
+aln_xy <- function(x, y, substitution_matrix="BLOSUM80", simulation=FALSE){
 
   aln <- Biostrings::pairwiseAlignment(
     pattern=x,
     subject=y,
     type='local',
-    substitutionMatrix=substitutionMatrix
+    substitution_matrix=substitution_matrix
   )
   S4Vectors::metadata(aln)$query  <- names(x) 
   S4Vectors::metadata(aln)$target <- names(y) 

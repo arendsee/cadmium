@@ -112,7 +112,7 @@ aln_xy <- function(x, y, substitution_matrix="BLOSUM80", simulation=FALSE){
     pattern=x,
     subject=y,
     type='local',
-    substitution_matrix=substitution_matrix
+    substitutionMatrix=substitution_matrix
   )
   S4Vectors::metadata(aln)$query  <- names(x) 
   S4Vectors::metadata(aln)$target <- names(y) 

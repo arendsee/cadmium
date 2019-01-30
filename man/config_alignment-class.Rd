@@ -15,8 +15,10 @@ For details on inputs see main package documentation
 
 \item{\code{simulation}}{simulation parameters}
 
+\item{\code{substitution_matrix}}{the Smith-Waterman amino acid substitution matrix}
+
 \item{\code{dna2dna_maxspace}}{largest size of string to compare}
 
-\item{\code{indel_threshold}}{I don't remember what this does}
+\item{\code{indel_threshold}}{I don't remember what this does (FIXME: the fuck kind of documentation is this?)}
 }}
 

@@ -368,13 +368,14 @@ make_secondary_genewise_table <- function(m){
 #'
 #' @param m Rmonad
 #' @param species_order all target species in tree order
+#' @param strata A table with the phylostrata of each query gene
 #' @export
-make_secondary_labels_table <- function(m, species_order){
-  parse_labels <- function(labels, group){
+make_secondary_labels_table <- function(m, strata=NULL, species_order){
+  parse_labels <- function(labels){
     labels %>%
       lapply(
         function(x) {
-            dplyr::group_by(x[-1], primary, secondary) %>% dplyr::count()
+            dplyr::group_by(x[-1], primary, secondary, group) %>% dplyr::count()
         }
       ) %>%
       dplyr::bind_rows(.id='species') %>%
@@ -382,26 +383,41 @@ make_secondary_labels_table <- function(m, species_order){
         .$species <- factor(.$species, levels=species_order)
         . <- merge(., label_desc)
         .$desc <- paste(.$secondary, .$desc, sep=': ')
-        .$group <- group
         .
       }
   }
 
-  rbind(
-    parse_labels(.extract(m, "query_labels")[[1]]$labels, "query"),
-    parse_labels(.extract(m, "control_labels")[[1]]$labels, "control")
-  )
+  qlabels <- .extract(m, "query_labels")[[1]]$labels
+  qtab <- if(is.null(strata)){
+    parse_labels(lapply(qlabels, function(x) {x$group = "query"; x}))
+  } else {
+    parse_labels(lapply(
+        qlabels
+      , function(x) {
+          x <- merge(strata, x)
+          x$group = ifelse(x$ps == max(x$ps), "orphan", "lineage-specific")
+          x
+        }
+    ))
+  }
+
+  ctab <- parse_labels(lapply(
+      .extract(m, "control_labels")[[1]]$labels
+    , function(x) {x$group = "control"; x}
+  ))
+
+  rbind(qtab, ctab)
 }
 
 #' Plot the secondary labels
 #'
 #' @param m Rmonad
 #' @param species_order all target species in tree order
+#' @param strata A table with the phylostrata of each query gene
 #' @param fill character - either 'secondary' or not
 #' @export
-plot_secondary_labels <- function(m, species_order, fill='secondary'){ 
-
-  dat <- make_secondary_labels_table(m, species_order)
+plot_secondary_labels <- function(m, species_order, strata, fill='secondary'){ 
+  dat <- make_secondary_labels_table(m, species_order=species_order, strata=strata)
 
   if(fill == 'secondary'){
     ggplot2::ggplot(dat) +

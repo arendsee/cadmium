@@ -4,12 +4,14 @@
 \alias{plot_secondary_labels}
 \title{Plot the secondary labels}
 \usage{
-plot_secondary_labels(m, species_order, fill = "secondary")
+plot_secondary_labels(m, species_order, strata, fill = "secondary")
 }
 \arguments{
 \item{m}{Rmonad}
 
 \item{species_order}{all target species in tree order}
+
+\item{strata}{A table with the phylostrata of each query gene}
 
 \item{fill}{character - either 'secondary' or not}
 }

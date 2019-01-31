@@ -4,10 +4,12 @@
 \alias{make_secondary_labels_table}
 \title{Summarize secondary labels as a table}
 \usage{
-make_secondary_labels_table(m, species_order)
+make_secondary_labels_table(m, strata = NULL, species_order)
 }
 \arguments{
 \item{m}{Rmonad}
+
+\item{strata}{A table with the phylostrata of each query gene}
 
 \item{species_order}{all target species in tree order}
 }

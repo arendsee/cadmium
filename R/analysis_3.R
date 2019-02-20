@@ -29,15 +29,12 @@ buildFeatureTable <- function(m, species, con, group, gene_tag){
 
     "Set p-value cutoffs for each set of alignments (aa-vs-aa, aa-vs-orf,
     aa-vs-mRNA, gene-vs-genome). The p-value threshold set in the configuration
-    is the overall desired p-value (defualting to 0.05). Here we need to
-    account for multiple testing. For now we use a Bonferoni correction."
+    is the overall desired p-value (defaulting to 0.05)."
 
-    n <- length(genes)
-
-    p2p_cutoff <- con@alignment@thresholds@prot2prot     / n
-    p2a_cutoff <- con@alignment@thresholds@prot2allorf   / n
-    d2d_cutoff <- con@alignment@thresholds@dna2dna       / n
-    p2t_cutoff <- con@alignment@thresholds@prot2transorf / n
+    p2p_cutoff <- con@alignment@thresholds@prot2prot
+    p2a_cutoff <- con@alignment@thresholds@prot2allorf
+    d2d_cutoff <- con@alignment@thresholds@dna2dna
+    p2t_cutoff <- con@alignment@thresholds@prot2transorf
 
     met <- GenomicRanges::mcols(gene2genome) %>%
            as.data.frame %>%

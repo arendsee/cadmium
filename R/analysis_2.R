@@ -14,11 +14,11 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   }
 
   .view <- function(m, tag){
-    rmonad::view(m, tag, species, group)
+    rmonad::view(m, tag, group, species)
   }
 
   .tag <- function(m, tag){
-    rmonad::tag(m, tag, species, group)
+    rmonad::tag(m, tag, group, species)
   }
 
   # ---------------------------
@@ -248,9 +248,9 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     "Find the queries that overlap a CDS, exon, or mRNA (technically pre-mRNA,
     but GFF uses mRNA to specify the entire transcript before splicing)"
 
-    map <- gene2genome$map
-    met <- S4Vectors::mcols(map)
-    rng <- CNEr::second(map)
+    hits <- gene2genome$map
+    met <- S4Vectors::mcols(hits)
+    rng <- CNEr::second(hits)
 
     has_cds_match  <- GenomicRanges::findOverlaps(rng, cds)  %>% S4Vectors::queryHits() %>% unique
     has_exon_match <- GenomicRanges::findOverlaps(rng, exon) %>% S4Vectors::queryHits() %>% unique
@@ -260,9 +260,17 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
     met$exon_match <- seq_along(met$score) %in% has_exon_match
     met$mrna_match <- seq_along(met$score) %in% has_mrna_match
 
-    S4Vectors::mcols(map) <- met
+    S4Vectors::mcols(hits) <- met
 
-    map
+    map <-
+      S4Vectors::mcols(hits) %>% as.data.frame %>%
+      dplyr::mutate(target = 1:length(query)) %>%
+      dplyr::select(query, target, score, logmn, pval, cds_match, exon_match, mrna_match)
+
+    S4Vectors::mcols(hits) <- S4Vectors::mcols(hits)[, c("strand", "query", "qwidth", "twidth")]
+
+    list(map = map, hits = hits)
+
   } %>% .tag('gene2genome')
 }
 
@@ -294,6 +302,46 @@ query_control_gene_check <- function(gff, qgenes, cgenes) {
 
   check_ids(qgenes, "query")
   check_ids(cgenes, "control")
+}
+
+calculate_match_significance <- function(m, group, con){
+
+  .view <- function(m, tag){
+    rmonad::view(m, tag, group)
+  }
+
+  .tag <- function(m, tag){
+    rmonad::tag(m, tag, group)
+  }
+
+  # HACK: need to fix rmonad so it returns named lists from `views`
+  species_names <- function(tag){
+    rmonad::get_tag(m, tag=c(tag, group)) %>%
+    lapply(function(xs) lapply(xs, paste, collapse="/")) %>%
+    unlist %>% sub(pattern=sprintf("%s/%s/", tag, group), replacement="") %>%
+    unname
+  }
+
+  adjust <- function(xs, tag){
+    "Adjust similarity score p-value for total number of sequences searched"
+    # HACK: fix in rmonad
+    names(xs) <- species_names(tag)
+    do.call(rbind, lapply(names(xs), function(s) {
+      d <- xs[[s]]$map[, c("query", "target", "pval")]
+      d$species <- s
+      d
+    })) %>%
+      dplyr::group_by(query) %>%
+      dplyr::mutate(pval.adj = p.adjust(pval, method=con@alignment@padjust_method)) %>%
+      dplyr::select(query, target, species, pval, pval.adj)
+  }
+
+  for(tag in c("aa2aa", "aa2orf", "aa2transorf", "gene2genome")){
+    ms <- rmonad::views(m, tag, group)
+    m <- rmonad::combine(ms) %>>% adjust(tag=tag) %>% .tag(sprintf("%s.pval", tag))
+  }
+
+  m
 }
 
 #' Load secondary data
@@ -333,6 +381,7 @@ secondary_data <- function(m, con){
       gene_tag = "control_genes"
     )
   }
-
+  m <- calculate_match_significance(m, group = "query", con=con)
+  m <- calculate_match_significance(m, group = "control", con=con)
   m
 }

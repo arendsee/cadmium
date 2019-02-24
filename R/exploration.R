@@ -205,7 +205,7 @@ make_synmap_table <- function(m){
 make_synder_table <- function(m, genes=NULL){
   .extract(m, 'synder_out') %>%
     # target and query are actually the same, so no need to do both
-    .select_tag(paste0("/query$")) %>%
+    .select_tag("^query/") %>%
     lapply(function(x){
       if(!is.null(genes)){
         x <- x[S4Vectors::mcols(x)$attr %in% genes]
@@ -224,7 +224,7 @@ make_synder_table <- function(m, genes=NULL){
 get_synder_nsi <- function(m){
   xs <- .extract(m, 'synder_out') %>%
     # target and query are actually the same, so no need to do both
-    .select_tag(paste0("/query$"))
+    .select_tag("^query/")
 
   tabs <- lapply(xs, function(x){
     S4Vectors::mcols(x)$attr %>% as.factor %>% table %>%
@@ -308,7 +308,7 @@ make_query_target_table <- function(m){
 #' @export
 make_synder_flag_table <- function(m, group="query"){
   .extract(m, 'summary_synder_flags') %>%
-    .select_tag(paste0("/", group, "$")) %>%
+    .select_tag(paste0("^", group)) %>%
     lapply(function(d){
         dplyr::select(d, -attr) %>% colSums
       }) %>%
@@ -440,7 +440,7 @@ plot_secondary_labels <- function(m, species_order, strata, fill='secondary'){
         x="Classification",
         y="# of focal genes"
       ) +
-      ggplot2::facet_grid(group ~ .)
+      ggplot2::facet_grid(group ~ ., scales="free")
   }
 }
 

@@ -1,8 +1,8 @@
 # Build table of binary features
-buildFeatureTable <- function(m, species, con, group, gene_tag){
+buildFeatureTable <- function(m, species_name, con, group, gene_tag){
 
   .view_target <- function(m, tag){
-    rmonad::view(m, tag, species)
+    rmonad::view(m, tag, species_name)
   }
 
   .view_focal <- function(m, tag){
@@ -10,21 +10,22 @@ buildFeatureTable <- function(m, species, con, group, gene_tag){
   }
 
   .view <- function(m, tag){
-    rmonad::view(m, tag, species, group)
+    rmonad::view(m, tag, group, species_name)
   }
 
 
   rmonad::funnel(
     genes = rmonad::view(m, gene_tag),
-    gene2genome = .view(m, "gene2genome"),
+    gene2genome = rmonad::view(m, "gene2genome.pval", group),
     gaps = .view(m, "gaps"),
     indels = .view(m, "indels"),
-    aa2aa = .view(m, "aa2aa"),
-    aa2orf = .view(m, "aa2orf"),
-    aa2transorf = .view(m, "aa2transorf"),
+    aa2aa = rmonad::view(m, "aa2aa.pval", group),
+    aa2orf = rmonad::view(m, "aa2orf.pval", group),
+    aa2transorf = rmonad::view(m, "aa2transorf.pval", group),
     synder_summary = .view(m, "summary_synder_flags"),
     synder_out = .view(m, "synder_out"),
-    aln = .view(m, "gene2genome_aln")
+    aln = .view(m, "gene2genome_aln"),
+    genome_hits = .view(m, "gene2genome")
   ) %*>% {
 
     "Set p-value cutoffs for each set of alignments (aa-vs-aa, aa-vs-orf,
@@ -36,9 +37,13 @@ buildFeatureTable <- function(m, species, con, group, gene_tag){
     d2d_cutoff <- con@alignment@thresholds@dna2dna
     p2t_cutoff <- con@alignment@thresholds@prot2transorf
 
-    met <- GenomicRanges::mcols(gene2genome) %>%
-           as.data.frame %>%
-           subset(pval < d2d_cutoff)
+    met <- merge(
+      subset(gene2genome, species == species_name),
+      genome_hits$map[, c("query", "cds_match", "exon_match", "mrna_match")],
+      by="query"
+    ) %>%
+      dplyr::select(-target, -species, -pval) %>%
+      dplyr::filter(pval.adj < d2d_cutoff)
 
     data.frame(
       seqid = genes,
@@ -55,11 +60,11 @@ buildFeatureTable <- function(m, species, con, group, gene_tag){
       # number of confirmed indels (based on search interval size)
       ind = genes %in% indels,
       # the query has an ortholog in the target
-      gen = genes %in% subset(aa2aa$map, pval < p2p_cutoff)$query,
+      gen = genes %in% subset(aa2aa, pval.adj < p2p_cutoff & species == species_name)$query,
       # ORF match in SI
-      orf = genes %in% subset(aa2orf$map, pval < p2a_cutoff)$query,
+      orf = genes %in% subset(aa2orf, pval.adj < p2a_cutoff & species == species_name)$query,
       # ORF match to spliced transcript (possibly multi-exonic)
-      trn = genes %in% subset(aa2transorf$map, pval < p2t_cutoff)$query,
+      trn = genes %in% subset(aa2transorf, pval.adj < p2t_cutoff & species == species_name)$query,
       # synteny is scrambled
       scr = genes %in% subset(synder_summary, incoherent)$attr,
       # at least one search interval maps off scaffold
@@ -68,7 +73,7 @@ buildFeatureTable <- function(m, species, con, group, gene_tag){
       tec = genes %in% aln$skipped,
       stringsAsFactors = FALSE
     )
-  } %>% rmonad::tag("feature_table", group, species)
+  } %>% rmonad::tag("feature_table", group, species_name)
 }
 
 buildLabelsTree <- function(feats, con){
@@ -265,9 +270,9 @@ tertiary_data <- function(m, con){
 
   message("Building feature tables")
 
-  for(species in get_targets(con)){
-    m <- buildFeatureTable(m, species, con, group = "query",   gene_tag = "query_genes")
-    m <- buildFeatureTable(m, species, con, group = "control", gene_tag = "control_genes")
+  for(s in get_targets(con)){
+    m <- buildFeatureTable(m, con, species_name=s, group = "query",   gene_tag = "query_genes")
+    m <- buildFeatureTable(m, con, species_name=s, group = "control", gene_tag = "control_genes")
   }
 
   m

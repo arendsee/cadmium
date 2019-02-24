@@ -60,16 +60,18 @@ config_alignment_simulation <- setClass(
 config_alignment <- setClass(
   "config_alignment",
   representation(
-    thresholds         = "config_alignment_thresholds",
-    simulation         = "config_alignment_simulation",
+    thresholds          = "config_alignment_thresholds",
+    simulation          = "config_alignment_simulation",
     substitution_matrix = "character",
-    dna2dna_maxspace   = "integer",
-    indel_threshold    = "numeric"
+    padjust_method      = "character",
+    dna2dna_maxspace    = "integer",
+    indel_threshold     = "numeric"
   ),
   prototype(
     thresholds = config_alignment_thresholds(),
     simulation = config_alignment_simulation(),
     substitution_matrix = "BLOSUM80",
+    padjust_method = "holm",
     dna2dna_maxspace = 1e8L,
     indel_threshold  = 0.25
   )

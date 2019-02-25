@@ -440,7 +440,7 @@ plot_secondary_labels <- function(m, species_order, strata, fill='secondary'){
         x="Classification",
         y="# of focal genes"
       ) +
-      ggplot2::facet_grid(group ~ .)
+      ggplot2::facet_grid(group ~ ., scales="free")
   }
 }
 

@@ -81,6 +81,7 @@ fit.gumbel <- function(sam){
 
   p <- function(q, logmn){
     q <- get.adj.from.score(q, logmn)
+    # from the Gumbel CDF: e^{-e^{-(q-mu)/s)}}
     z <- (q - mu) / s
     exp(-exp(-z))
   }

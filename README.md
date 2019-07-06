@@ -36,6 +36,13 @@ The following is required
    - GFF file (must at least include gene models)
    - Full genome (GFF reference)
 
+## Documentation
+
+Go [here](https://github.com/arendsee/fagin-case-studies) to see working case
+studies that you can adapt for your own projects.
+
+You can also check out the (under construction) wiki [here](https://github.com/arendsee/fagin/wiki).
+
 ## Configuration
 
 To run and configure `fagin`, you need to set paths to your data in
@@ -58,39 +65,3 @@ run_fagin(con)
  - Search the query protein against the overlapping target gene's ORFs
  - Search the query gene DNA against the search interval DNA sequences
  - Predict ancestor states
-
-## Troubleshooting
-
-### Incorrect synder offsets
-
-If you get an error like this:
-
-```
-record 18486 (some-gene-id:0-385) was truncated\n  file: whatever.fna
-```
-
-Then the synder offsets are probably wrong.
-
-``` R
-# where `con` is your config object
-con@synder@offsets
-```
-
-If this returns the vector `c(1,x)`, where `x` can be 0 or 1, then the synteny map is probably actually 0-based, not 1-based. So just set the 1 to 0:
-
-``` R
-con@synder@offsets[1] <- 0
-```
-
-### Incorrect genome length settings
-
-If you get an error like this:
-
-```
-record 83 (some-gene-id:1-1000000000) was truncated\n  file: whatever.fna
-```
-
-Then the SeqInfo object is not being set correctly. Synder needs to know the
-actual length of each genome. The user should not have to do anything special
-here, since fagin can find the data for you. If you encounter this error, then
-something is wrong in fagin and you should file an error report.

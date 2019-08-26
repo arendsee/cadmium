@@ -274,7 +274,7 @@ compare_target_to_focal <- function(m, con, species, group, gene_tag){
   } %>% .tag('gene2genome')
 }
 
-query_control_gene_check <- function(gff, qgenes, cgenes) {
+query_control_gene_check <- function(gff, qgenes, cgenes, focal_species) {
 
   "Assert query and control ids match the names in the GFF file. Also confirm
   that query and control ids do not overlap"
@@ -363,7 +363,7 @@ secondary_data <- function(m, con){
       qgenes = rmonad::view(., "query_genes"),
       cgenes = rmonad::view(., "control_genes")
     ) %*>%
-    query_control_gene_check
+    query_control_gene_check(focal_species=con@input@focal_species)
 
   for(target_species in get_targets(con)){
     m <- compare_target_to_focal(

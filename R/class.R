@@ -310,6 +310,7 @@ validate_config <- function(con){
 setOldClass("density")
 setOldClass("htest")
 setOldClass("phylo")
+setOldClass("Seqinfo")
 
 
 #' Summary of a numeric vector
